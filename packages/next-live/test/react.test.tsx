@@ -6,6 +6,7 @@ import { LiveProvider } from '../src/components/LiveProvider';
 import { LivePreview } from '../src/components/LivePreview';
 import { LiveError } from '../src/components/LiveError';
 import { useLiveModule } from '../src/hooks/useLiveModule';
+import { useLiveRunner } from '../src/hooks/useLiveRunner';
 
 afterEach(cleanup);
 
@@ -212,5 +213,39 @@ describe('useLiveModule', () => {
   it('surfaces errors instead of throwing', async () => {
     render(<Probe code={`export function validate(n) { return n > 0 }` + '\n@@@'} />);
     await waitFor(() => expect(screen.getByTestId('err')).toBeTruthy(), { timeout: 4000 });
+  });
+});
+
+describe('onCodeChange', () => {
+  it('fires when the code is edited from inside', async () => {
+    const seen: string[] = [];
+
+    function Harness() {
+      const { setCode } = useLiveRunner({
+        code: 'export default () => <b>a</b>;',
+        onCodeChange: (next) => seen.push(next),
+      });
+      return <button onClick={() => setCode('export default () => <b>b</b>;')}>edit</button>;
+    }
+
+    render(<Harness />);
+    screen.getByText('edit').click();
+
+    await waitFor(() => expect(seen).toHaveLength(1));
+    expect(seen[0]).toContain('<b>b</b>');
+  });
+
+  it('does not fire when the code prop changes from outside', async () => {
+    const seen: string[] = [];
+    const Harness = ({ code }: { code: string }) => {
+      useLiveRunner({ code, onCodeChange: (next) => seen.push(next) });
+      return null;
+    };
+
+    const { rerender } = render(<Harness code="export default () => <b>a</b>;" />);
+    rerender(<Harness code="export default () => <b>b</b>;" />);
+
+    // Echoing the host's own update back at it would make a save loop.
+    await waitFor(() => expect(seen).toEqual([]));
   });
 });

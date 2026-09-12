@@ -5,4 +5,4 @@
  * surface, so what lives here is a deliberate contract with snippet authors,
  * and the real implementation stays free to move.
  */
-export { useCart, addItem, clearCart } from '@/lib/store';
+export { useCart, addItem, clearCart, removeLastItem, getCartCount } from '@/lib/store';

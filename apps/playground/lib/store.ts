@@ -1,39 +1,30 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { create } from 'zustand';
 
-/**
- * A minimal store standing in for Zustand/Redux.
- *
- * The point of registering it in `modules` is that snippets share *this*
- * instance: state written by a live snippet is visible to the host app and
- * vice versa. That only works because snippets are evaluated in the host
- * realm rather than an iframe.
- */
-let items: string[] = [];
-const listeners = new Set<() => void>();
-
-function emit(): void {
-  for (const listener of listeners) listener();
+interface CartStore {
+  items: string[];
+  addItem: (item: string) => void;
+  removeItem: (index: number) => void;
+  clearCart: () => void;
 }
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
+export const useCartStore = create<CartStore>((set) => ({
+  items: [],
+  addItem: (item) => set((s) => ({ items: [...s.items, item] })),
+  removeItem: (index) => set((s) => ({ items: s.items.filter((_, i) => i !== index) })),
+  clearCart: () => set({ items: [] }),
+}));
 
-const getSnapshot = (): string[] => items;
+export const useCart = () => useCartStore((s) => s.items);
 
-export function useCart(): string[] {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
+export const addItem = (item: string) => useCartStore.getState().addItem(item);
 
-export function addItem(item: string): void {
-  items = [...items, item];
-  emit();
-}
+export const clearCart = () => useCartStore.getState().clearCart();
 
-export function clearCart(): void {
-  items = [];
-  emit();
-}
+export const removeLastItem = () => {
+  const { items, removeItem } = useCartStore.getState();
+  if (items.length > 0) removeItem(items.length - 1);
+};
+
+export const getCartCount = () => useCartStore.getState().items.length;

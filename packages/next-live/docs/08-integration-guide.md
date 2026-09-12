@@ -240,7 +240,8 @@ Your control panel needs the editor rather than just the preview:
 'use client';
 
 import { useState } from 'react';
-import { LiveProvider, LiveEditor, LivePreview, LiveError } from 'next-live';
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
 import { liveModules } from '@/lib/live-sdk';
 
 export function AppEditor({ initialSource, onSave }: {

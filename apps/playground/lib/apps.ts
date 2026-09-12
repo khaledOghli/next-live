@@ -83,8 +83,8 @@ export default function LiveProps({ panel, user }: Props) {
   },
   {
     id: 'store',
-    name: 'Shared store',
-    description: 'Imports the host store via a glob-generated specifier.',
+    name: 'Zustand store',
+    description: 'Zustand cart shared across host, LivePreview, and an API script.',
     source: `import { useCart, addItem } from '@app/store';
 
 export default function Cart() {
@@ -114,7 +114,8 @@ export default function Cart() {
         Add item
       </button>
       <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>
-        This is the host application&rsquo;s own store, not a copy.
+        addItem runs here via @app/store. Clear cart is on the host panel;
+        remove last runs from the API script below.
       </p>
     </div>
   );

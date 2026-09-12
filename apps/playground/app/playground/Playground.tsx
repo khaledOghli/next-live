@@ -1,9 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LiveEditor, LiveError, LivePreview, LiveProvider } from 'next-live';
+import {
+  LiveError,
+  LivePreview,
+  LiveProvider,
+  useLiveModule,
+  type ModuleRegistry,
+} from 'next-live';
+// The editor lives on its own entry so pages that only *run* snippets never
+// pull in a syntax highlighter.
+import { LiveEditor } from 'next-live/editor';
 import HostWidget from '@demo/vendor/Widget';
-import { useCart } from '@/lib/store';
+import { clearCart, useCart } from '@/lib/store';
 import { liveModules } from '@/lib/live-sdk';
 import type { LiveApp } from '@/lib/apps';
 
@@ -12,6 +21,68 @@ import type { LiveApp } from '@/lib/apps';
 // registry. If the snippet can read this marker, both hold one module instance —
 // which is what makes a shared store actually shared.
 (HostWidget as unknown as Record<string, unknown>).__owner = 'host-app';
+
+interface StoreScriptExports extends Record<string, unknown> {
+  run?: () => number;
+}
+
+function StoreApiScript({ modules }: { modules: ModuleRegistry }) {
+  const [source, setSource] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [lastCount, setLastCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch('/api/store/script', { signal: controller.signal })
+      .then((response) => response.json())
+      .then((data: { source?: string }) => {
+        if (typeof data.source === 'string') setSource(data.source);
+        else setFetchError('API returned no source');
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setFetchError(error instanceof Error ? error.message : String(error));
+        }
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  const { exports, error, isCompiling } = useLiveModule<StoreScriptExports>({
+    code: source ?? '',
+    modules,
+  });
+
+  const run = exports?.run;
+
+  return (
+    <div className="mt-2 rounded-xl border border-dashed border-black/15 p-4 text-sm dark:border-white/20">
+      <p className="mb-2 font-medium">API script (useLiveModule)</p>
+      {fetchError && <p className="text-xs text-red-600 dark:text-red-400">{fetchError}</p>}
+      {!source && !fetchError && <p className="text-xs opacity-60">Loading script from API…</p>}
+      {error && <p className="text-xs text-red-600 dark:text-red-400">{error.message}</p>}
+      <button
+        type="button"
+        disabled={typeof run !== 'function' || isCompiling}
+        onClick={() => {
+          if (typeof run === 'function') setLastCount(run());
+        }}
+        className="rounded-lg border border-black/15 px-3 py-1.5 text-sm transition-colors hover:bg-black/5 disabled:opacity-40 dark:border-white/20 dark:hover:bg-white/10"
+      >
+        Remove last (API script)
+      </button>
+      {isCompiling && <span className="ml-2 text-xs opacity-60">Compiling…</span>}
+      {lastCount !== null && (
+        <p className="mt-2 text-xs opacity-60">Script returned {lastCount} item(s) remaining.</p>
+      )}
+      <p className="mt-2 text-xs opacity-60">
+        Non-UI code from <code className="font-mono">/api/store/script</code>, imports{' '}
+        <code className="font-mono">@app/store</code> via the registry.
+      </p>
+    </div>
+  );
+}
 
 interface PlaygroundProps {
   /** Sent from the server so the first app is available without a round trip. */
@@ -61,6 +132,7 @@ export function Playground({ apps, initialApp }: PlaygroundProps) {
   };
 
   const panel = { size, setSize };
+  const isStoreTab = activeId === 'store';
 
   return (
     <div className="grid gap-4">
@@ -114,10 +186,23 @@ export function Playground({ apps, initialApp }: PlaygroundProps) {
               <p className="opacity-70">
                 panel size {size} · cart {cart.length} item(s)
               </p>
+              {isStoreTab && (
+                <button
+                  type="button"
+                  onClick={() => clearCart()}
+                  className="mt-2 rounded-lg border border-black/15 px-3 py-1.5 text-sm transition-colors hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+                >
+                  Clear cart (host direct)
+                </button>
+              )}
               <p className="mt-2 text-xs opacity-60">
-                These update when the snippet changes them — the same objects, not copies.
+                {isStoreTab
+                  ? 'Three paths share one Zustand store: clearCart here, addItem in the preview, removeLastItem via the API script.'
+                  : 'These update when the snippet changes them — the same objects, not copies.'}
               </p>
             </div>
+
+            {isStoreTab && <StoreApiScript modules={liveModules} />}
           </section>
         </div>
       </LiveProvider>

@@ -21,7 +21,8 @@ Client Component. Create `app/apps/Runner.tsx`:
 ```tsx
 'use client';
 
-import { LiveProvider, LiveEditor, LivePreview, LiveError } from 'next-live';
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
 
 export function Runner({ source }: { source: string }) {
   return (
@@ -72,7 +73,8 @@ pass a `modules` registry:
 ```tsx
 'use client';
 
-import { LiveProvider, LiveEditor, LivePreview, LiveError, defineLoader } from 'next-live';
+import { LiveProvider, LivePreview, LiveError, defineLoader } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
 
 export function Runner({ source, user }: { source: string; user: User }) {
   return (

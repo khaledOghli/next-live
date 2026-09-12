@@ -47,14 +47,6 @@ export function precompile(source: string, options: TranspileOptions = {}): Prec
 }
 
 /**
- * Turns a precompiled result into a `transform` function for the client, so
- * `<LiveProvider transform={...}>` skips loading Sucrase entirely.
- */
-export function precompiledTransform(result: TransformResult): () => TransformResult {
-  return () => result;
-}
-
-/**
  * FNV-1a over the source and the options that affect output. Not a
  * cryptographic hash — it only needs to be fast and collision-resistant enough
  * to key a cache.

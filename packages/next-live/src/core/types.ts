@@ -105,6 +105,14 @@ export interface CompileResult {
 
 export interface UseLiveRunnerOptions extends CompileOptions {
   code: string;
+  /**
+   * Called when the code is edited from inside — by `<LiveEditor>`, or via
+   * `setCode`. Not called when the `code` prop changes from outside, which
+   * would otherwise echo your own updates back at you.
+   *
+   * This is what a control panel needs to persist an author's edits.
+   */
+  onCodeChange?: (code: string) => void;
   /** Milliseconds to wait after a change before recompiling. Default 150. */
   debounce?: number;
   /**

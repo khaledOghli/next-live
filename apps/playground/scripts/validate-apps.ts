@@ -7,8 +7,9 @@
  *
  *   npx tsx scripts/validate-apps.ts
  */
-import { validateSnippets } from 'next-live/server';
+import { validateSnippet, validateSnippets } from 'next-live/server';
 import { apps } from '../lib/apps.ts';
+import { storeScriptSource } from '../lib/store-script.ts';
 
 // Only the keys are needed, and keys are all a CI script can easily get: the
 // real registry is full of bundler-specific dynamic imports.
@@ -20,12 +21,17 @@ const MODULE_KEYS = [
 
 const failures = validateSnippets(apps, { modules: MODULE_KEYS });
 
+const scriptResult = validateSnippet(storeScriptSource, { modules: MODULE_KEYS });
+if (!scriptResult.ok) {
+  failures.push({ id: 'store-script', result: scriptResult });
+}
+
 if (failures.length === 0) {
-  console.log(`✓ all ${apps.length} stored apps validate against the current SDK`);
+  console.log(`✓ all ${apps.length} stored apps and the store API script validate against the current SDK`);
   process.exit(0);
 }
 
-console.error(`✗ ${failures.length} of ${apps.length} stored apps are broken:\n`);
+console.error(`✗ ${failures.length} snippet(s) are broken:\n`);
 for (const { id, result } of failures) {
   for (const issue of result.issues) {
     const where = issue.line ? ` (line ${issue.line})` : '';

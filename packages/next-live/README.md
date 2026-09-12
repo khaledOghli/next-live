@@ -13,7 +13,8 @@ npm install next-live
 ```tsx
 'use client';
 
-import { LiveProvider, LiveEditor, LivePreview, LiveError } from 'next-live';
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
 
 export function Playground({ source }: { source: string }) {
   return (
@@ -78,6 +79,9 @@ snippet should share your page's React instance and your live objects.
 - **CI validation.** `validateSnippets` checks every stored snippet still
   compiles against your registry, so an SDK rename fails the build instead of
   breaking apps silently.
+- **Small, and lazy.** A page that only runs snippets pays **16.1 KB**; the
+  editor and its highlighter are a separate entry, and the transpiler is a
+  chunk fetched on first compile.
 - **Headless if you want it.** `useLiveRunner` for a completely custom UI.
 - **Server precompilation** via `next-live/server`, so the browser can skip the
   transpiler entirely.
@@ -98,6 +102,7 @@ snippet should share your page's React instance and your live objects.
 | [Integration guide](./docs/08-integration-guide.md) | End-to-end walkthrough |
 | [Snippets that are not components](./docs/09-non-ui-snippets.md) | Validators, transformers, config |
 | [Validating stored snippets in CI](./docs/10-validating-in-ci.md) | Catch SDK renames before users do |
+| [Migrating from `react-live`](./docs/11-migrating-from-react-live.md) | `scope` → registry, and what differs |
 
 ## Two things to know up front
 

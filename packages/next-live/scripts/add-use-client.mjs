@@ -15,7 +15,7 @@ import { dirname, join } from 'node:path';
 
 const DIRECTIVE = '"use client";';
 const dist = join(dirname(fileURLToPath(import.meta.url)), '..', 'dist');
-const CLIENT_ENTRIES = ['index.js', 'index.cjs'];
+const CLIENT_ENTRIES = ['index.js', 'index.cjs', 'editor.js', 'editor.cjs'];
 
 let changed = 0;
 for (const file of CLIENT_ENTRIES) {

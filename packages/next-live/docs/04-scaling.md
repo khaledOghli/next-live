@@ -41,6 +41,24 @@ touched. Your provider can list everything without penalty.
 > nothing extra either — it hands over the already-loaded module. See
 > [Sharing libraries](./03-sharing-your-app-libraries.md#no-second-download-either).
 
+## The library's own weight
+
+Before your registry, what does `next-live` itself cost a page? Measured with
+esbuild, React externalised, code-splitting on:
+
+| Page imports | Entry chunk |
+|---|---|
+| `LiveProvider` + `LivePreview` + `LiveError` | **16.1 KB** |
+| the above plus `LiveEditor` from `next-live/editor` | 102.1 KB |
+
+The difference is `prism-react-renderer`. It is only needed to syntax-highlight
+an editor, so it lives on its own entry and is an optional peer dependency —
+a page that merely *runs* stored snippets never downloads or installs it.
+
+Sucrase is not in either number: it is fetched as a separate chunk on first
+compile, or skipped entirely if you
+[precompile on the server](#compile-cost-and-skipping-the-transpiler).
+
 ## Design an SDK surface, not a mirror of your codebase
 
 The bigger question is *what* to register.

@@ -8,7 +8,8 @@
 //    'unsafe-eval' and evaluation is blocked on purpose. Rendering it then
 //    proves the CSP scoping works, and that a blocked snippet reports an
 //    actionable message instead of a raw EvalError.
-import { LiveEditor, LiveError, LivePreview, LiveProvider } from 'next-live';
+import { LiveError, LivePreview, LiveProvider } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
 
 export default function RscCheckPage() {
   return (

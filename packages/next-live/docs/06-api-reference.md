@@ -8,8 +8,17 @@ a *client reference*, so `Live.Preview` would resolve to `undefined`.
 
 ```ts
 import { LiveProvider, LivePreview, defineLoader } from 'next-live';
+import { LiveEditor } from 'next-live/editor';   // separate entry — see below
 import { precompile } from 'next-live/server';
 ```
+
+Three entry points, so you only ship what you use:
+
+| Entry | Contains | Why separate |
+|---|---|---|
+| `next-live` | Provider, preview, error, hooks, registry, engine | — |
+| `next-live/editor` | `<LiveEditor>` | It is the only thing needing `prism-react-renderer`. Measured: a preview-only page pays 16.1 KB instead of 97.2 KB. `prism-react-renderer` is an **optional peer dependency**, so it is not installed unless you import this. |
+| `next-live/server` | `precompile`, `validateSnippet(s)` | Imports Sucrase statically; must never reach the client bundle. |
 
 ## Components
 
@@ -27,6 +36,7 @@ inside it.
 | `fallback` | `ReactNode` | `null` | Rendered until the first compile finishes. |
 | `language` | `string` | `'tsx'` | Highlighting hint for `<LiveEditor>`. |
 | `onError` | `(error: Error) => void` | — | Called on every compile and runtime error. |
+| `onCodeChange` | `(code: string) => void` | — | Called when the code is edited from inside. Not called when the `code` prop changes from outside, so it cannot echo your own saves back. |
 | `debounce` | `number` | `150` | Milliseconds before recompiling after a change. |
 | `keepLastGood` | `boolean` | `true` | Keep the last working component mounted when a recompile fails. |
 | `maxRendersPerSecond` | `number` | `1000` | Render-loop breaker threshold. |
@@ -186,6 +196,7 @@ The always-registered map: `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`
 | `compileModule(input)` | The same pipeline, returning `{ exports, code }` with no component required. |
 | `transpile(source, options, transform?)` | Source → CommonJS. No evaluation. |
 | `preloadTranspiler()` | Warm the Sucrase chunk during idle time. |
+| `precompiledTransform(result)` | Wraps a server-precompiled result as a `transform`, so the client never loads Sucrase. Exported from the **client** entry — importing it from `next-live/server` would pull the transpiler into your page. |
 | `setTranspiler(module)` | Swap the transpiler. For tests and custom backends. |
 | `normalizeModule(value)` | The interop normalisation applied to registry values. |
 | `createRequire(resolved)` | The synchronous `require` shim. |
@@ -202,11 +213,6 @@ and Server Components.
 Transpiles to the same CommonJS the browser path produces. Returns
 `{ code, hash, linePrefixOffset, expression }`, where `hash` is a stable cache
 key or ETag.
-
-### `precompiledTransform(result)`
-
-Wraps a precompiled result as a `transform` function, so the client skips
-loading Sucrase entirely.
 
 ### `validateSnippet(source, options?)`
 

@@ -3,8 +3,8 @@
 // a client *reference*, so any attached property resolves to undefined.
 export { LiveProvider } from './components/LiveProvider';
 export type { LiveProviderProps } from './components/LiveProvider';
-export { LiveEditor } from './components/LiveEditor';
-export type { LiveEditorProps, LiveEditorRenderProps } from './components/LiveEditor';
+// <LiveEditor> lives in `next-live/editor` — it is the only thing that pulls
+// in a syntax highlighter, and preview-only pages should not pay for it.
 export { LivePreview } from './components/LivePreview';
 export type { LivePreviewProps } from './components/LivePreview';
 export { LiveError } from './components/LiveError';
@@ -22,7 +22,12 @@ export { LiveContext } from './context/LiveContext';
 // Engine, for advanced use — a custom scheduler, or compiling outside React.
 export { compile, compileModule } from './core/compile';
 export type { CompileInput, CompileModuleResult } from './core/compile';
-export { transpile, preloadTranspiler, setTranspiler } from './core/transpile';
+export {
+  transpile,
+  preloadTranspiler,
+  setTranspiler,
+  precompiledTransform,
+} from './core/transpile';
 export { builtinModules } from './core/builtins';
 export {
   defineModule,

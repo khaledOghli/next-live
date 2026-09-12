@@ -175,3 +175,20 @@ export function scanTopLevelDeclarations(code: string): string[] {
   }
   return names;
 }
+
+/**
+ * Wraps an already-compiled result as a `transform` function, so the client
+ * skips loading Sucrase entirely:
+ *
+ * ```tsx
+ * <LiveProvider code={source} transform={precompiledTransform(compiled)} />
+ * ```
+ *
+ * Lives here rather than next-live/server on purpose. It is a pure closure over
+ * a value and needs no transpiler — but importing it from the server entry
+ * would pull Sucrase statically into the page bundle, which is the exact cost
+ * precompiling exists to avoid.
+ */
+export function precompiledTransform(result: TransformResult): () => TransformResult {
+  return () => result;
+}

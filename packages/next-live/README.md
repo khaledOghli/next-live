@@ -6,9 +6,12 @@
 [![bundle size](https://img.shields.io/bundlephobia/minzip/next-live?label=minzip)](https://bundlephobia.com/package/next-live)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khaledOghli/next-live/blob/main/LICENSE)
 
-Live TSX/JSX evaluation for the **Next.js App Router**, real ESM `import`
-statements, a module registry instead of a global scope bag, and no hydration
-mismatches.
+Live TSX/JSX evaluation for **React**, real ESM `import` statements, a module
+registry instead of a global scope bag, and no hydration mismatches.
+
+**Next.js is not required.** It works in Vite, Remix, CRA, or anywhere React
+runs. The name reflects where it was designed and what it is tuned for: App
+Router SSR safety, and docs written against Next 16.
 
 ```bash
 npm install next-live
@@ -121,13 +124,9 @@ people you trust.
 
 ## Requirements
 
-React 19+ and Node 20.9+.
-
-**Next.js is not required.** The library imports only `react`,
-`react/jsx-runtime`, `react/jsx-dev-runtime`, `prism-react-renderer`, and
-`sucrase` - it works in Vite,
-CRA, Remix, or anywhere React runs. The name reflects where it was designed and
-what it is tuned for: App Router SSR safety, and docs written against Next 16.
+React 19+ and Node 20.9+. Nothing else is required: the library imports only
+`react`, `react/jsx-runtime`, `react/jsx-dev-runtime`, `sucrase`, and
+`prism-react-renderer` on the `/editor` entry.
 
 ## Contributing
 

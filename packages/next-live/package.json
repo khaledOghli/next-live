@@ -1,7 +1,7 @@
 {
   "name": "next-live",
   "version": "0.1.0",
-  "description": "Live TSX/JSX evaluation for the Next.js App Router \u2014 real ESM imports, a module registry instead of a global scope, and zero hydration mismatches.",
+  "description": "Live TSX/JSX evaluation for React \u2014 real ESM imports, a module registry instead of a global scope, and zero hydration mismatches. Works anywhere React runs, SSR-safe and tuned for the Next.js App Router.",
   "keywords": [
     "react",
     "next",
@@ -14,7 +14,12 @@
     "jsx",
     "tsx",
     "editor",
-    "eval"
+    "eval",
+    "ssr",
+    "vite",
+    "live-code",
+    "code-editor",
+    "react-19"
   ],
   "license": "MIT",
   "author": "Khaled Oghli",

@@ -1,6 +1,6 @@
 # next-live documentation
 
-Live TSX/JSX evaluation for the Next.js App Router.
+Live TSX/JSX evaluation for React, SSR-safe and tuned for the Next.js App Router.
 
 ## Guides
 

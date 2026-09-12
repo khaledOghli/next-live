@@ -4,7 +4,7 @@ import { Playground } from './Playground';
 
 export const metadata = {
   title: 'next-live playground',
-  description: 'Live TSX evaluation in the Next.js App Router.',
+  description: 'Live TSX evaluation for React, running in the Next.js App Router.',
 };
 
 /**

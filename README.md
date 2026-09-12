@@ -4,9 +4,13 @@
 [![CI](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml/badge.svg)](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Live TSX/JSX evaluation for the Next.js App Router, real ESM `import`
-statements, a module registry instead of a global scope bag, and no hydration
-mismatches.
+Live TSX/JSX evaluation for **React**, real ESM `import` statements, a module
+registry instead of a global scope bag, and no hydration mismatches.
+
+It runs anywhere React runs, Vite, Remix, Create React App, a plain React SPA.
+Next.js is not a dependency; the name reflects where it was designed and what it
+is tuned for, App Router SSR safety, and it is what the demo and docs are
+written against.
 
 This is the development monorepo. **[→ Package README and documentation](packages/next-live/README.md)**
 

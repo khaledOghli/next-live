@@ -9,7 +9,7 @@ export function SiteFooter() {
         <div>
           <Logo asLink={false} className="text-lg" />
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Live TSX evaluation for the Next.js App Router. MIT licensed.
+            Live TSX evaluation for React. MIT licensed.
           </p>
         </div>
 

@@ -21,7 +21,7 @@ export const metadata: Metadata = {
     default: "next-live",
     template: "%s | next-live",
   },
-  description: "Live TSX evaluation for the Next.js App Router.",
+  description: "Live TSX evaluation for React, SSR-safe and tuned for the Next.js App Router.",
   manifest: "/site.webmanifest",
   openGraph: {
     type: "website",

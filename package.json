@@ -1,7 +1,7 @@
 {
   "name": "next-live-monorepo",
   "private": true,
-  "description": "Development monorepo for next-live: live TSX/JSX evaluation for the Next.js App Router.",
+  "description": "Development monorepo for next-live: live TSX/JSX evaluation for React, SSR-safe and tuned for the Next.js App Router.",
   "license": "MIT",
   "author": "Khaled Oghli",
   "repository": {

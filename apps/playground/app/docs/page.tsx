@@ -6,7 +6,7 @@ import { getDocGroups } from '@/lib/docs/nav';
 export const metadata: Metadata = {
   title: 'Documentation',
   description:
-    'Live TSX evaluation for the Next.js App Router, real ESM imports, a module registry instead of a global scope, and zero hydration mismatches.',
+    'Live TSX evaluation for React, real ESM imports, a module registry instead of a global scope, and zero hydration mismatches.',
   alternates: { canonical: '/docs' },
 };
 

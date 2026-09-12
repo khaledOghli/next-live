@@ -12,7 +12,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: siteUrl, changeFrequency: 'monthly', priority: 1 },
-    { url: `${siteUrl}/docs`, changeFrequency: 'monthly', priority: 0.9 },
+    { url: `${siteUrl}/docs/getting-started`, changeFrequency: 'monthly', priority: 0.95 },
     ...docPages,
   ];
 }

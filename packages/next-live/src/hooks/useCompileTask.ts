@@ -95,6 +95,17 @@ export function useCompileTask<T>(
   };
 
   const { filePath, production, jsxRuntime, jsxImportSource } = transpileOptions;
+  const prevFilePath = useRef(filePath);
+
+  // Tab switches often change filePath before code catches up. Dropping the
+  // stale renderable immediately avoids mounting the previous snippet's
+  // component while the next one compiles.
+  useEffect(() => {
+    if (filePath === prevFilePath.current) return;
+    prevFilePath.current = filePath;
+    compileIdRef.current += 1;
+    setState({ result: null, error: null, compileId: compileIdRef.current });
+  }, [filePath]);
 
   useEffect(() => {
     const controller = new AbortController();

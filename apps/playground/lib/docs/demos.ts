@@ -52,12 +52,12 @@ export default function CartDemo() {
 }
 `;
 
-export const formatDemo = `import { formatCurrency } from '@app/format';
+export const formatDemo = `import { formatMoney } from '@app/format';
 
 export default function FormatDemo() {
   return (
     <p className="text-lg font-semibold tabular-nums">
-      {formatCurrency(42.5)}
+      {formatMoney(42.5)}
     </p>
   );
 }

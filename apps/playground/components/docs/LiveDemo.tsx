@@ -5,6 +5,7 @@ import { LiveError, LivePreview, LiveProvider, type ModuleRegistry } from 'next-
 import { LiveEditor } from 'next-live/editor';
 import { liveModules } from '@/lib/live-sdk';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 
 interface LiveDemoProps {
   source: string;
@@ -26,8 +27,9 @@ export function LiveDemo({
   const [code, setCode] = useState(source);
 
   return (
-    <div className={className}>
+    <div className={cn('live-demo-breakout', className)}>
       <LiveProvider
+        key={filePath}
         code={editable ? code : source}
         modules={modules}
         props={props}

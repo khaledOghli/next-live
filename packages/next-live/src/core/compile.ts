@@ -1,6 +1,7 @@
 import { builtinModules } from './builtins';
 import { LiveCompileError, LiveError, LiveRuntimeError } from './errors';
 import { evaluate, runModule } from './evaluate';
+import { injectRenderBudgetTick } from './inject-render-budget';
 import { createRequire, resolveModules, scanRequires } from './resolver';
 import { filterUserFrames, mapPosition } from './stacks';
 import { defaultTranspileOptions, transpile } from './transpile';
@@ -52,7 +53,8 @@ async function prepare(input: CompileInput) {
 
   const options = { ...defaultTranspileOptions, ...transpileOptions };
 
-  const transformed = await transpile(source, options, transform);
+  const budgetedSource = onRender ? injectRenderBudgetTick(source) : source;
+  const transformed = await transpile(budgetedSource, options, transform);
   signal?.throwIfAborted();
 
   // Host modules merge over the built-ins so React itself can be substituted,
@@ -77,7 +79,7 @@ async function prepare(input: CompileInput) {
       filePath: options.filePath,
       require: createRequire(resolved),
       scope,
-      ...(onRender ? { onRender } : {}),
+      ...(onRender ? { liveTick: onRender } : {}),
     },
     meta: {
       linePrefixOffset: transformed.linePrefixOffset,
@@ -156,3 +158,4 @@ function positionFromStack(stack: string | undefined): { line: number; column?: 
 
 export type { CompileModuleResult } from './types';
 export { LiveCompileError };
+

@@ -1,8 +1,8 @@
-import { describe, expect, it } from 'vitest';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { compile, compileModule } from '../src/core/compile';
+import { describe, expect, it } from 'vitest';
 import type { CompileInput } from '../src/core/compile';
+import { compile, compileModule } from '../src/core/compile';
 import { ModuleNotFoundError, NoComponentError } from '../src/core/errors';
 import { defineLoader } from '../src/core/resolver';
 

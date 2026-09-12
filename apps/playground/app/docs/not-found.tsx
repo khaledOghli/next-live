@@ -7,8 +7,8 @@ export default function DocsNotFound() {
       <p className="mt-2 text-lg text-muted-foreground">
         That documentation page does not exist. The sidebar lists everything available.
       </p>
-      <Link href="/docs" className="mt-6 inline-block text-sm font-medium underline">
-        Back to the documentation overview
+      <Link href="/docs/getting-started" className="mt-6 inline-block text-sm font-medium text-brand hover:underline">
+        Back to getting started
       </Link>
     </div>
   );

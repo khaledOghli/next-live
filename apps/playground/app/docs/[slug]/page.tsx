@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { DocArticle } from '@/components/docs/DocArticle';
-import { getAllDocSlugs, loadDocPage } from '@/lib/docs/load-page';
+import { DocGuideCards } from '@/components/docs/DocGuideCards';
+import { DocPager } from '@/components/docs/DocPager';
+import { loadDocPage } from '@/lib/docs/load-page';
 import { getDocMeta } from '@/lib/docs/nav';
 
 interface DocPageProps {
@@ -9,13 +11,10 @@ interface DocPageProps {
 }
 
 export async function generateStaticParams() {
+  const { getAllDocSlugs } = await import('@/lib/docs/load-page');
   return getAllDocSlugs().map((slug) => ({ slug }));
 }
 
-/**
- * Every documentation page is known at build time, so an unknown slug is a
- * genuine 404 rather than something to render on demand.
- */
 export const dynamicParams = false;
 
 export async function generateMetadata({ params }: DocPageProps): Promise<Metadata> {
@@ -44,7 +43,12 @@ export default async function DocPage({ params }: DocPageProps) {
   if (!meta || !Content) notFound();
 
   return (
-    <DocArticle title={meta.title} description={meta.description}>
+    <DocArticle
+      title={meta.title}
+      description={meta.description}
+      intro={slug === 'getting-started' ? <DocGuideCards /> : undefined}
+      footer={<DocPager slug={slug} />}
+    >
       <Content />
     </DocArticle>
   );

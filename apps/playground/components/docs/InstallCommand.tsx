@@ -12,13 +12,13 @@ export function InstallCommand() {
         <TabsTrigger value="yarn">yarn</TabsTrigger>
       </TabsList>
       <TabsContent value="npm">
-        <CodeBlock code="npm install next-live" language="bash" />
+        <CodeBlock code="npm install next-live" language="bash" variant="install" />
       </TabsContent>
       <TabsContent value="pnpm">
-        <CodeBlock code="pnpm add next-live" language="bash" />
+        <CodeBlock code="pnpm add next-live" language="bash" variant="install" />
       </TabsContent>
       <TabsContent value="yarn">
-        <CodeBlock code="yarn add next-live" language="bash" />
+        <CodeBlock code="yarn add next-live" language="bash" variant="install" />
       </TabsContent>
     </Tabs>
   );

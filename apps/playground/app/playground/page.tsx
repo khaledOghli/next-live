@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { RunnerLink } from '@/components/RunnerLink';
 import { apps, getApp } from '@/lib/apps';
 import { Playground } from './Playground';
 
@@ -21,9 +21,9 @@ export default function PlaygroundPage() {
   return (
     <main className="mx-auto grid w-full max-w-6xl gap-6 p-6">
       <header className="grid gap-1">
-        <Link href="/" className="text-sm opacity-60 hover:opacity-100">
-          ← next-live
-        </Link>
+        <RunnerLink href="/docs/getting-started" className="text-sm text-muted-foreground hover:text-brand">
+          ← Documentation
+        </RunnerLink>
         <h1 className="text-2xl font-semibold tracking-tight">Playground</h1>
         <p className="max-w-2xl text-sm opacity-70">
           Each tab loads a different app&apos;s source from{' '}

@@ -120,6 +120,28 @@ describe('error handling', () => {
     expect(screen.getByTestId('out')).toBeTruthy();
   });
 
+  it('drops the previous preview when filePath changes (tab switch)', async () => {
+    const snippetA = `export default function A() { return <b data-testid="a">A</b>; }`;
+    const snippetB = `export default function B() { return <b data-testid="b">B</b>; }`;
+
+    const { rerender } = render(
+      <LiveProvider code={snippetA} filePath="a.tsx">
+        <LivePreview fallback={<span data-testid="loading">loading</span>} />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('a')).toBeTruthy(), { timeout: 4000 });
+
+    rerender(
+      <LiveProvider code={snippetB} filePath="b.tsx">
+        <LivePreview fallback={<span data-testid="loading">loading</span>} />
+      </LiveProvider>,
+    );
+
+    expect(screen.queryByTestId('a')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('b')).toBeTruthy(), { timeout: 4000 });
+  });
+
   it('contains a throwing snippet instead of unmounting the host tree', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -158,35 +180,39 @@ describe('error handling', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('stops a runaway effect loop and keeps the page alive', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+  it(
+    'stops a runaway effect loop and keeps the page alive',
+    async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
 
-    render(
-      <div>
-        <span data-testid="host">host survives</span>
-        <LiveProvider
-          // React's own "Maximum update depth" guard does not catch this shape:
-          // the updates are not nested during render, they are one per commit.
-          code={`import { useState, useEffect } from 'react';
+      render(
+        <div>
+          <span data-testid="host">host survives</span>
+          <LiveProvider
+            // React's own "Maximum update depth" guard does not catch this shape:
+            // the updates are not nested during render, they are one per commit.
+            code={`import { useState, useEffect } from 'react';
 export default function Loop() {
   const [n, setN] = useState(0);
   useEffect(() => { setN((v) => v + 1); });
   return <b>{n}</b>;
 }`}
-          maxRendersPerSecond={40}
-        >
-          <LivePreview />
-          <LiveError />
-        </LiveProvider>
-      </div>,
-    );
+            maxRendersPerSecond={40}
+          >
+            <LivePreview />
+            <LiveError />
+          </LiveProvider>
+        </div>,
+      );
 
-    await waitFor(
-      () => expect(screen.getByRole('alert').textContent).toMatch(/rendered more than/),
-      { timeout: 8000 },
-    );
-    expect(screen.getByTestId('host').textContent).toBe('host survives');
-  });
+      await waitFor(
+        () => expect(screen.getByRole('alert').textContent).toMatch(/rendered more than/),
+        { timeout: 8000 },
+      );
+      expect(screen.getByTestId('host').textContent).toBe('host survives');
+    },
+    10_000,
+  );
 });
 
 describe('useLiveModule', () => {

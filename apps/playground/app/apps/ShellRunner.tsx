@@ -70,6 +70,7 @@ export function ShellRunner({ apps, initialApp }: ShellRunnerProps) {
         </div>
 
         <LiveProvider
+          key={activeId}
           code={source}
           modules={liveModules}
           props={{ user: { name: 'Demo User' } }}

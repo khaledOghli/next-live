@@ -39,20 +39,19 @@ If an attacker controls what reaches `code`, no CSP setting prevents execution �
 
 `new Function` requires `'unsafe-eval'` in `script-src`. It does not have to apply to your whole app:
 
-<CodeBlock title="proxy.ts" code={`const RUNNER_ROUTES = ['/apps', '/playground', '/docs'];
+<CodeBlock title="lib/runner-routes.ts + proxy.ts" code={`// Shared list — proxy.ts and RunnerLink must agree.
+export const RUNNER_ROUTES = ['/playground', '/apps', '/docs'] as const;
 
-const needsEval =
-  isDev || RUNNER_ROUTES.some((r) => pathname.startsWith(r));
+export function isRunnerRoute(pathname: string): boolean {
+  return RUNNER_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(\`\${route}/\`),
+  );
+}
 
-const csp = [
-  "default-src 'self'",
-  \`script-src 'self' 'unsafe-inline'\${needsEval ? " 'unsafe-eval'" : ''}\`,
-  "connect-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-].join('; ');`} />
+// proxy.ts: grant 'unsafe-eval' only when isRunnerRoute(pathname)
+// RunnerLink: use <a> (real navigation) for runner destinations`} />
 
-Working copy: `apps/playground/proxy.ts`. Visit `/rsc-check` — not a runner route — to see CSP blocking eval.
+Per-route CSP and client-side routing do not compose — soft-navigating from `/` into `/docs` keeps the landing policy without \`'unsafe-eval'\`. Use \`RunnerLink\` for cross-boundary links. Working copy: [`apps/playground/proxy.ts`](https://github.com/khaledoghli/next-live). Visit `/rsc-check` to see CSP blocking eval.
 
 <Callout variant="info" title="unsafe-eval is narrower than it sounds">
   It gates string-to-code APIs only (`eval`, `Function`). It does **not** allow loading external scripts.

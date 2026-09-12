@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 @source "../lib/shell-apps.ts";
 @source "../lib/docs/demos.ts";
@@ -24,6 +25,12 @@
   --input: #e5e5e5;
   --ring: #a3a3a3;
   --radius: 0.625rem;
+  --brand: #7c3aed;
+  --brand-foreground: #ffffff;
+  --brand-muted: #f4f4f5;
+  --code-bg: #1e1e1e;
+  --code-inline: #f4f4f5;
+  --docs-sidebar: #fafafa;
 }
 
 @theme inline {
@@ -46,6 +53,12 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-brand-muted: var(--brand-muted);
+  --color-code-bg: var(--code-bg);
+  --color-code-inline: var(--code-inline);
+  --color-docs-sidebar: var(--docs-sidebar);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -74,6 +87,11 @@
     --border: #262626;
     --input: #262626;
     --ring: #525252;
+    --brand: #a78bfa;
+    --brand-foreground: #ffffff;
+    --brand-muted: #27272a;
+    --code-inline: #27272a;
+    --docs-sidebar: #0f0f0f;
   }
 }
 
@@ -81,4 +99,52 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.hero-gradient {
+  background: var(--background);
+}
+
+.hero-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(80px);
+  opacity: 0.55;
+}
+
+.hero-blob-purple {
+  top: -12rem;
+  left: 50%;
+  width: 42rem;
+  height: 28rem;
+  transform: translateX(-50%);
+  background: color-mix(in oklab, var(--brand) 40%, transparent);
+}
+
+.hero-blob-blue {
+  top: -4rem;
+  right: -6rem;
+  width: 24rem;
+  height: 20rem;
+  background: color-mix(in oklab, #60a5fa 28%, transparent);
+}
+
+@media (prefers-color-scheme: dark) {
+  .hero-blob-purple {
+    opacity: 0.35;
+  }
+
+  .hero-blob-blue {
+    opacity: 0.25;
+  }
+}
+
+.section-padding {
+  @apply px-4 py-20 sm:px-6 lg:py-24;
+}
+
+html.docs-layout,
+html.docs-layout body {
+  overflow: hidden;
+  height: 100%;
 }

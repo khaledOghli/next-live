@@ -4,20 +4,55 @@ export interface DocNavItem {
   description?: string;
 }
 
-export const docNav: DocNavItem[] = [
-  { slug: 'getting-started', title: 'Getting started', description: 'Install and first live preview' },
-  { slug: 'module-registry', title: 'Module registry', description: 'How import resolves' },
-  { slug: 'sharing-libraries', title: 'Sharing libraries', description: 'One React instance, one store' },
-  { slug: 'scaling', title: 'Scaling', description: 'Bundle size and precompile' },
-  { slug: 'security', title: 'Security', description: 'Trust model and access control' },
-  { slug: 'api-reference', title: 'API reference', description: 'Every export and prop' },
-  { slug: 'troubleshooting', title: 'Troubleshooting', description: 'Errors and fixes' },
-  { slug: 'integration', title: 'Integration guide', description: 'Database to live runner' },
-  { slug: 'non-ui-snippets', title: 'Non-UI snippets', description: 'Validators and scripts' },
-  { slug: 'validating-ci', title: 'Validating in CI', description: 'Catch breaks before users do' },
-  { slug: 'migrating', title: 'Migrating from react-live', description: 'scope to registry' },
+export interface DocNavGroup {
+  title: string;
+  slugs: string[];
+}
+
+const items: Record<string, DocNavItem> = {
+  'getting-started': { slug: 'getting-started', title: 'Getting started', description: 'Install and first live preview' },
+  'module-registry': { slug: 'module-registry', title: 'Module registry', description: 'How import resolves' },
+  'sharing-libraries': { slug: 'sharing-libraries', title: 'Sharing libraries', description: 'One React instance, one store' },
+  scaling: { slug: 'scaling', title: 'Scaling', description: 'Bundle size and precompile' },
+  security: { slug: 'security', title: 'Security', description: 'Trust model and access control' },
+  'api-reference': { slug: 'api-reference', title: 'API reference', description: 'Every export and prop' },
+  troubleshooting: { slug: 'troubleshooting', title: 'Troubleshooting', description: 'Errors and fixes' },
+  integration: { slug: 'integration', title: 'Integration guide', description: 'Database to live runner' },
+  'non-ui-snippets': { slug: 'non-ui-snippets', title: 'Non-UI snippets', description: 'Validators and scripts' },
+  'validating-ci': { slug: 'validating-ci', title: 'Validating in CI', description: 'Catch breaks before users do' },
+  migrating: { slug: 'migrating', title: 'Migrating from react-live', description: 'scope to registry' },
+};
+
+export const docNavGroups: DocNavGroup[] = [
+  { title: 'Start here', slugs: ['getting-started', 'module-registry', 'sharing-libraries'] },
+  { title: 'Production', slugs: ['scaling', 'security', 'integration', 'validating-ci'] },
+  { title: 'Reference', slugs: ['api-reference', 'troubleshooting', 'non-ui-snippets', 'migrating'] },
 ];
 
+/** Flat list in nav order — used for pager and sitemap. */
+export const docNav: DocNavItem[] = docNavGroups.flatMap((group) =>
+  group.slugs.map((slug) => items[slug]).filter(Boolean),
+);
+
 export function getDocMeta(slug: string): DocNavItem | undefined {
-  return docNav.find((item) => item.slug === slug);
+  return items[slug];
+}
+
+export function getAdjacentDocs(slug: string): {
+  prev?: DocNavItem;
+  next?: DocNavItem;
+} {
+  const index = docNav.findIndex((item) => item.slug === slug);
+  if (index === -1) return {};
+  return {
+    prev: index > 0 ? docNav[index - 1] : undefined,
+    next: index < docNav.length - 1 ? docNav[index + 1] : undefined,
+  };
+}
+
+export function getDocGroups(): Array<{ title: string; items: DocNavItem[] }> {
+  return docNavGroups.map((group) => ({
+    title: group.title,
+    items: group.slugs.map((slug) => items[slug]).filter(Boolean),
+  }));
 }

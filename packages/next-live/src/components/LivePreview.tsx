@@ -1,7 +1,8 @@
 'use client';
 
-import { createElement } from 'react';
-import type { ElementType, ReactNode } from 'react';
+import { createElement, isValidElement } from 'react';
+import type { ComponentType, ElementType, ReactNode } from 'react';
+import { isRenderableComponent } from '../core/evaluate';
 import { LiveErrorBoundary } from './LiveErrorBoundary';
 import { useLiveContext } from '../hooks/useLiveContext';
 
@@ -35,9 +36,9 @@ export function LivePreview(props: LivePreviewProps): ReactNode {
   const placeholder = fallback !== undefined ? fallback : live.fallback;
 
   let content: ReactNode;
-  if (live.Component) {
-    content = createElement(live.Component, merged);
-  } else if (live.element) {
+  if (live.Component && isRenderableComponent(live.Component)) {
+    content = createElement(live.Component as ComponentType<Record<string, unknown>>, merged);
+  } else if (live.element && isValidElement(live.element)) {
     content = live.element;
   } else {
     content = placeholder;

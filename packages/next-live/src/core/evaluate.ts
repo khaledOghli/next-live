@@ -9,7 +9,7 @@ import type {
 } from './types';
 
 /** Wrapper parameters a scope key may not shadow. */
-const RESERVED = new Set(['module', 'exports', 'require', 'React', 'render']);
+const RESERVED = new Set(['module', 'exports', 'require', 'React', 'render', '__liveTick']);
 
 const JS_RESERVED_WORDS = new Set([
   'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default',
@@ -55,8 +55,8 @@ export interface EvaluateOptions {
   filePath: string;
   require: (specifier: string) => NormalizedModule;
   scope: LiveScope;
-  /** Guard invoked once per render of the resulting component. */
-  onRender?: () => void;
+  /** Injected as `__liveTick` when the source was instrumented for render budgeting. */
+  liveTick?: () => void;
 }
 
 export interface EvaluateResult {
@@ -77,19 +77,7 @@ export interface EvaluateResult {
 export function evaluate(options: EvaluateOptions): EvaluateResult {
   const { exports, rendered } = runModule(options);
 
-  const extracted = pickRenderable(exports, rendered);
-
-  if (options.onRender && extracted.renderable.kind === 'component') {
-    return {
-      via: extracted.via,
-      renderable: {
-        kind: 'component',
-        component: withRenderBudget(extracted.renderable.component, options.onRender),
-      },
-    };
-  }
-
-  return extracted;
+  return pickRenderable(exports, rendered);
 }
 
 export interface ModuleResult {
@@ -108,7 +96,9 @@ export interface ModuleResult {
  * to export a component would be nonsense.
  */
 export function runModule(options: EvaluateOptions): ModuleResult {
-  const { code, filePath, require: requireFn, scope } = options;
+  const { code, filePath, require: requireFn, scope, liveTick } = options;
+  const tick =
+    liveTick ?? (code.includes('__liveTick') ? () => {} : undefined);
 
   const scopeKeys = usableScopeKeys(scope);
   const epilogue = buildEpilogue(code);
@@ -125,13 +115,26 @@ export function runModule(options: EvaluateOptions): ModuleResult {
     didRender = true;
   };
 
+  const paramNames = ['module', 'exports', 'require', 'React', 'render'];
+  const paramValues: unknown[] = [
+    moduleObject,
+    moduleObject.exports,
+    requireFn,
+    React,
+    render,
+  ];
+
+  if (tick) {
+    paramNames.push('__liveTick');
+    paramValues.push(tick);
+  }
+
+  paramNames.push(...scopeKeys);
+  paramValues.push(...scopeKeys.map((key) => scope[key]));
+
   let factory: (...args: unknown[]) => void;
   try {
-    factory = new Function(
-      'module', 'exports', 'require', 'React', 'render',
-      ...scopeKeys,
-      body,
-    ) as (...args: unknown[]) => void;
+    factory = new Function(...paramNames, body) as (...args: unknown[]) => void;
   } catch (cause) {
     if (isCspEvalBlock(cause)) throw cspError(cause);
     throw new LiveRuntimeError(
@@ -140,14 +143,7 @@ export function runModule(options: EvaluateOptions): ModuleResult {
     );
   }
 
-  factory(
-    moduleObject,
-    moduleObject.exports,
-    requireFn,
-    React,
-    render,
-    ...scopeKeys.map((key) => scope[key]),
-  );
+  factory(...paramValues);
 
   return {
     exports: moduleObject.exports,
@@ -305,40 +301,6 @@ export function isRenderableComponent(value: unknown): boolean {
 export function isReactElement(value: unknown): value is React.ReactElement {
   if (typeof value !== 'object' || value === null) return false;
   return ELEMENT_TYPES.has((value as { $$typeof?: unknown }).$$typeof);
-}
-
-/**
- * Wraps a component so each of its renders is reported to the loop guard.
- *
- * The wrapper **calls** the component rather than rendering it as a child.
- * That detail is the whole point: a state update re-renders the component that
- * owns the state, not its parent, so a wrapper that rendered `<Component/>`
- * would tick once and then never again while the component looped. Calling it
- * directly means both share one fiber, so every re-render - including ones
- * driven by the component's own effects - passes back through the guard.
- *
- * Only plain function components can be treated this way. Classes and the
- * exotic objects from `memo`/`forwardRef` must be rendered as elements, and
- * are left unguarded rather than silently mis-wrapped.
- */
-function withRenderBudget(
-  Component: React.ComponentType<Record<string, unknown>>,
-  onRender: () => void,
-): React.ComponentType<Record<string, unknown>> {
-  if (typeof Component !== 'function' || isClassComponent(Component)) return Component;
-
-  const render = Component as (props: Record<string, unknown>) => React.ReactNode;
-  const Guarded = (props: Record<string, unknown>): React.ReactNode => {
-    onRender();
-    return render(props);
-  };
-  Guarded.displayName = `LiveGuard(${Component.displayName ?? Component.name ?? 'Anonymous'})`;
-  return Guarded as React.ComponentType<Record<string, unknown>>;
-}
-
-function isClassComponent(value: unknown): boolean {
-  const proto = (value as { prototype?: { isReactComponent?: unknown } }).prototype;
-  return Boolean(proto && proto.isReactComponent);
 }
 
 /**

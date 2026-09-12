@@ -238,6 +238,7 @@ export function Playground({ apps, initialApp }: PlaygroundProps) {
       </label>
 
       <LiveProvider
+        key={activeId}
         code={code}
         onCodeChange={setCode}
         // The registry: composed from lib/live-sdk, every entry a lazy loader

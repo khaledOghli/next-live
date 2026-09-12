@@ -1,7 +1,6 @@
 import type { ComponentType } from 'react';
 
 const pages: Record<string, () => Promise<{ default: ComponentType }>> = {
-  index: () => import('@/content/docs/index.mdx'),
   'getting-started': () => import('@/content/docs/getting-started.mdx'),
   'module-registry': () => import('@/content/docs/module-registry.mdx'),
   'sharing-libraries': () => import('@/content/docs/sharing-libraries.mdx'),
@@ -22,5 +21,5 @@ export async function loadDocPage(slug: string): Promise<ComponentType | null> {
 }
 
 export function getAllDocSlugs(): string[] {
-  return Object.keys(pages).filter((slug) => slug !== 'index');
+  return Object.keys(pages);
 }

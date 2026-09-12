@@ -8,7 +8,6 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import toIco from 'to-ico';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const playgroundRoot = path.resolve(__dirname, '..');
@@ -19,6 +18,44 @@ const appDir = path.join(playgroundRoot, 'app');
 
 const faviconSrc = path.join(assetsRoot, 'nextlive-favicon.png');
 const wordmarkSrc = path.join(assetsRoot, 'next-live-white.png');
+
+/**
+ * Packs PNG buffers into an ICO container.
+ *
+ * Inline rather than via `to-ico`, which pulls in `jimp@0.2.28` -> `request`
+ * and with it five critical advisories, for 40 lines of byte packing. The
+ * format is an 6-byte header, one 16-byte directory entry per image, then the
+ * image payloads; every browser and Windows since Vista reads PNG payloads, so
+ * sharp's output goes in untouched.
+ */
+function packIco(images) {
+  const HEADER = 6;
+  const ENTRY = 16;
+
+  const header = Buffer.alloc(HEADER);
+  header.writeUInt16LE(0, 0); // reserved
+  header.writeUInt16LE(1, 2); // type: icon
+  header.writeUInt16LE(images.length, 4);
+
+  let offset = HEADER + ENTRY * images.length;
+
+  const entries = images.map(({ size, data }) => {
+    const entry = Buffer.alloc(ENTRY);
+    // 256 is encoded as 0; nothing here is that large, but the rule is the rule.
+    entry.writeUInt8(size >= 256 ? 0 : size, 0);
+    entry.writeUInt8(size >= 256 ? 0 : size, 1);
+    entry.writeUInt8(0, 2); // palette colors: none, it is truecolor
+    entry.writeUInt8(0, 3); // reserved
+    entry.writeUInt16LE(1, 4); // color planes
+    entry.writeUInt16LE(32, 6); // bits per pixel
+    entry.writeUInt32LE(data.length, 8);
+    entry.writeUInt32LE(offset, 12);
+    offset += data.length;
+    return entry;
+  });
+
+  return Buffer.concat([header, ...entries, ...images.map((image) => image.data)]);
+}
 
 async function squareIcon(input, size, background = { r: 0, g: 0, b: 0, alpha: 0 }) {
   return sharp(input)
@@ -48,7 +85,14 @@ async function main() {
     squareIcon(faviconSrc, 512),
   ]);
 
-  await writeFile(path.join(appDir, 'favicon.ico'), await toIco([icon16, icon32, icon48]));
+  await writeFile(
+    path.join(appDir, 'favicon.ico'),
+    packIco([
+      { size: 16, data: icon16 },
+      { size: 32, data: icon32 },
+      { size: 48, data: icon48 },
+    ]),
+  );
   await writeFile(path.join(appDir, 'icon.png'), icon512);
   await writeFile(path.join(appDir, 'apple-icon.png'), icon180);
 

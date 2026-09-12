@@ -3,6 +3,9 @@
 [![npm version](https://img.shields.io/npm/v/next-live.svg?color=0b7285)](https://www.npmjs.com/package/next-live)
 [![CI](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml/badge.svg)](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Docs](https://img.shields.io/badge/docs-live%20site-0b7285)](https://next-live-playground.vercel.app)
+
+**[→ Documentation and live demos](https://next-live-playground.vercel.app)**
 
 Live TSX/JSX evaluation for **React**, real ESM `import` statements, a module
 registry instead of a global scope bag, and no hydration mismatches.

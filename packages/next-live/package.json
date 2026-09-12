@@ -28,7 +28,7 @@
     "url": "git+https://github.com/khaledOghli/next-live.git",
     "directory": "packages/next-live"
   },
-  "homepage": "https://github.com/khaledOghli/next-live#readme",
+  "homepage": "https://next-live-playground.vercel.app",
   "bugs": {
     "url": "https://github.com/khaledOghli/next-live/issues"
   },

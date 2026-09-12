@@ -7,7 +7,9 @@ export const metadata: Metadata = {
   title: 'Documentation',
   description:
     'Live TSX evaluation for React, real ESM imports, a module registry instead of a global scope, and zero hydration mismatches.',
-  alternates: { canonical: '/docs' },
+  // The home page is this page: next.config.ts rewrites `/` here, so `/` is
+  // the URL to point crawlers at, not the `/docs` alias.
+  alternates: { canonical: '/' },
 };
 
 /** Short answers to the questions people arrive with, each pointing at the page that covers it. */

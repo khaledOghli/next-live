@@ -3,6 +3,27 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   pageExtensions: ['js', 'jsx', 'md', 'mdx', 'ts', 'tsx'],
+
+  /**
+   * The docs index is the site's home page, served at `/` rather than at
+   * `/docs`.
+   *
+   * A rewrite, not a redirect: the visitor stays on the bare domain instead of
+   * being bounced to `/docs`. `/docs` keeps working, so every existing link
+   * into the documentation survives.
+   *
+   * `beforeFiles` is the part that matters. Both Next and Vercel apply ordinary
+   * rewrites only after the filesystem has been checked, and `/` already
+   * resolves to the marketing page, so an afterFiles rewrite (or one in
+   * vercel.json) would never fire. `beforeFiles` runs ahead of that check.
+   */
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: '/', destination: '/docs' }],
+      afterFiles: [],
+      fallback: [],
+    };
+  },
 };
 
 /**

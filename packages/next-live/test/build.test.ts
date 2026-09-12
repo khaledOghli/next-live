@@ -116,3 +116,20 @@ describe.skipIf(!built)('build output', () => {
     });
   });
 });
+
+/**
+ * The source must be honest about being client-only too.
+ *
+ * `dist` is stamped by a post-build script, so a missing directive in source is
+ * invisible in the published package — until someone compiles the package
+ * directly instead of consuming `dist`, at which point a barrel without the
+ * directive silently becomes a server module.
+ */
+describe('source directives', () => {
+  const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
+
+  it.each(['index.ts', 'editor.ts'])('%s declares "use client"', (entry) => {
+    const first = readFileSync(join(src, entry), 'utf8').split('\n')[0] ?? '';
+    expect(first).toMatch(/^["']use client["'];?$/);
+  });
+});

@@ -1,3 +1,10 @@
+'use client';
+
+// Every component and hook this barrel re-exports is client-only, and
+// `src/editor.ts` already says so. The built entry is stamped by
+// scripts/add-use-client.mjs regardless, but keeping the directive in source
+// means the package is also correct if a consumer ever compiles it directly
+// (a workspace setup with `transpilePackages`, say) rather than using `dist`.
 // Components. Exported as named bindings, never as static properties on a
 // parent (`Live.Preview`): across the RSC boundary a Server Component receives
 // a client *reference*, so any attached property resolves to undefined.

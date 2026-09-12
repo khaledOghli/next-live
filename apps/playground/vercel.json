@@ -3,7 +3,6 @@
   "installCommand": "cd ../.. && npm ci",
   "buildCommand": "cd ../.. && npm run build -w next-live && npm run build -w playground",
   "redirects": [
-    { "source": "/", "destination": "/docs", "permanent": false },
     { "source": "/playground", "destination": "/docs", "permanent": false },
     { "source": "/playground/:path*", "destination": "/docs", "permanent": false },
     { "source": "/apps", "destination": "/docs", "permanent": false },

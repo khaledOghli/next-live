@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # The full suite, including the jsdom-based React tests.
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build -w next-live
+
+      # Must precede typecheck: `next build` generates the route types the
+      # playground relies on (LayoutProps and friends live in .next/types), so
+      # typechecking first fails with "Cannot find name 'LayoutProps'".
+      # It also catches Next-level regressions the unit tests cannot see, such
+      # as the 'use client' directive failing to survive a consumer build.
+      - run: npm run build -w playground
+
+      # After the library build, so test/build.test.ts asserts the published
+      # shape instead of skipping itself.
+      - run: npm test -w next-live
+
+      - run: npm run typecheck
+
+      - run: npm run lint
+
+      # Every stored snippet must still compile against the current SDK
+      # surface. Without this, renaming a module breaks stored apps silently.
+      - run: npm run validate:apps -w playground
+
+  # Exercises the lower end of the supported Node range.
+  #
+  # The full suite cannot run here: jsdom pulls in undici, which calls
+  # `markAsUncloneable` and so needs Node 22. That is a test-tooling
+  # constraint, not one the published package has — nothing in dist/ uses
+  # anything newer than the `engines.node` range claims.
+  #
+  # So this runs everything except the jsdom suite: the engine, registry,
+  # validator and build-shape tests, which is precisely the surface a Node
+  # consumer (a Route Handler, a CI script calling validateSnippet) touches.
+  engines-floor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.19'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w next-live
+      - run: npm run test:node -w next-live

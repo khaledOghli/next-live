@@ -1,0 +1,124 @@
+name: Publish to npm
+
+# Push to `main` with a bumped version in packages/next-live/package.json and
+# this publishes it, tags it, and opens the GitHub Release.
+#
+# The gate is the version itself, not the push. npm refuses to republish a
+# version that already exists, so an unconditional publish-on-push turns `main`
+# red on every docs commit and every merged Dependabot PR. `check` asks the
+# registry what is already out there and skips silently when nothing is new,
+# which makes the ordinary push a no-op and the release push a release.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: 'Build, test and pack, but do not publish'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  # Never let two publishes race for the same version.
+  group: publish-npm
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.check.outputs.version }}
+      publish: ${{ steps.check.outputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Is this version already on npm?
+        id: check
+        run: |
+          version="$(node -p "require('./packages/next-live/package.json').version")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+          # `npm view` exits non-zero both when the version is missing and when
+          # the package does not exist yet (the very first publish), so the
+          # output is what decides, not the exit code.
+          if [ -n "$(npm view "next-live@$version" version 2>/dev/null || true)" ]; then
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::next-live@$version is already published, nothing to do."
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::next-live@$version is new, publishing."
+          fi
+
+  publish:
+    needs: check
+    if: needs.check.outputs.publish == 'true' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: npm-publish
+    permissions:
+      contents: write # push the tag, create the Release
+      id-token: write # npm provenance attestation
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          # 22, not 20: the jsdom suite needs `markAsUncloneable`, which landed
+          # in Node 22. The package itself supports 20.9+, and the CI workflow's
+          # engines-floor job is what proves it.
+          node-version: '22'
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+
+      - name: Require a changelog entry
+        run: |
+          version="${{ needs.check.outputs.version }}"
+          if ! grep -q "^## \[$version\]" packages/next-live/CHANGELOG.md; then
+            echo "::error::no '## [$version]' section in packages/next-live/CHANGELOG.md"
+            exit 1
+          fi
+
+      # The same order CI uses, and the order matters:
+      # the library first, then the consumer build that proves the 'use client'
+      # directive survived, then the suite that asserts the dist/ shape.
+      - run: npm run build -w next-live
+      - run: npm run build -w playground
+      - run: npm test -w next-live
+      - run: npm run typecheck
+      - run: npm run lint
+
+      - name: Show what would ship
+        run: npm pack --dry-run -w next-live
+
+      - name: Publish
+        if: inputs.dry-run != true
+        run: npm publish -w next-live --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag and release
+        if: inputs.dry-run != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a "v$VERSION" -m "v$VERSION"
+          git push origin "v$VERSION"
+
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes "See [the changelog](https://github.com/${{ github.repository }}/blob/main/packages/next-live/CHANGELOG.md) for what changed.
+
+          \`\`\`bash
+          npm install next-live@$VERSION
+          \`\`\`" \
+            --verify-tag

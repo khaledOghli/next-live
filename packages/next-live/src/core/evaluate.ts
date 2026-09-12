@@ -24,7 +24,7 @@ const IDENTIFIER_RE = /^[A-Za-z_$][\w$]*$/;
 
 /**
  * Scope keys that can legally become function parameters, sorted so the
- * generated source — and therefore any cache key built from it — is stable
+ * generated source - and therefore any cache key built from it, is stable
  * regardless of object key order.
  *
  * Unusable keys are warned about rather than thrown on: a host merging a large
@@ -103,7 +103,7 @@ export interface ModuleResult {
  * Runs a snippet and returns its raw exports, without insisting that it
  * produced a React component.
  *
- * Plenty of stored code is not UI — validators, transformers, calculated
+ * Plenty of stored code is not UI - validators, transformers, calculated
  * fields, config builders. Those are perfectly good modules, and asking them
  * to export a component would be nonsense.
  */
@@ -157,7 +157,7 @@ export function runModule(options: EvaluateOptions): ModuleResult {
 
 /**
  * Recovers `export default` for snippets that declare a component without
- * exporting it — the `react-live` inline style.
+ * exporting it - the `react-live` inline style.
  *
  * Emitted only when the code exports nothing, and every name is `typeof`
  * guarded so a false positive from the declaration scan cannot throw.
@@ -292,7 +292,7 @@ const ELEMENT_TYPES = new Set<unknown>([
  * Whether React can use this as a component type.
  *
  * Plain functions pass, which means a utility function is indistinguishable
- * from a component here — that case fails loudly at render with React's own
+ * from a component here - that case fails loudly at render with React's own
  * error, which is clearer than anything we could say. The check exists mainly
  * so `export default memo(App)` and `forwardRef` components are not rejected.
  */
@@ -314,8 +314,8 @@ export function isReactElement(value: unknown): value is React.ReactElement {
  * That detail is the whole point: a state update re-renders the component that
  * owns the state, not its parent, so a wrapper that rendered `<Component/>`
  * would tick once and then never again while the component looped. Calling it
- * directly means both share one fiber, so every re-render — including ones
- * driven by the component's own effects — passes back through the guard.
+ * directly means both share one fiber, so every re-render - including ones
+ * driven by the component's own effects - passes back through the guard.
  *
  * Only plain function components can be treated this way. Classes and the
  * exotic objects from `memo`/`forwardRef` must be rendered as elements, and
@@ -358,14 +358,14 @@ function isCspEvalBlock(cause: unknown): boolean {
 /**
  * The raw engine message ("Refused to evaluate a string as JavaScript…") says
  * nothing about what to change, and this is the single most likely thing to go
- * wrong on a first production deploy — so it gets an explicit fix.
+ * wrong on a first production deploy - so it gets an explicit fix.
  */
 function cspError(cause: unknown): LiveCompileError {
   return new LiveCompileError(
     "next-live could not evaluate this snippet: the page's Content Security " +
       "Policy blocks eval.\n\n" +
       "Add 'unsafe-eval' to script-src for the routes that run snippets " +
-      '(in proxy.ts). This is expected — next-live compiles code at runtime, ' +
+      '(in proxy.ts). This is expected - next-live compiles code at runtime, ' +
       'so there is no way around the directive.\n\n' +
       "Note that 'unsafe-eval' does not allow loading external scripts, and it " +
       'does not need to apply to your whole application.',

@@ -3,8 +3,8 @@ import type { ComponentType, ReactElement, ReactNode } from 'react';
 /**
  * A value registered under an import specifier.
  *
- * The idiomatic value is a real module namespace — `import * as ui from
- * 'my-ui-kit'` — but any object, function, or primitive works. See
+ * The idiomatic value is a real module namespace - `import * as ui from
+ * 'my-ui-kit'` - but any object, function, or primitive works. See
  * {@link normalizeModule} for how each shape maps onto `default` and named
  * imports.
  */
@@ -51,7 +51,7 @@ export type LiveRenderable =
   | { kind: 'component'; component: ComponentType<Record<string, unknown>> }
   | { kind: 'element'; element: ReactElement };
 
-/** How the renderable was found — surfaced in error messages. */
+/** How the renderable was found - surfaced in error messages. */
 export type ExtractionSource =
   | 'render()'
   | 'export default'
@@ -80,7 +80,7 @@ export interface TransformResult {
 }
 
 /**
- * Replaces the built-in Sucrase pass — for server-precompiled output, or a
+ * Replaces the built-in Sucrase pass - for server-precompiled output, or a
  * different transpiler entirely.
  */
 export type TransformFn = (
@@ -124,7 +124,7 @@ export interface CompileSuccessInfo {
 export interface UseLiveRunnerOptions extends CompileOptions {
   code: string;
   /**
-   * Called when the code is edited from inside — by `<LiveEditor>`, or via
+   * Called when the code is edited from inside, by `<LiveEditor>`, or via
    * `setCode`. Not called when the `code` prop changes from outside, which
    * would otherwise echo your own updates back at you.
    *
@@ -147,7 +147,7 @@ export interface UseLiveRunnerOptions extends CompileOptions {
 export interface LiveRunnerState {
   code: string;
   setCode: (code: string) => void;
-  /** Null until the first successful compile — including during SSR. */
+  /** Null until the first successful compile - including during SSR. */
   Component: ComponentType<Record<string, unknown>> | null;
   element: ReactElement | null;
   error: Error | null;

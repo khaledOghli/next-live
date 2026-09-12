@@ -3,7 +3,7 @@
 // a client *reference*, so any attached property resolves to undefined.
 export { LiveProvider } from './components/LiveProvider';
 export type { LiveProviderProps } from './components/LiveProvider';
-// <LiveEditor> lives in `next-live/editor` — it is the only thing that pulls
+// <LiveEditor> lives in `next-live/editor` - it is the only thing that pulls
 // in a syntax highlighter, and preview-only pages should not pay for it.
 export { LivePreview } from './components/LivePreview';
 export type { LivePreviewProps } from './components/LivePreview';
@@ -19,7 +19,7 @@ export type { LiveModuleState, UseLiveModuleOptions } from './hooks/useLiveModul
 export { useLiveContext } from './hooks/useLiveContext';
 export { LiveContext } from './context/LiveContext';
 
-// Engine, for advanced use — a custom scheduler, or compiling outside React.
+// Engine, for advanced use - a custom scheduler, or compiling outside React.
 export { compile, compileModule } from './core/compile';
 export type { CompileInput, CompileModuleResult } from './core/compile';
 export {

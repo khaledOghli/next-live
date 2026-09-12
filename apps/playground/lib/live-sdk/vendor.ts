@@ -14,7 +14,7 @@ export const vendorModules: ModuleRegistry = {
   // Exact entry: the package root.
   '@demo/vendor': defineLoader(() => import('@demo/vendor')),
 
-  // Prefix entry — a key ending in '/' claims the whole subtree and receives
+  // Prefix entry - a key ending in '/' claims the whole subtree and receives
   // the full specifier, so one line serves every deep subpath
   // ('@demo/vendor/charts/BarChart', '@demo/vendor/format/currency', …)
   // without enumerating them.

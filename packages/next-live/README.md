@@ -1,6 +1,6 @@
 # next-live
 
-Live TSX/JSX evaluation for the **Next.js App Router** — real ESM `import`
+Live TSX/JSX evaluation for the **Next.js App Router**, real ESM `import`
 statements, a module registry instead of a global scope bag, and no hydration
 mismatches.
 
@@ -68,7 +68,7 @@ snippet should share your page's React instance and your live objects.
 
 - **Real ESM.** `import`, `export default`, namespace imports, deep subpaths.
 - **TypeScript and JSX**, transpiled by Sucrase in single-digit milliseconds.
-- **A module registry** — hand snippets your store, your UI kit, your helpers.
+- **A module registry** - hand snippets your store, your UI kit, your helpers.
 - **Live props by reference.** Pass a store or a class instance; a snippet
   mutating it updates your app.
 - **SSR-safe.** No hydration mismatch, no `next/dynamic` needed.
@@ -93,10 +93,10 @@ snippet should share your page's React instance and your live objects.
 | | |
 |---|---|
 | [Getting started](./docs/01-getting-started.md) | Install and first working preview |
-| [The module registry](./docs/02-module-registry.md) | How `import` resolves — the core concept |
+| [The module registry](./docs/02-module-registry.md) | How `import` resolves, the core concept |
 | [Sharing libraries with your app](./docs/03-sharing-your-app-libraries.md) | One instance, not two copies |
 | [Scaling to many apps](./docs/04-scaling.md) | Keeping the bundle small |
-| [Security](./docs/05-security.md) | Trust model and CSP — read before deploying |
+| [Security](./docs/05-security.md) | Trust model and CSP, read before deploying |
 | [API reference](./docs/06-api-reference.md) | Every export and prop |
 | [Troubleshooting](./docs/07-troubleshooting.md) | Real errors and their fixes |
 | [Integration guide](./docs/08-integration-guide.md) | End-to-end walkthrough |
@@ -119,7 +119,7 @@ people you trust.
 React 19+ and Node 20.9+.
 
 **Next.js is not required.** The library imports only `react`,
-`react/jsx-runtime`, `prism-react-renderer`, and `sucrase` — it works in Vite,
+`react/jsx-runtime`, `prism-react-renderer`, and `sucrase` - it works in Vite,
 CRA, Remix, or anywhere React runs. The name reflects where it was designed and
 what it is tuned for: App Router SSR safety, and docs written against Next 16.
 

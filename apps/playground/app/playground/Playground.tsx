@@ -20,7 +20,7 @@ import type { LiveApp } from '@/lib/apps';
 
 // Instance-identity probe. The host imports '@demo/vendor/Widget' statically
 // here; the "Shared instance" snippet imports the same specifier through the
-// registry. If the snippet can read this marker, both hold one module instance —
+// registry. If the snippet can read this marker, both hold one module instance -
 // which is what makes a shared store actually shared.
 (HostWidget as unknown as Record<string, unknown>).__owner = 'host-app';
 
@@ -233,7 +233,7 @@ export function Playground({ apps, initialApp }: PlaygroundProps) {
           <span className="text-xs opacity-60">· client Sucrase skipped</span>
         )}
         {precompile && compiled && !usingPrecompile && (
-          <span className="text-xs opacity-60">· edited — transpiling client-side</span>
+          <span className="text-xs opacity-60">· edited - transpiling client-side</span>
         )}
       </label>
 
@@ -293,8 +293,8 @@ export function Playground({ apps, initialApp }: PlaygroundProps) {
                 {isStoreTab
                   ? 'Three paths share one Zustand store: clearCart here, addItem in the preview, removeLastItem on the API script tab.'
                   : isApiScriptTab
-                    ? 'This tab runs non-UI code via useLiveModule — preview is intentionally empty.'
-                    : 'These update when the snippet changes them — the same objects, not copies.'}
+                    ? 'This tab runs non-UI code via useLiveModule - preview is intentionally empty.'
+                    : 'These update when the snippet changes them - the same objects, not copies.'}
               </p>
             </div>
 

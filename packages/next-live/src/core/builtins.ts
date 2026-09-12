@@ -13,7 +13,7 @@ import type { ModuleRegistry } from './types';
  * fails on its first tag.
  *
  * These are static imports so evaluated code shares the host's single React
- * instance — hooks and context work across the boundary, which is the whole
+ * instance - hooks and context work across the boundary, which is the whole
  * point of evaluating in the host realm. Host `modules` merge over these, so
  * a React shim can still be substituted.
  *

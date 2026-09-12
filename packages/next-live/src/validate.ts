@@ -2,17 +2,17 @@
  * Static validation of stored snippets.
  *
  * The problem this solves: with snippets stored in a database, renaming
- * something in your SDK breaks them silently — the failure surfaces for
+ * something in your SDK breaks them silently, the failure surfaces for
  * whoever opens that app next, not for the person who made the change. Run
  * this over every stored snippet in CI and the rename fails the build instead.
  *
  * Deliberately **static**: it transpiles and checks specifiers, but never
  * evaluates. That means it is safe to run over untrusted content in CI, needs
  * no DOM, and cannot be tripped up by a snippet's side effects. The trade-off
- * is that runtime errors are not caught — only syntax errors and imports that
+ * is that runtime errors are not caught - only syntax errors and imports that
  * would fail to resolve.
  *
- * Exported from the server entry only — `next-live/server` — because it
+ * Exported from the server entry only, `next-live/server`, because it
  * imports Sucrase statically. Pulling it into the client entry would defeat
  * the code-splitting that keeps the transpiler out of your page bundle.
  */
@@ -50,7 +50,7 @@ export interface ValidationResult {
 
 export interface ValidateOptions extends TranspileOptions {
   /**
-   * The registry a snippet will run against — either the registry object, or
+   * The registry a snippet will run against - either the registry object, or
    * just its keys. Keys alone are usually easier to share with a CI script,
    * since the real registry is full of bundler-specific dynamic imports.
    */

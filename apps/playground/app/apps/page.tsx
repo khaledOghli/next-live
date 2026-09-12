@@ -3,7 +3,7 @@ import { shellApps, getShellApp } from '@/lib/shell-apps';
 import { ShellRunner } from './ShellRunner';
 
 export const metadata = {
-  title: 'Apps — next-live shell demo',
+  title: 'Apps - next-live shell demo',
   description: 'Production-shaped shell with API-driven live snippets.',
 };
 

@@ -18,7 +18,7 @@ import { LiveEditor } from 'next-live/editor';
 ```
 
 The editor is on its own entry point so pages that only *run* snippets do not
-pay for a syntax highlighter — measured at 97.2 KB → 16.1 KB for a preview-only
+pay for a syntax highlighter - measured at 97.2 KB → 16.1 KB for a preview-only
 page. If you use the editor, import it from `next-live/editor`.
 
 ## `scope` → `modules`
@@ -32,7 +32,7 @@ as a free variable:
 ```
 
 ```tsx
-// the snippet — no imports possible
+// the snippet, no imports possible
 function App() {
   const [n] = useState(0);
   return <Button>{formatDate(n)}</Button>;
@@ -53,7 +53,7 @@ In `next-live` you register modules, and snippets import from them:
 ```
 
 ```tsx
-// the snippet — reads like a real file
+// the snippet - reads like a real file
 import { useState } from 'react';
 import { Button } from '@app/ui';
 import { formatDate } from '@app/format';
@@ -98,7 +98,7 @@ const App = () => <div/>;
 render(<App />);
 ```
 
-All the `react-live` authoring styles still work unchanged — a bare expression,
+All the `react-live` authoring styles still work unchanged - a bare expression,
 a bare declaration, or an explicit `export default`. `export default` is the
 recommended form for anything you store.
 
@@ -107,14 +107,14 @@ recommended form for anything you store.
 | `react-live` | `next-live` |
 |---|---|
 | `scope` | `scope` (kept) **or** `modules` (preferred) |
-| `noInline` | not needed — `render()` is detected |
+| `noInline` | not needed, `render()` is detected |
 | `transformCode` | `transform` (same idea, typed as `TransformFn`) |
 | `language` | `language` (unchanged) |
 | `theme` | moved to `<LiveEditor theme={…}>` |
 | `enableTypeScript` | always on; TypeScript is stripped by default |
-| — | `props` — passed to the component by reference |
-| — | `onCodeChange`, `onError` |
-| — | `fallback`, `keepLastGood`, `maxRendersPerSecond` |
+| - | `props`, passed to the component by reference |
+| - | `onCodeChange`, `onError` |
+| - | `fallback`, `keepLastGood`, `maxRendersPerSecond` |
 
 ## Behaviour that differs
 
@@ -134,11 +134,11 @@ renders/second instead of freezing the tab. Tune with `maxRendersPerSecond`.
 
 **No npm in the browser, in either library.** If a snippet imports something you
 did not register, you get an error naming the specifier and suggesting the
-closest match — rather than an undefined variable at runtime.
+closest match - rather than an undefined variable at runtime.
 
 ## Things to check after migrating
 
-- Every specifier your snippets import is registered — run
+- Every specifier your snippets import is registered, run
   [`validateSnippets`](./10-validating-in-ci.md) over your stored code and you
   will get the full list at once.
 - Your CSP allows `'unsafe-eval'` on the routes that run snippets. `react-live`

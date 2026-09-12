@@ -4,7 +4,7 @@
 
 Not everything worth storing as editable code renders something. A control
 panel accumulates validators, data transformers, calculated fields, pricing
-rules, config builders — plain modules with no UI at all.
+rules, config builders, plain modules with no UI at all.
 
 `useLiveModule` runs those and hands back their exports.
 
@@ -62,7 +62,7 @@ const { exports } = useLiveModule<PricingRule>({ code: source });
 exports?.total(100);
 ```
 
-This is a **claim, not a check** — Sucrase strips types without verifying them,
+This is a **claim, not a check** - Sucrase strips types without verifying them,
 so nothing guarantees the snippet actually matches. Validate the shape at
 runtime before trusting it:
 
@@ -115,7 +115,7 @@ will hang the tab exactly as any other synchronous loop would.
 | `useLiveRunner` / `<LiveProvider>` | The snippet renders UI |
 | `useLiveModule` | The snippet exports functions, values, or config |
 
-A snippet can do both — export a component *and* helpers. `useLiveRunner` picks
+A snippet can do both - export a component *and* helpers. `useLiveRunner` picks
 the component; `useLiveModule` gives you everything, including the component
 under `exports.default`.
 

@@ -98,7 +98,7 @@ export function runTranspile(
         expression: true,
       };
     } catch {
-      // Multi-statement code with no exports — fall through to module mode.
+      // Multi-statement code with no exports - fall through to module mode.
     }
   }
 
@@ -111,9 +111,9 @@ export function runTranspile(
  * Three authoring styles are supported, resolved without ever asking the user
  * which one they used:
  *
- * 1. A real module — `export default function App() {}`.
- * 2. A bare expression — `<div/>` or `() => <div/>`.
- * 3. Bare statements with no export — `function App() {}`, or `render(<App/>)`.
+ * 1. A real module - `export default function App() {}`.
+ * 2. A bare expression, `<div/>` or `() => <div/>`.
+ * 3. Bare statements with no export, `function App() {}`, or `render(<App/>)`.
  *
  * Styles 1 and 3 are compiled as-is; the component is recovered after
  * evaluation (see `evaluate.ts`). Style 2 is not a valid module body on its
@@ -155,7 +155,7 @@ function toCompileError(cause: unknown): LiveCompileError {
  * component from a snippet that never exported one.
  *
  * Anchored at column zero because Sucrase leaves top-level declarations
- * unindented. A false positive from inside a template literal is harmless —
+ * unindented. A false positive from inside a template literal is harmless -
  * the generated epilogue guards every name with `typeof`.
  */
 export function scanTopLevelDeclarations(code: string): string[] {
@@ -185,7 +185,7 @@ export function scanTopLevelDeclarations(code: string): string[] {
  * ```
  *
  * Lives here rather than next-live/server on purpose. It is a pure closure over
- * a value and needs no transpiler — but importing it from the server entry
+ * a value and needs no transpiler - but importing it from the server entry
  * would pull Sucrase statically into the page bundle, which is the exact cost
  * precompiling exists to avoid.
  */

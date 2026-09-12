@@ -45,7 +45,7 @@ export class TranspilerLoadError extends LiveError {
   constructor(cause: unknown) {
     super(
       'next-live could not load its transpiler (sucrase). This is usually a ' +
-        'network or code-splitting failure — check that the chunk is reachable.',
+        'network or code-splitting failure - check that the chunk is reachable.',
       { cause },
     );
   }
@@ -76,7 +76,7 @@ function buildModuleNotFoundMessage(specifier: string, available: readonly strin
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
     lines.push(
       '',
-      'next-live does not bundle npm packages — pass them in explicitly:',
+      'next-live does not bundle npm packages - pass them in explicitly:',
       `  <LiveProvider modules={{ '${specifier}': theModule }} />`,
     );
   }
@@ -117,7 +117,7 @@ export function nearestSpecifier(
 
 /**
  * Levenshtein distance, abandoning the walk as soon as every cell in a row
- * exceeds `limit` — the common case is "nothing is close", and that exits fast.
+ * exceeds `limit` - the common case is "nothing is close", and that exits fast.
  */
 function editDistance(a: string, b: string, limit: number): number {
   if (a === b) return 0;

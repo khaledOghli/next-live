@@ -12,8 +12,8 @@ export interface LivePreviewProps {
   style?: React.CSSProperties;
   /**
    * Props handed to the compiled component, merged over the provider's.
-   * Passed by reference, so live objects — a map view, a store, the active
-   * user — arrive intact rather than serialized.
+   * Passed by reference, so live objects - a map view, a store, the active
+   * user, arrive intact rather than serialized.
    */
   props?: Record<string, unknown>;
   /** Shown until the first compile finishes. Overrides the provider's. */
@@ -23,7 +23,7 @@ export interface LivePreviewProps {
 /**
  * Renders the compiled component.
  *
- * Until the first compile lands this renders `fallback` — on the server and on
+ * Until the first compile lands this renders `fallback` - on the server and on
  * the client's first pass alike, which is precisely why hydration cannot
  * mismatch. Give it a skeleton of roughly the right size to avoid layout shift.
  */

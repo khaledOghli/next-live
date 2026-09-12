@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getShellApp } from '@/lib/shell-apps';
 
-/** Serves one shell demo app's source — the production-shaped /apps route. */
+/** Serves one shell demo app's source - the production-shaped /apps route. */
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },

@@ -1,5 +1,5 @@
 /**
- * Production-shaped demo catalogue for /apps — separate from the /playground lab.
+ * Production-shaped demo catalogue for /apps, separate from the /playground lab.
  */
 export interface ShellApp {
   id: string;
@@ -75,7 +75,7 @@ export default function FetchDemo() {
   {
     id: 'ui-cards',
     name: 'UI: shadcn cards',
-    description: 'Tailwind via @app/ui — classes compiled in the host, not the snippet.',
+    description: 'Tailwind via @app/ui - classes compiled in the host, not the snippet.',
     source: `import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@app/ui';
 
 export default function UiCards() {
@@ -102,7 +102,7 @@ export default function UiCards() {
   {
     id: 'host-imports',
     name: 'Host imports',
-    description: 'Imports from @app/format and @app/store — host code outside next-live.',
+    description: 'Imports from @app/format and @app/store - host code outside next-live.',
     source: `import { formatMoney } from '@app/format';
 import { useCart, addItem } from '@app/store';
 import { Button } from '@app/ui';

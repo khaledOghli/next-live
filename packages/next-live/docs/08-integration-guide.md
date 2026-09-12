@@ -6,7 +6,7 @@ An end-to-end walkthrough of the pattern `next-live` was built for: a control
 panel where staff author apps, whose source is stored in a database and executed
 in the browser when a user opens one.
 
-Everything here is generic — substitute your own store, UI kit, and data layer.
+Everything here is generic, substitute your own store, UI kit, and data layer.
 
 ## What we are building
 
@@ -22,16 +22,16 @@ Control panel  ──writes──▶  database  ──serves──▶  /api/apps
                                                            the running app
 ```
 
-## Step 1 — Install
+## Step 1: Install
 
 ```bash
 npm install next-live
 ```
 
-## Step 2 — Decide your SDK surface first
+## Step 2: Decide your SDK surface first
 
 Do this before writing any code. Whatever you expose becomes a public contract
-with your authors — you cannot rename it later without breaking stored apps.
+with your authors, you cannot rename it later without breaking stored apps.
 
 Pick a handful of stable namespaces:
 
@@ -67,7 +67,7 @@ export { useAppStore, addItem, clearCart } from '@/lib/store';
 export { Button, Card, Stack } from '@/components/ui';
 ```
 
-## Step 3 — Generate the registry from that directory
+## Step 3: Generate the registry from that directory
 
 ```ts
 // lib/live-sdk/generated.ts
@@ -75,7 +75,7 @@ import { registryFromGlob } from 'next-live';
 import type { ModuleRegistry } from 'next-live';
 
 export const generatedModules: ModuleRegistry = registryFromGlob(
-  // Must be at or below this file's own directory — a '../' pattern silently
+  // Must be at or below this file's own directory - a '../' pattern silently
   // matches nothing under Turbopack.
   import.meta.glob('./modules/*.ts'),
   (path) => {
@@ -85,10 +85,10 @@ export const generatedModules: ModuleRegistry = registryFromGlob(
 );
 ```
 
-Add a file to `modules/` and it becomes importable by snippets — lazily, with no
+Add a file to `modules/` and it becomes importable by snippets - lazily, with no
 edit here. This file never grows.
 
-## Step 4 — Register third-party packages as loaders
+## Step 4: Register third-party packages as loaders
 
 ```ts
 // lib/live-sdk/vendor.ts
@@ -106,11 +106,11 @@ export const vendorModules: ModuleRegistry = {
 };
 ```
 
-Loaders, never values — a value ends up in your page bundle for every visitor.
+Loaders, never values - a value ends up in your page bundle for every visitor.
 If your app already imports the package for its own use, the loader costs
 nothing extra; it hands over the module that is already loaded.
 
-## Step 5 — Compose
+## Step 5: Compose
 
 ```ts
 // lib/live-sdk/index.ts
@@ -121,7 +121,7 @@ import { generatedModules } from './generated';
 export const liveModules = createRegistry(vendorModules, generatedModules);
 ```
 
-## Step 6 — Serve the source from your API
+## Step 6: Serve the source from your API
 
 ```ts
 // app/api/apps/[id]/route.ts
@@ -142,10 +142,10 @@ export async function GET(
 }
 ```
 
-**Snippet source must only ever come from here** — never from a query parameter,
+**Snippet source must only ever come from here** - never from a query parameter,
 hash fragment, or `localStorage`. See [Security](./05-security.md).
 
-## Step 7 — The runner component
+## Step 7: The runner component
 
 ```tsx
 // app/apps/[id]/Runner.tsx
@@ -202,7 +202,7 @@ Three details worth copying:
 - **`onError`** is where you find out that an app your staff published is broken
   in production. Wire it to your monitoring.
 
-## Step 8 — The page
+## Step 8: The page
 
 ```tsx
 // app/apps/[id]/page.tsx
@@ -218,10 +218,10 @@ export default async function AppPage({
 }
 ```
 
-A Server Component can import and render the runner directly — `next-live`
+A Server Component can import and render the runner directly - `next-live`
 components carry `'use client'` themselves.
 
-## Step 9 — CSP
+## Step 9: CSP
 
 ```ts
 // proxy.ts
@@ -229,10 +229,10 @@ const RUNNER_ROUTES = ['/apps'];   // add '/playground' too if you have a lab ro
 ```
 
 Full file in [Security](./05-security.md#3-scope-unsafe-eval-to-the-routes-that-run-snippets).
-**Do not skip this** — without `'unsafe-eval'` on your runner routes, nothing
+**Do not skip this** - without `'unsafe-eval'` on your runner routes, nothing
 runs in production, and you want the directive confined to those routes.
 
-## Step 10 — The editor side
+## Step 10: The editor side
 
 Your control panel needs the editor rather than just the preview:
 
@@ -272,7 +272,7 @@ export function AppEditor({ initialSource, onSave }: {
 Remember that saving is equivalent to deploying: authorise the write endpoint
 strictly, and keep an audit trail and version history.
 
-## Step 11 — Optional: precompile on the server
+## Step 11: Optional: precompile on the server
 
 If the same apps are opened repeatedly, transpile once and cache by content
 hash. The browser then never downloads the transpiler:
@@ -292,7 +292,7 @@ import { precompiledTransform } from 'next-live';
 ```
 
 When the author edits the snippet, `precompiledTransform` still returns the
-old server output — drop `transform` (or re-fetch with the new source) as soon
+old server output - drop `transform` (or re-fetch with the new source) as soon
 as `code` diverges from the catalog version.
 
 ## Pre-launch checklist
@@ -316,8 +316,8 @@ as `code` diverges from the catalog version.
 
 | Route | Purpose |
 |---|---|
-| **`/apps`** | Production-shaped shell — header, sidebar tabs, `LivePreview` only. Source fetched from `/api/shell-apps/[id]`. Demos React hooks (`useEffect`), `@app/ui` (shadcn/Tailwind via registry), `@app/format`, and `@app/store`. |
-| **`/playground`** | Developer lab — editor, precompile toggle, localStorage save, and pedagogical panels. Source from `/api/apps/[id]`. |
+| **`/apps`** | Production-shaped shell - header, sidebar tabs, `LivePreview` only. Source fetched from `/api/shell-apps/[id]`. Demos React hooks (`useEffect`), `@app/ui` (shadcn/Tailwind via registry), `@app/format`, and `@app/store`. |
+| **`/playground`** | Developer lab - editor, precompile toggle, localStorage save, and pedagogical panels. Source from `/api/apps/[id]`. |
 
 Both share the same composed lazy registry (`lib/live-sdk`), scoped CSP
 (`RUNNER_ROUTES = ['/playground', '/apps']`), and CI validation
@@ -326,11 +326,11 @@ Both share the same composed lazy registry (`lib/live-sdk`), scoped CSP
 ```bash
 npm install
 npm run dev
-# http://localhost:3000/apps        — shell demo (what users see)
-# http://localhost:3000/playground    — lab (editor + experiments)
+# http://localhost:3000/apps       : shell demo (what users see)
+# http://localhost:3000/playground   : lab (editor + experiments)
 ```
 
-Registry modules live in `lib/live-sdk/modules/` — one thin re-export per
+Registry modules live in `lib/live-sdk/modules/` - one thin re-export per
 namespace (`store.ts`, `ui.ts`, `format.ts`). CI keys are derived from that
 directory in Node (`lib/live-sdk/module-keys.ts`) so renames fail the build
 without hand-maintaining a key list.

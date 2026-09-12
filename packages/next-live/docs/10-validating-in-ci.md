@@ -5,7 +5,7 @@
 ## The problem
 
 Your snippets live in a database, not in your repository. So when you rename
-something in your SDK —
+something in your SDK -
 
 ```ts
 // lib/live-sdk/modules/store.ts
@@ -13,7 +13,7 @@ something in your SDK —
 + export { useBasket } from '@/lib/store';
 ```
 
-— every stored app importing `useCart` breaks. Nothing fails at build time. The
+- every stored app importing `useCart` breaks. Nothing fails at build time. The
 tests pass. The failure surfaces days later, for whoever opens that app next.
 
 The more apps you have, the worse this gets, and the less anyone wants to
@@ -80,7 +80,7 @@ npm run validate:apps:test -w playground
 
 **Checks:**
 
-- The snippet parses and transpiles — syntax and TypeScript-syntax errors, with
+- The snippet parses and transpiles - syntax and TypeScript-syntax errors, with
   a line and column.
 - Every import resolves against your registry, honouring built-ins
   (`react`, the JSX runtimes), prefix entries (`big-lib/`), and ignored asset
@@ -88,12 +88,12 @@ npm run validate:apps:test -w playground
 - Unresolved specifiers come with a "did you mean" suggestion.
 - Optional policy flags (all opt-in): `maxSourceBytes`, `forbidNodeBuiltins`,
   `forbidRemoteImports`, `denySpecifiers`. See
-  [API reference — validateSnippet](./06-api-reference.md#validatesnippetsource-options).
+  [API reference: validateSnippet](./06-api-reference.md#validatesnippetsource-options).
 
 **Does not check:**
 
 - **Runtime behaviour.** Nothing is evaluated, so a snippet that throws on
-  render still passes. That is deliberate — see below.
+  render still passes. That is deliberate - see below.
 - **Types.** Sucrase strips them without verifying them, here as everywhere.
 - **Named exports within a module.** It confirms `@app/store` is registered,
   not that `useCart` still exists inside it. To catch that, run your own
@@ -131,7 +131,7 @@ To keep the list honest, derive it from the filesystem rather than maintaining
 a parallel list:
 
 ```ts
-// lib/live-sdk/module-keys.ts — Node-safe, no import.meta.glob
+// lib/live-sdk/module-keys.ts - Node-safe, no import.meta.glob
 import { readdirSync } from 'node:fs';
 import { vendorModules } from './vendor';
 
@@ -142,7 +142,7 @@ const appKeys = readdirSync('./modules')
 export const LIVE_MODULE_KEYS = [...Object.keys(vendorModules), ...appKeys];
 ```
 
-Do **not** re-export `LIVE_MODULE_KEYS` from the client registry barrel — it
+Do **not** re-export `LIVE_MODULE_KEYS` from the client registry barrel - it
 pulls `node:fs` into the browser bundle.
 
 ## Validate on write, too
@@ -157,7 +157,7 @@ if (!result.ok) {
 }
 ```
 
-CI then catches the other direction — apps that were fine when saved and broke
+CI then catches the other direction - apps that were fine when saved and broke
 when the SDK changed underneath them.
 
 ---

@@ -23,7 +23,7 @@ describe('render budget', () => {
    * React retries a failed render before handing the error to a boundary. An
    * earlier version reset its counter before throwing, so every retry
    * succeeded, the error never reached the boundary, and the loop ran on
-   * forever — it threw thousands of times, invisibly, while the component kept
+   * forever - it threw thousands of times, invisibly, while the component kept
    * rendering. Latching is what fixes it.
    */
   it('stays tripped on subsequent calls, so a retried render cannot slip through', () => {

@@ -21,7 +21,7 @@ describe.skipIf(!built)('build output', () => {
   const SERVER_ENTRIES = ['server.js', 'server.cjs'];
 
   /**
-   * Next.js requires library authors to preserve this themselves — bundlers
+   * Next.js requires library authors to preserve this themselves - bundlers
    * strip module-level directives. Without it, consumers hit "you're importing
    * a component that needs useState" the moment they render from a Server
    * Component. Verified once by deliberately removing it and watching the
@@ -46,7 +46,7 @@ describe.skipIf(!built)('build output', () => {
   /**
    * `precompiledTransform` deliberately lives in the client entry. It is a pure
    * closure over a value, but when it lived in next-live/server a client
-   * importing it dragged Sucrase into the page bundle — the exact cost
+   * importing it dragged Sucrase into the page bundle - the exact cost
    * precompiling exists to avoid.
    */
   it('exposes precompiledTransform without pulling in the transpiler', () => {
@@ -85,7 +85,7 @@ describe.skipIf(!built)('build output', () => {
    * would notice it slowly getting heavy. Ceilings sit roughly 15% above the
    * sizes at the time of writing, so ordinary changes pass and a new
    * dependency does not slip in unnoticed. If one of these fails, decide
-   * whether the growth is worth it — then move the number deliberately.
+   * whether the growth is worth it - then move the number deliberately.
    */
   describe('size budget', () => {
     const BUDGET_KB: Record<string, number> = {

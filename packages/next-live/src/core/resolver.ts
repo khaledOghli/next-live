@@ -32,7 +32,7 @@ function isLoader(value: unknown): value is ModuleLoader {
  *
  * {@link normalizeModule} unwraps any registered object that has its own
  * `default` key, because that is almost always a module wrapper. When it is
- * not — a config object that happens to contain the word `default` — say so:
+ * not - a config object that happens to contain the word `default`, say so:
  *
  * ```ts
  * { './theme': defineModule({ default: { default: 'dark', light: '#fff' } }) }
@@ -65,15 +65,15 @@ export function defineModule(shape: {
  * Converts a registered value into a record Sucrase's interop helpers accept.
  *
  * The trick that makes this total: both helpers Sucrase emits are identity
- * functions when the required value carries `__esModule === true` —
+ * functions when the required value carries `__esModule === true` -
  * `_interopRequireDefault` is literally `obj && obj.__esModule ? obj : {default: obj}`.
  * By always returning such a record we neutralise both helpers, so this
  * function becomes the single source of truth for what `default` and each
  * named import resolve to.
  *
  * Named exports are exposed as *getters* over the original value rather than
- * copied. That preserves ES module live bindings, and — more importantly in
- * practice — avoids eagerly invoking the lazy namespace getters that packages
+ * copied. That preserves ES module live bindings, and - more importantly in
+ * practice, avoids eagerly invoking the lazy namespace getters that packages
  * like icon sets and large UI barrels use, which a naive spread would trigger
  * on every single compile.
  */
@@ -149,7 +149,7 @@ export interface ResolveOptions {
   /**
    * Resolve `@scope/pkg/Sub` against a registered `@scope/pkg` by walking the
    * remaining segments as property accesses. Correct for barrel-shaped
-   * packages, wrong for those whose subpaths are not re-exported — so it is
+   * packages, wrong for those whose subpaths are not re-exported - so it is
    * opt-in rather than a silent guess. Default false.
    */
   resolveSubpaths?: boolean;
@@ -212,7 +212,7 @@ export function isIgnoredSpecifier(specifier: string): boolean {
 /**
  * The registry key that would serve a specifier, or undefined if none would.
  *
- * Key matching only — no values, no loaders, nothing executed. That is what
+ * Key matching only - no values, no loaders, nothing executed. That is what
  * lets a snippet be checked on a server, or in CI, without running it.
  */
 export function matchRegistryKey(

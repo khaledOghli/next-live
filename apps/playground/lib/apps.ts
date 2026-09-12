@@ -4,7 +4,7 @@ import { storeScriptSource } from './store-script.ts';
  * Stands in for the database behind a control panel.
  *
  * Each record is one app whose source was authored elsewhere and stored as
- * text. Nothing here is compiled at build time — the source travels to the
+ * text. Nothing here is compiled at build time - the source travels to the
  * browser as a string and is compiled there, which is the whole point.
  */
 export interface LiveApp {
@@ -153,7 +153,7 @@ export default function Heavy() {
 // The host page imported this exact module too, and stamped it with __owner.
 // Reading that marker here proves there is one instance, not two copies.
 export default function SharedInstance() {
-  const owner = Widget.__owner ?? '(marker missing — two separate copies!)';
+  const owner = Widget.__owner ?? '(marker missing - two separate copies!)';
 
   return (
     <div style={{ display: 'grid', gap: 8 }}>
@@ -179,7 +179,7 @@ export default function SharedInstance() {
   {
     id: 'inline',
     name: 'Inline expression',
-    description: 'No imports, no export — just an expression, like react-live.',
+    description: 'No imports, no export - just an expression, like react-live.',
     source: `<div style={{ padding: 16, borderRadius: 8, background: '#0ea5e920' }}>
   A bare JSX expression is a valid snippet.
 </div>

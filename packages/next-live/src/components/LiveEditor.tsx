@@ -29,7 +29,7 @@ export interface LiveEditorProps {
   errorLineStyle?: CSSProperties | null;
   errorLineClassName?: string;
   /**
-   * Replaces the built-in editor entirely — drop in CodeMirror, Monaco, or
+   * Replaces the built-in editor entirely - drop in CodeMirror, Monaco, or
    * anything else while keeping the rest of the provider wiring.
    */
   renderEditor?: (props: LiveEditorRenderProps) => ReactNode;
@@ -44,7 +44,7 @@ const DEFAULT_ERROR_LINE_STYLE: CSSProperties = {
  * Typography shared by the textarea and the highlighted layer beneath it.
  *
  * Every value here has to match in both layers or the visible text will drift
- * out of alignment with the caret — that is the whole difficulty of this
+ * out of alignment with the caret - that is the whole difficulty of this
  * technique, so the styles live in one object rather than being repeated.
  */
 const SHARED_TEXT_STYLE: CSSProperties = {
@@ -65,7 +65,7 @@ const SHARED_TEXT_STYLE: CSSProperties = {
  * A code editor built from a transparent `<textarea>` layered over syntax
  * highlighted output.
  *
- * There is no editor engine here by design — that keeps the bundle small and
+ * There is no editor engine here by design - that keeps the bundle small and
  * sidesteps the SSR problems full editors bring. When a real editor is wanted,
  * pass `renderEditor`.
  */
@@ -106,7 +106,7 @@ export function LiveEditor(props: LiveEditorProps): ReactNode {
     return <>{renderEditor(renderProps)}</>;
   }
 
-  // The highlighted layer does not scroll on its own — it is not focusable —
+  // The highlighted layer does not scroll on its own - it is not focusable -
   // so it has to be driven from the textarea to stay aligned.
   const syncScroll = (event: React.UIEvent<HTMLTextAreaElement>) => {
     const node = highlightRef.current;

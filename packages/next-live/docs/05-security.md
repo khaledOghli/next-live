@@ -8,7 +8,7 @@ matters.
 ## The model in one paragraph
 
 `next-live` runs code with `new Function` on your page. That code has the page's
-full authority — cookies, storage, DOM, and your APIs as the signed-in user.
+full authority - cookies, storage, DOM, and your APIs as the signed-in user.
 This is safe when snippet authors are people you trust, and unsafe when they are
 not. **Everything below assumes the first.**
 
@@ -29,7 +29,7 @@ const source = new URLSearchParams(location.search).get('code');
 ```
 
 If an attacker can control what reaches `code`, they run arbitrary JavaScript in
-your origin — and no CSP setting prevents it, because the execution is by
+your origin - and no CSP setting prevents it, because the execution is by
 design. Every other measure here assumes this one holds.
 
 ## 2. Treat stored snippets as code
@@ -39,7 +39,7 @@ a deploy gets:
 
 - **Authorization on the write path.** Whoever can save a snippet can run
   JavaScript on your site. That endpoint deserves your strictest check.
-- **An audit trail** — who changed what, when.
+- **An audit trail**, who changed what, when.
 - **Version history**, so you can roll back a bad snippet the way you roll back
   a bad deploy.
 
@@ -47,7 +47,7 @@ a deploy gets:
 
 `new Function` requires `'unsafe-eval'` in `script-src`. Next's CSP guide gates
 that directive behind a dev-only check, because "Neither React nor Next.js use
-`eval` in production by default" — `next-live` does.
+`eval` in production by default" - `next-live` does.
 
 It does **not** have to apply to your whole application. In `proxy.ts`:
 
@@ -93,7 +93,7 @@ A working copy is in `apps/playground/proxy.ts`. The `/rsc-check` route there is
 a deliberate control: it is *not* a runner route, so evaluation is blocked and
 you can see what the failure looks like.
 
-> CSP moved to `proxy.ts` in Next 16 — `middleware.ts` was renamed.
+> CSP moved to `proxy.ts` in Next 16 - `middleware.ts` was renamed.
 
 ## 4. Keep the rest of the policy strict
 
@@ -118,7 +118,7 @@ Two directives are worth particular attention:
   ignored anyway.
 
 Also note that adopting a nonce-based CSP forces fully dynamic rendering and is
-incompatible with PPR / `cacheComponents` — a real cost worth weighing.
+incompatible with PPR / `cacheComponents` - a real cost worth weighing.
 
 If CSP does block evaluation, `next-live` detects it and reports what to change
 instead of surfacing the browser's raw `EvalError`.
@@ -127,17 +127,17 @@ instead of surfacing the browser's raw `EvalError`.
 
 **Contained.** Runtime errors and render loops. `<LiveErrorBoundary>` keeps a
 broken snippet from taking down the host app, and a render-rate breaker stops
-runaway `setState` loops — the common real-world hang. React's own "Maximum
+runaway `setState` loops - the common real-world hang. React's own "Maximum
 update depth" guard catches the synchronous case, but not an effect that updates
 state on every commit; the breaker catches that one.
 
 **Not contained.** A snippet runs with the page's full authority. A synchronous
-`while (true)` — in module scope, in render, or in a handler — will hang the tab,
+`while (true)` - in module scope, in render, or in a handler - will hang the tab,
 and no timer, `AbortController`, or `Promise.race` can interrupt it, because
 JavaScript cannot interrupt synchronous code in its own realm.
 
 The [module registry](./02-module-registry.md) does not change this. It bounds
-what snippets can *conveniently* reach, not what they *can* reach — `window`,
+what snippets can *conveniently* reach, not what they *can* reach, `window`,
 `fetch`, and the DOM are always there.
 
 ## If your authors stop being trusted
@@ -150,7 +150,7 @@ sufficient.
 What you would need is the preview running in an iframe on a **separate origin**,
 which cannot read your cookies or DOM. Know the cost before choosing it: props
 would have to cross by structured clone, so you could no longer pass a store, a
-library, a function, or any live object by reference — see
+library, a function, or any live object by reference - see
 [Sharing libraries](./03-sharing-your-app-libraries.md). That is a different
 product, and this library does not pretend to be it.
 

@@ -92,7 +92,7 @@ describe('module resolution', () => {
   });
 
   it('treats an unbranded function as a value, not a loader', async () => {
-    // Without the defineLoader brand a function is the module itself —
+    // Without the defineLoader brand a function is the module itself -
     // otherwise a registered component could not be told apart from a loader.
     const html = await render(
       `import Fn from 'lib';\nexport default () => <b>{typeof Fn}</b>;`,
@@ -133,7 +133,7 @@ describe('module resolution', () => {
 
   it('ignores an unused import, matching TypeScript semantics', async () => {
     // The TS transform elides it before resolution, so a typo in an unused
-    // import is not an error — it simply disappears.
+    // import is not an error - it simply disappears.
     const html = await render(
       `import unused from 'not-registered';\nexport default () => <b>fine</b>;`,
     );

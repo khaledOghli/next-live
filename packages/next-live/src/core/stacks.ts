@@ -44,8 +44,8 @@ export interface MappedPosition {
  * Maps a position inside evaluated code back to the snippet the user wrote.
  *
  * No source map is consulted, because none is needed: Sucrase does not move
- * code between lines — a multi-line import collapses onto line 1 but leaves
- * the intervening lines blank — so generated line N is source line N. The only
+ * code between lines - a multi-line import collapses onto line 1 but leaves
+ * the intervening lines blank - so generated line N is source line N. The only
  * adjustments are the engine's `new Function` offset and, for a snippet
  * compiled as a bare expression, the one line the wrapper added.
  *

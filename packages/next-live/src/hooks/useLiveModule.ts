@@ -25,7 +25,7 @@ export interface LiveModuleState<T extends Record<string, unknown> = Record<stri
 /**
  * Runs a snippet and returns its exports, without requiring a React component.
  *
- * Use it for stored code that is not UI — a validator, a data transformer, a
+ * Use it for stored code that is not UI - a validator, a data transformer, a
  * calculated field, a config builder:
  *
  * ```ts
@@ -37,7 +37,7 @@ export interface LiveModuleState<T extends Record<string, unknown> = Record<stri
  * keep-last-good behaviour is identical: nothing runs during the server pass,
  * and a failed recompile leaves the previous exports in place.
  *
- * The same caveat applies as everywhere else in this library — the snippet runs
+ * The same caveat applies as everywhere else in this library, the snippet runs
  * with your page's full authority, so its author must be someone you trust.
  */
 export function useLiveModule<T extends Record<string, unknown> = Record<string, unknown>>(

@@ -8,7 +8,7 @@ a *client reference*, so `Live.Preview` would resolve to `undefined`.
 
 ```ts
 import { LiveProvider, LivePreview, defineLoader } from 'next-live';
-import { LiveEditor } from 'next-live/editor';   // separate entry — see below
+import { LiveEditor } from 'next-live/editor';   // separate entry - see below
 import { precompile } from 'next-live/server';
 ```
 
@@ -16,7 +16,7 @@ Three entry points, so you only ship what you use:
 
 | Entry | Contains | Why separate |
 |---|---|---|
-| `next-live` | Provider, preview, error, hooks, registry, engine | — |
+| `next-live` | Provider, preview, error, hooks, registry, engine | - |
 | `next-live/editor` | `<LiveEditor>` | It is the only thing needing `prism-react-renderer`. Measured: a preview-only page pays 16.1 KB instead of 97.2 KB. `prism-react-renderer` is an **optional peer dependency**, so it is not installed unless you import this. |
 | `next-live/server` | `precompile`, `validateSnippet(s)` | Imports Sucrase statically; must never reach the client bundle. |
 
@@ -29,19 +29,19 @@ inside it.
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `code` | `string` | — | The snippet. Controlled: change it and the preview follows. |
+| `code` | `string` | - | The snippet. Controlled: change it and the preview follows. |
 | `modules` | `ModuleRegistry` | `{}` | Specifier → value or loader. Merges over the built-ins. |
 | `scope` | `LiveScope` | `{}` | Free variables injected as bare identifiers. |
 | `props` | `Record<string, unknown>` | `{}` | Passed to the component **by reference**. |
 | `fallback` | `ReactNode` | `null` | Rendered until the first compile finishes. |
 | `language` | `string` | `'tsx'` | Highlighting hint for `<LiveEditor>`. |
-| `onError` | `(error: Error) => void` | — | Called on every compile and runtime error. |
-| `onCodeChange` | `(code: string) => void` | — | Called when the code is edited from inside. Not called when the `code` prop changes from outside, so it cannot echo your own saves back. |
-| `onCompileSuccess` | `(info: CompileSuccessInfo) => void` | — | Called after every successful compile with `compileId`, sorted `imports`, optional `via`, and `durationMs`. Not called on failure or abort. |
+| `onError` | `(error: Error) => void` | - | Called on every compile and runtime error. |
+| `onCodeChange` | `(code: string) => void` | - | Called when the code is edited from inside. Not called when the `code` prop changes from outside, so it cannot echo your own saves back. |
+| `onCompileSuccess` | `(info: CompileSuccessInfo) => void` | - | Called after every successful compile with `compileId`, sorted `imports`, optional `via`, and `durationMs`. Not called on failure or abort. |
 | `debounce` | `number` | `150` | Milliseconds before recompiling after a change. |
 | `keepLastGood` | `boolean` | `true` | Keep the last working component mounted when a recompile fails. |
 | `maxRendersPerSecond` | `number` | `1000` | Render-loop breaker threshold. |
-| `transform` | `TransformFn` | — | Replace the built-in Sucrase pass (e.g. server-precompiled output). |
+| `transform` | `TransformFn` | - | Replace the built-in Sucrase pass (e.g. server-precompiled output). |
 | `resolveSubpaths` | `boolean` | `false` | Resolve `pkg/Sub` against a registered `pkg` by property access. |
 | `filePath` | `string` | `'LiveCode.tsx'` | Name shown in stack traces and DevTools. |
 | `production` | `boolean` | `true` | `false` selects `react/jsx-dev-runtime` for richer stacks. |
@@ -54,7 +54,7 @@ Renders the compiled component inside an error boundary.
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `props` | `Record<string, unknown>` | — | Merged over the provider's `props`. |
+| `props` | `Record<string, unknown>` | - | Merged over the provider's `props`. |
 | `fallback` | `ReactNode` | provider's | Shown until the first compile finishes. |
 | `as` | `ElementType` | `'div'` | Wrapper element. |
 | `className` / `style` | | | Applied to the wrapper. |
@@ -66,13 +66,13 @@ stays small and has no SSR quirks.
 
 | Prop | Type | Default | Notes |
 |---|---|---|---|
-| `renderEditor` | `(props: LiveEditorRenderProps) => ReactNode` | — | Replace the built-in editor entirely. |
+| `renderEditor` | `(props: LiveEditorRenderProps) => ReactNode` | - | Replace the built-in editor entirely. |
 | `theme` | `PrismTheme` | `themes.vsDark` | From `prism-react-renderer`. |
 | `readOnly` | `boolean` | `false` | |
 | `tabSize` | `number` | `2` | Spaces inserted by the Tab key. |
 | `padding` | `number` | `16` | |
 | `errorLineStyle` | `CSSProperties \| null` | red inset highlight | Paint-only highlight on the error line from context. Pass `null` to disable. |
-| `errorLineClassName` | `string` | — | Extra class on the error line. |
+| `errorLineClassName` | `string` | - | Extra class on the error line. |
 | `className` / `style` | | | |
 
 `LiveEditorRenderProps` also exposes `error`, `errorLine`, and `errorColumn` for custom editors.
@@ -119,7 +119,7 @@ const { code, setCode, Component, element, error, isCompiling, compileId } =
 ```
 
 Accepts every `LiveProvider` option except `props`, `language`, `onError`, and
-`fallback` — including `onCompileSuccess`. Returns:
+`fallback` - including `onCompileSuccess`. Returns:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -145,12 +145,12 @@ rendered, so there is no render loop to break). Returns `exports` (null until
 the first successful run), `value` as shorthand for `exports?.default`, and the
 same `error` / `isCompiling` / `compileId` fields.
 
-The type parameter is a claim, not a check — validate the shape at runtime. See
+The type parameter is a claim, not a check, validate the shape at runtime. See
 [Non-UI snippets](./09-non-ui-snippets.md).
 
 ### `useLiveContext`
 
-Reads the surrounding `<LiveProvider>` — for custom editors, toolbars, or status
+Reads the surrounding `<LiveProvider>`, for custom editors, toolbars, or status
 indicators. Throws if called outside a provider. Returns the `useLiveRunner`
 fields plus `props`, `language`, `fallback`, and `reportRuntimeError`.
 
@@ -165,7 +165,7 @@ it, a registered component function would be indistinguishable from a loader.
 '@app/store': defineLoader(() => import('@/lib/store'))
 ```
 
-The loader receives the imported specifier — which is what prefix entries need:
+The loader receives the imported specifier - which is what prefix entries need:
 
 ```ts
 'big-lib/': defineLoader((specifier) => import(`big-lib/${specifier.slice(8)}`))
@@ -202,14 +202,14 @@ The always-registered map: `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`
 | `errorPosition(error)` | Reads `{ line, column? }` from a compile or runtime error, if present. |
 | `transpile(source, options, transform?)` | Source → CommonJS. No evaluation. |
 | `preloadTranspiler()` | Warm the Sucrase chunk during idle time. |
-| `precompiledTransform(result)` | Wraps a server-precompiled result as a `transform`, so the client never loads Sucrase. Exported from the **client** entry — importing it from `next-live/server` would pull the transpiler into your page. |
+| `precompiledTransform(result)` | Wraps a server-precompiled result as a `transform`, so the client never loads Sucrase. Exported from the **client** entry - importing it from `next-live/server` would pull the transpiler into your page. |
 | `setTranspiler(module)` | Swap the transpiler. For tests and custom backends. |
 | `normalizeModule(value)` | The interop normalisation applied to registry values. |
 | `createRequire(resolved)` | The synchronous `require` shim. |
 | `resolveModules(options)` | Resolve specifiers against a registry. |
 | `createRenderBudget(options)` | The render-loop breaker. |
 
-## Server entry — `next-live/server`
+## Server entry: `next-live/server`
 
 No `'use client'` directive and no React import, so it is safe in Route Handlers
 and Server Components.

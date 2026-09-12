@@ -50,7 +50,7 @@ jobs:
   #
   # The full suite cannot run here: jsdom pulls in undici, which calls
   # `markAsUncloneable` and so needs Node 22. That is a test-tooling
-  # constraint, not one the published package has — nothing in dist/ uses
+  # constraint, not one the published package has - nothing in dist/ uses
   # anything newer than the `engines.node` range claims.
   #
   # So this runs everything except the jsdom suite: the engine, registry,

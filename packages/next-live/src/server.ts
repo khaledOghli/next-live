@@ -3,7 +3,7 @@
  *
  * Sucrase runs just as happily in Node, so a host serving many stored snippets
  * can transpile once, cache by content hash, and ship ready JavaScript to the
- * browser — the client then never downloads the transpiler at all.
+ * browser, the client then never downloads the transpiler at all.
  *
  * This entry deliberately carries no `'use client'` directive and pulls in no
  * React, so it is safe to import from a Route Handler or a Server Component.
@@ -48,7 +48,7 @@ export function precompile(source: string, options: TranspileOptions = {}): Prec
 
 /**
  * FNV-1a over the source and the options that affect output. Not a
- * cryptographic hash — it only needs to be fast and collision-resistant enough
+ * cryptographic hash - it only needs to be fast and collision-resistant enough
  * to key a cache.
  */
 function hashOf(source: string, options: Required<TranspileOptions>): string {

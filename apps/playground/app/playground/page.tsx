@@ -9,7 +9,7 @@ export const metadata = {
 
 /**
  * A Server Component. It reads the app catalogue on the server and hands the
- * first one to the client component that does the compiling — nothing is
+ * first one to the client component that does the compiling - nothing is
  * evaluated during the server pass.
  */
 export default function PlaygroundPage() {

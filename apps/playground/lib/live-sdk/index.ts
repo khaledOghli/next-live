@@ -10,5 +10,5 @@ import { storeModules } from './stores';
  * component that renders the provider.
  */
 export const liveModules = createRegistry(vendorModules, storeModules);
-// LIVE_MODULE_KEYS lives in ./module-keys.ts — import it from Node scripts only
+// LIVE_MODULE_KEYS lives in ./module-keys.ts - import it from Node scripts only
 // (it uses node:fs and must not be re-exported through this client barrel).

@@ -2,7 +2,7 @@
  * Checks every stored app still compiles against the current SDK surface.
  *
  * Run this in CI. Snippets live in a database, so renaming something in
- * lib/live-sdk breaks them silently — the failure would otherwise surface for
+ * lib/live-sdk breaks them silently, the failure would otherwise surface for
  * whoever opens that app next, not for whoever made the change.
  *
  *   npx tsx scripts/validate-apps.ts

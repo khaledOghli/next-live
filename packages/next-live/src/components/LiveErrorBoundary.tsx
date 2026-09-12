@@ -24,7 +24,7 @@ interface State {
  * host application.
  *
  * React recovers from an error by client-rendering the whole nearest boundary,
- * so this one is kept as tight around the preview as possible — anything else
+ * so this one is kept as tight around the preview as possible - anything else
  * on the page is unaffected.
  */
 export class LiveErrorBoundary extends Component<LiveErrorBoundaryProps, State> {

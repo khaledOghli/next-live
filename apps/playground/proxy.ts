@@ -5,7 +5,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  * actually run snippets.
  *
  * This is the pattern to copy. `next-live` compiles code at runtime via
- * `new Function`, which requires `'unsafe-eval'` — but that directive does not
+ * `new Function`, which requires `'unsafe-eval'` - but that directive does not
  * have to apply to your whole application. Confining it to the runner routes
  * means the rest of the app keeps a clean policy, and a reviewer can see the
  * exception is contained rather than blanket.
@@ -63,7 +63,7 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   // Without a matcher this runs on every request, including static assets and
-  // image optimization — which wastes work and can break asset delivery.
+  // image optimization - which wastes work and can break asset delivery.
   matcher: [
     {
       source: '/((?!_next/static|_next/image|favicon.ico).*)',

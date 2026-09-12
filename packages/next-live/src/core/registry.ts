@@ -4,7 +4,7 @@ import type { ModuleRegistry } from './types';
 /**
  * Merges registry groups into one, later groups winning.
  *
- * A large SDK surface is best kept as several small files — one per domain —
+ * A large SDK surface is best kept as several small files - one per domain -
  * rather than a single object that grows without bound. This composes them.
  *
  * ```ts
@@ -45,7 +45,7 @@ export type GlobResult = Record<string, () => Promise<unknown>>;
  * Builds a registry from a directory of files, so the registry stops needing
  * hand-maintenance as the codebase grows.
  *
- * Pass the *result* of `import.meta.glob` — the call has to stay in your own
+ * Pass the *result* of `import.meta.glob` - the call has to stay in your own
  * code, because bundlers resolve the pattern statically at the call site.
  * (`import.meta.glob` requires Turbopack; under webpack, build an equivalent
  * `{ path: () => import(path) }` object yourself.)

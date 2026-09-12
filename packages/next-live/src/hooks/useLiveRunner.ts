@@ -9,7 +9,7 @@ import { useCompileTask } from './useCompileTask';
 import type { LiveRunnerState, UseLiveRunnerOptions } from '../core/types';
 
 /**
- * The headless engine behind `<LiveProvider>` — compiles a snippet and hands
+ * The headless engine behind `<LiveProvider>` - compiles a snippet and hands
  * back a component, for hosts building their own UI.
  *
  * Compilation never runs during render or on the server. The first client

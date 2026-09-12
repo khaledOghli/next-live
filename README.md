@@ -1,6 +1,6 @@
 # next-live
 
-Live TSX/JSX evaluation for the Next.js App Router — real ESM `import`
+Live TSX/JSX evaluation for the Next.js App Router, real ESM `import`
 statements, a module registry instead of a global scope bag, and no hydration
 mismatches.
 
@@ -38,7 +38,7 @@ The demo apps each prove something specific:
 
 `/rsc-check` is a deliberate double control: a Server Component that imports the
 library directly, so the build fails if the published bundle ever loses its
-`'use client'` directive — and a route excluded from the CSP runner list, so in
+`'use client'` directive - and a route excluded from the CSP runner list, so in
 a production build you can see what a blocked evaluation looks like.
 
 ## Scripts

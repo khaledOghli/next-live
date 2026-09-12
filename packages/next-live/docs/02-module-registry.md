@@ -47,7 +47,7 @@ Pick names that read like a deliberate SDK. See
 
 ## Two ways to register
 
-### As a loader — the default choice
+### As a loader: the default choice
 
 ```ts
 '@app/store': defineLoader(() => import('@/lib/store'))
@@ -66,7 +66,7 @@ modules={{ '@app/store': store }}
 Simpler to read, but the module is now in your page bundle for every visitor,
 used or not. Fine for something tiny; wrong for anything large.
 
-**Use loaders.** A registry of 300 loaders costs nothing at runtime — only
+**Use loaders.** A registry of 300 loaders costs nothing at runtime - only
 specifiers that appear in the compiled snippet are ever resolved. See
 [Scaling](./04-scaling.md) for the measured difference.
 
@@ -112,7 +112,7 @@ modules={{
 // import theme from '@app/theme'  →  the whole object
 ```
 
-`default` and `exports.default` address the same slot — ESM makes no distinction
+`default` and `exports.default` address the same slot - ESM makes no distinction
 between a default export and a named export called `default`.
 
 ## Always available
@@ -123,7 +123,7 @@ Registered for you, no configuration needed:
 - `react/jsx-runtime`
 - `react/jsx-dev-runtime`
 
-The two JSX runtimes are not optional — every JSX tag compiles to a call into
+The two JSX runtimes are not optional, every JSX tag compiles to a call into
 one of them, so without them no snippet would render at all. They come from
 **your** React, which is what lets hooks and context work across the boundary.
 
@@ -132,7 +132,7 @@ Your entries merge over these, so you can substitute a React shim if you need to
 `react-dom` is deliberately not included; register it explicitly if snippets
 need `createPortal`.
 
-## Prefix entries — one key for a whole subtree
+## Prefix entries: one key for a whole subtree
 
 A key ending in `/` claims everything beneath it, and its loader receives the
 **full specifier**:
@@ -145,7 +145,7 @@ A key ending in `/` claims everything beneath it, and its loader receives the
 ```
 
 Now `big-lib/charts/BarChart` and `big-lib/format/currency` both resolve without
-enumerating them. There is a build-time cost — see
+enumerating them. There is a build-time cost - see
 [Scaling](./04-scaling.md#deep-subpaths).
 
 ## Subpath fallback
@@ -159,12 +159,12 @@ enumerating them. There is a build-time cost — see
 ```
 
 **Off by default, deliberately.** It is right for barrel-shaped packages and
-wrong for packages whose subpaths are not re-exported from the barrel — and a
+wrong for packages whose subpaths are not re-exported from the barrel - and a
 silently wrong value is worse than a clear error.
 
 ## Generating entries from the filesystem
 
-### Turbopack — `import.meta.glob`
+### Turbopack: `import.meta.glob`
 
 ```ts
 import { registryFromGlob } from 'next-live';
@@ -178,7 +178,7 @@ export const storeModules = registryFromGlob(
 );
 ```
 
-### Webpack — `require.context`
+### Webpack: `require.context`
 
 `registryFromGlob` accepts any `Record<string, () => Promise<unknown>>`. Under
 webpack, build that object from `require.context`:
@@ -232,7 +232,7 @@ export default function App() {
 }
 ```
 
-See [Troubleshooting — Tailwind in snippets](./07-troubleshooting.md#tailwind-classes-in-my-snippet-do-nothing).
+See [Troubleshooting: Tailwind in snippets](./07-troubleshooting.md#tailwind-classes-in-my-snippet-do-nothing).
 
 ## Asset imports are ignored
 
@@ -253,7 +253,7 @@ no import at all:
 export default () => <b>{formatMoney(42)}</b>;   // no import needed
 ```
 
-Both mechanisms work together. Prefer `modules` — an explicit import says where
+Both mechanisms work together. Prefer `modules` - an explicit import says where
 something came from, and snippets stay closer to real files. Keys that are not
 valid identifiers, or that collide with the injected names (`module`, `exports`,
 `require`, `React`, `render`), are skipped with a console warning.
@@ -274,7 +274,7 @@ export default function App({ panel, user }) {
 
 Because nothing is cloned, a snippet calling `panel.setSize(17)` mutates the same
 object your app holds and your UI updates. Class instances, functions, and live
-handles all survive. This is only possible because snippets run in your page —
+handles all survive. This is only possible because snippets run in your page -
 an iframe sandbox could not do it.
 
 `props` on `<LivePreview>` merge over `props` on `<LiveProvider>`.
@@ -289,13 +289,13 @@ Did you mean '@ui/core'?
 Registered modules (7): react, react/jsx-runtime, react/jsx-dev-runtime,
   '@app/store', '@app/ui', 'big-lib/', 'date-fns'
 
-next-live does not bundle npm packages — pass them in explicitly:
+next-live does not bundle npm packages - pass them in explicitly:
   <LiveProvider modules={{ '@ui/coree': theModule }} />
 ```
 
 One thing to know: an import a snippet never *uses* is removed by the TypeScript
 transform before resolution runs, exactly as `tsc` would. So an unused typo does
-not error — it simply disappears.
+not error - it simply disappears.
 
 ## What the registry is not
 
@@ -303,7 +303,7 @@ It bounds what snippets can **conveniently** reach, not what they **can** reach.
 Evaluated code still has `window`, `fetch`, `document`, and your cookies.
 
 Treat the registry as module resolution and ergonomics. It is not a security
-boundary — see [Security](./05-security.md).
+boundary, see [Security](./05-security.md).
 
 ---
 

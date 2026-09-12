@@ -8,8 +8,8 @@ import type { UseLiveRunnerOptions } from '../core/types';
 
 export interface LiveProviderProps extends Omit<UseLiveRunnerOptions, 'code'> {
   /**
-   * The snippet to run. Treated as controlled: when it changes — because a new
-   * app was fetched from an API, say — the preview follows.
+   * The snippet to run. Treated as controlled: when it changes - because a new
+   * app was fetched from an API, say, the preview follows.
    */
   code: string;
   /** Props forwarded into the rendered component. Passed by reference. */

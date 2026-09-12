@@ -5,7 +5,7 @@ export default function Home() {
     <main className="mx-auto grid w-full max-w-2xl content-center gap-6 p-8 sm:min-h-screen">
       <h1 className="text-3xl font-semibold tracking-tight">next-live</h1>
       <p className="opacity-75">
-        Live TSX evaluation for the Next.js App Router — real ESM imports, a module
+        Live TSX evaluation for the Next.js App Router - real ESM imports, a module
         registry instead of a global scope, and no hydration mismatches.
       </p>
       <div className="flex flex-wrap gap-3">

@@ -18,8 +18,8 @@ export interface CompileInput extends CompileOptions {
  * Compiles and evaluates a snippet, returning something renderable.
  *
  * The stages run in a fixed order for one reason: Sucrase emits synchronous
- * `require()` calls, so every module — including any registered as an async
- * loader — must be resolved *before* evaluation begins.
+ * `require()` calls, so every module - including any registered as an async
+ * loader, must be resolved *before* evaluation begins.
  */
 export async function compile(input: CompileInput): Promise<CompileResult> {
   const prepared = await prepare(input);
@@ -90,7 +90,7 @@ async function prepare(input: CompileInput) {
 /**
  * Compiles and runs a snippet, returning its exports rather than a component.
  *
- * Use this for stored code that is not UI — a validator, a data transformer, a
+ * Use this for stored code that is not UI, a validator, a data transformer, a
  * calculated field. {@link compile} is the right call when you need something
  * to render; this one makes no such demand and will happily return
  * `{ validate, schema }`.

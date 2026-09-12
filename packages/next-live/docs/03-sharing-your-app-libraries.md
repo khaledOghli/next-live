@@ -7,7 +7,7 @@
 Your app already uses a charting library and a store in its own components:
 
 ```tsx
-// app/dashboard/page.tsx — your normal application code
+// app/dashboard/page.tsx, your normal application code
 import { BarChart } from 'my-charts';
 import { useAppStore } from '@/store';
 ```
@@ -25,7 +25,7 @@ That looks like importing the same library twice. Is it?
 
 ## The answer: one instance, not two
 
-**No — there is exactly one copy.** JavaScript modules are instantiated once per
+**No, there is exactly one copy.** JavaScript modules are instantiated once per
 resolved specifier. Your static `import` and the registry's dynamic `import()`
 resolve to the same module, so the bundler hands both the same object. This is
 the same reason `import React from 'react'` in fifty files gives you one React.
@@ -46,7 +46,7 @@ export default () => <b>Widget.__owner = {String(Widget.__owner)}</b>;
 ```
 
 It renders `Widget.__owner = host-app`. One object. Run the **Shared instance** demo in `/playground` to see it. The **`/apps`**
-shell demo shows the same pattern with `@app/store` and `@app/format` — the
+shell demo shows the same pattern with `@app/store` and `@app/format` - the
 header cart count updates when a snippet calls `addItem` through the registry.
 
 ## Why this matters much more than bundle size
@@ -56,7 +56,7 @@ serious consequence is **state**.
 
 If a snippet got its own copy of your store module, it would get its own
 *store*. Your app's cart and the snippet's cart would be two unrelated objects. The snippet
-would appear to work — no error, no warning — while silently sharing nothing.
+would appear to work - no error, no warning, while silently sharing nothing.
 Every bug report would be "my changes don't show up".
 
 Because there is one instance, the store a snippet imports **is** your store:
@@ -79,7 +79,7 @@ through `props`.
 
 When your app already imports a module statically, it is in a chunk the page has
 already loaded. A snippet importing the same specifier gets the loaded module
-back — the browser fetches nothing.
+back - the browser fetches nothing.
 
 Measured in the playground: selecting the snippet that imports a
 host-already-imported module fetched **zero** additional chunks.
@@ -87,7 +87,7 @@ host-already-imported module fetched **zero** additional chunks.
 The practical consequence is a nice one:
 
 - If your app **already uses** the library, registering it as a loader costs
-  nothing extra — the loader just hands over what is already there.
+  nothing extra - the loader just hands over what is already there.
 - If your app **does not** use it, the loader keeps it out of your bundle until
   a snippet asks for it.
 
@@ -127,7 +127,7 @@ or pin a single version with an `overrides` entry in your root `package.json`:
 }
 ```
 
-**Symptom:** state that will not sync, or — for React — `Invalid hook call` and
+**Symptom:** state that will not sync, or - for React, `Invalid hook call` and
 "more than one copy of React".
 
 ### 2. Different specifiers are different modules
@@ -151,7 +151,7 @@ hands over a snapshot rather than the store:
 ### 4. Server and client are separate instances
 
 Node and the browser instantiate modules separately. This never affects
-snippets, because `next-live` only evaluates on the client — but it is worth
+snippets, because `next-live` only evaluates on the client - but it is worth
 knowing if you keep module-level state and expect it to survive SSR.
 
 ## The recommended pattern

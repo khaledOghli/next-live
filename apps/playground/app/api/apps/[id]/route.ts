@@ -9,7 +9,7 @@ const cache = new Map<string, { code: string; linePrefixOffset: number; expressi
  * Serves one sub-app's source, the way a real control panel would.
  *
  * With `?precompile=1` the transpiling happens here instead of in the browser
- * and the result is cached by content hash — so a hundred users opening the
+ * and the result is cached by content hash - so a hundred users opening the
  * same app compile it once, and none of them download Sucrase.
  */
 export async function GET(

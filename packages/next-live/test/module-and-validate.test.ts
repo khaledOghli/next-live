@@ -50,7 +50,7 @@ export const schema = { type: 'number' };`,
 
 /**
  * The failure this guards against: snippets live in a database, so renaming
- * something in the SDK breaks them silently — the error surfaces for whoever
+ * something in the SDK breaks them silently - the error surfaces for whoever
  * opens that app next, not for whoever made the change. Validation in CI turns
  * that into a failed build.
  */

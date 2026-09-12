@@ -26,7 +26,7 @@ export function LiveError(props: LiveErrorProps): ReactNode {
   const position = errorPosition(live.error);
   const location =
     position !== null
-      ? `Line ${position.line}${position.column !== undefined ? `:${position.column}` : ''} — `
+      ? `Line ${position.line}${position.column !== undefined ? `:${position.column}` : ''} - `
       : '';
 
   return (

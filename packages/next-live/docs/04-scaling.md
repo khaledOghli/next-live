@@ -3,7 +3,7 @@
 [← Sharing libraries](./03-sharing-your-app-libraries.md) · [Docs index](./README.md) · [Security →](./05-security.md)
 
 For an app hosting hundreds of snippets with a large SDK surface, this is where
-things go wrong — and it is mostly about *how* you register, not *how much*.
+things go wrong, and it is mostly about *how* you register, not *how much*.
 
 ## Register loaders, not values
 
@@ -30,7 +30,7 @@ Measured on the playground with a 192 KB vendor module:
 | registered as a loader | **666 KB** |
 
 With the loader, the module is absent from every initially-loaded chunk, and the
-browser fetches its chunk at the moment a snippet imports it — verified by
+browser fetches its chunk at the moment a snippet imports it - verified by
 watching network activity, not inferred.
 
 **A registry of 300 loaders costs nothing.** `next-live` only resolves
@@ -38,7 +38,7 @@ specifiers that appear in the compiled snippet, so unused entries are never
 touched. Your provider can list everything without penalty.
 
 > If your app already imports the library for its own use, the loader costs
-> nothing extra either — it hands over the already-loaded module. See
+> nothing extra either, it hands over the already-loaded module. See
 > [Sharing libraries](./03-sharing-your-app-libraries.md#no-second-download-either).
 
 ## The library's own weight
@@ -52,7 +52,7 @@ esbuild, React externalised, code-splitting on:
 | the above plus `LiveEditor` from `next-live/editor` | 102.1 KB |
 
 The difference is `prism-react-renderer`. It is only needed to syntax-highlight
-an editor, so it lives on its own entry and is an optional peer dependency —
+an editor, so it lives on its own entry and is an optional peer dependency -
 a page that merely *runs* stored snippets never downloads or installs it.
 
 Sucrase is not in either number: it is fetched as a separate chunk on first
@@ -64,7 +64,7 @@ compile, or skipped entirely if you
 The bigger question is *what* to register.
 
 Everything in the registry is a public contract with your snippet authors. Expose
-500 internal functions and you can never rename or move any of them again —
+500 internal functions and you can never rename or move any of them again -
 every stored snippet becomes a reason not to refactor.
 
 Prefer a small, deliberate set of stable namespaces:
@@ -104,13 +104,13 @@ export const liveModules = createRegistry(vendorModules, storeModules, uiModules
 
 Adding a capability means adding a group, not editing the component that renders
 the provider. Later groups win, and a key defined by two groups logs a warning in
-development — a silent override is painful to debug.
+development - a silent override is painful to debug.
 
 ## Generate entries from the filesystem
 
 For a directory that is genuinely one-file-per-thing, `registryFromGlob` removes
 the hand-maintenance entirely. Turbopack's `import.meta.glob` already returns
-`{ path: () => import(path) }` — lazy thunks, exactly the shape a registry needs:
+`{ path: () => import(path) }` - lazy thunks, exactly the shape a registry needs:
 
 ```ts
 // lib/live-sdk/modules.ts
@@ -150,15 +150,15 @@ That constraint pushes you toward the better shape anyway: keep a dedicated
 directory of modules exposed to snippets, each a thin re-export. Your SDK
 surface becomes visible in the filesystem instead of buried in a filter list.
 
-`import.meta.glob` requires **Turbopack** — it does not exist under webpack.
+`import.meta.glob` requires **Turbopack** - it does not exist under webpack.
 Under webpack, build the equivalent `{ path: () => import(path) }` object
 yourself and pass that to `registryFromGlob`.
 
 ## Deep subpaths
 
-Some packages are used through hundreds of deep modules rather than a barrel —
+Some packages are used through hundreds of deep modules rather than a barrel -
 `big-lib/charts/BarChart`, `big-lib/format/currency`, and so on. A **prefix
-entry** — a key ending in `/` — serves the whole subtree from one line,
+entry** - a key ending in `/`, serves the whole subtree from one line,
 receiving the full specifier:
 
 ```ts
@@ -173,14 +173,14 @@ chunk fetched on demand.
 
 ### Know the trade-off
 
-A template-literal import compiles to a **context** — the bundler emits a chunk
+A template-literal import compiles to a **context** - the bundler emits a chunk
 for every module matching the pattern, including ones no snippet ever imports.
 Confirmed in the playground: a module imported by no app still had chunks
 generated for it.
 
 Those chunks are not in your initial bundle, so page load is unaffected. But
 build time and output file count grow with the size of the package. This was
-verified on a small package — measure it yourself before pointing a prefix entry
+verified on a small package, measure it yourself before pointing a prefix entry
 at something with hundreds of modules.
 
 If build times suffer, narrow the scope:
@@ -192,7 +192,7 @@ If build times suffer, narrow the scope:
 ```
 
 or list the specific modules explicitly. An explicit list is more verbose but is
-also an allowlist, which some teams prefer for exactly that reason — and it is
+also an allowlist, which some teams prefer for exactly that reason - and it is
 the approach the [recommended SDK pattern](#design-an-sdk-surface-not-a-mirror-of-your-codebase)
 gives you for free.
 
@@ -200,7 +200,7 @@ gives you for free.
 
 Compilation is a few milliseconds, and results are not shared between page
 loads. If you serve many stored snippets, transpile once on the server and cache
-by content hash — the browser then never downloads Sucrase at all:
+by content hash, the browser then never downloads Sucrase at all:
 
 ```ts
 // app/api/apps/[id]/route.ts
@@ -217,9 +217,9 @@ import { precompiledTransform } from 'next-live';
 ```
 
 `precompiledTransform` returns a constant closure over the server result. Only
-apply it while `code` still matches the source that was precompiled — as soon as
+apply it while `code` still matches the source that was precompiled - as soon as
 an author edits the snippet, drop back to client transpile or re-precompile.
-See [Troubleshooting — precompile ignores edits](./07-troubleshooting.md#precompile-ignores-my-edits).
+See [Troubleshooting: precompile ignores edits](./07-troubleshooting.md#precompile-ignores-my-edits).
 
 You can also warm the transpiler chunk during idle time so the first compile is
 not gated on a network round trip:

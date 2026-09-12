@@ -6,7 +6,7 @@
  * that), and without it consumers hit "you're importing a component that needs
  * useState" the moment they render from a Server Component.
  *
- * The server entry is deliberately excluded — it must stay usable from Route
+ * The server entry is deliberately excluded - it must stay usable from Route
  * Handlers and Server Components.
  */
 import { readFile, writeFile } from 'node:fs/promises';

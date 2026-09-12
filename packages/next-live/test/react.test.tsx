@@ -114,7 +114,7 @@ describe('error handling', () => {
       </LiveProvider>,
     );
 
-    // The error appears, but the previously good output is still on screen —
+    // The error appears, but the previously good output is still on screen -
     // otherwise a live editor would blank out on every half-typed keystroke.
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
     expect(screen.getByTestId('out')).toBeTruthy();

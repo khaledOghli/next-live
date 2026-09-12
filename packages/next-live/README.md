@@ -5,6 +5,9 @@
 [![npm downloads](https://img.shields.io/npm/dm/next-live.svg?color=0b7285)](https://www.npmjs.com/package/next-live)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/next-live?label=minzip)](https://bundlephobia.com/package/next-live)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khaledOghli/next-live/blob/main/LICENSE)
+[![Docs](https://img.shields.io/badge/docs-live%20site-0b7285)](https://next-live-playground.vercel.app)
+
+**[→ Documentation and live demos](https://next-live-playground.vercel.app)**
 
 Live TSX/JSX evaluation for **React**, real ESM `import` statements, a module
 registry instead of a global scope bag, and no hydration mismatches.
@@ -97,7 +100,7 @@ snippet should share your page's React instance and your live objects.
 
 ## Documentation
 
-**[→ Full documentation](./docs/README.md)**
+**[→ Read the documentation online](https://next-live-playground.vercel.app)**, or the markdown copies below.
 
 | | |
 | --- | --- |

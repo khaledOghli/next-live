@@ -1,6 +1,7 @@
 'use client';
 
 import type { ElementType, ReactNode } from 'react';
+import { errorPosition } from '../core/positions';
 import { useLiveContext } from '../hooks/useLiveContext';
 
 export interface LiveErrorProps {
@@ -9,11 +10,6 @@ export interface LiveErrorProps {
   style?: React.CSSProperties;
   /** Replaces the default rendering entirely. */
   children?: (error: Error) => ReactNode;
-}
-
-interface PositionedError extends Error {
-  line?: number;
-  column?: number;
 }
 
 /**
@@ -27,10 +23,10 @@ export function LiveError(props: LiveErrorProps): ReactNode {
   if (!live.error) return null;
   if (children) return <>{children(live.error)}</>;
 
-  const error = live.error as PositionedError;
+  const position = errorPosition(live.error);
   const location =
-    error.line !== undefined
-      ? `Line ${error.line}${error.column !== undefined ? `:${error.column}` : ''} — `
+    position !== null
+      ? `Line ${position.line}${position.column !== undefined ? `:${position.column}` : ''} — `
       : '';
 
   return (
@@ -52,7 +48,7 @@ export function LiveError(props: LiveErrorProps): ReactNode {
       }}
     >
       {location}
-      {error.message}
+      {live.error.message}
     </Wrapper>
   );
 }

@@ -211,8 +211,15 @@ const result = precompile(source, { filePath: `${id}.tsx` });
 ```
 
 ```tsx
-<LiveProvider code={source} transform={() => precompiledResult} />
+import { precompiledTransform } from 'next-live';
+
+<LiveProvider code={source} transform={precompiledTransform(compiled)} />
 ```
+
+`precompiledTransform` returns a constant closure over the server result. Only
+apply it while `code` still matches the source that was precompiled — as soon as
+an author edits the snippet, drop back to client transpile or re-precompile.
+See [Troubleshooting — precompile ignores edits](./07-troubleshooting.md#precompile-ignores-my-edits).
 
 You can also warm the transpiler chunk during idle time so the first compile is
 not gated on a network round trip:

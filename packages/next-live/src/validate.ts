@@ -24,12 +24,16 @@ import { isIgnoredSpecifier, matchRegistryKey, scanRequires } from './core/resol
 import { defaultTranspileOptions, runTranspile } from './core/transpile';
 import type { ModuleRegistry, TranspileOptions } from './core/types';
 
-export type ValidationIssueKind = 'syntax' | 'unresolved-import';
+export type ValidationIssueKind =
+  | 'syntax'
+  | 'unresolved-import'
+  | 'source-too-large'
+  | 'forbidden-import';
 
 export interface ValidationIssue {
   kind: ValidationIssueKind;
   message: string;
-  /** The import specifier, for `unresolved-import`. */
+  /** The import specifier, for import-related issues. */
   specifier?: string;
   /** The closest registered specifier, when one is close enough to suggest. */
   suggestion?: string;
@@ -51,6 +55,17 @@ export interface ValidateOptions extends TranspileOptions {
    * since the real registry is full of bundler-specific dynamic imports.
    */
   modules?: ModuleRegistry | readonly string[];
+  /** Reject snippets larger than this many UTF-8 bytes. Checked before transpile. */
+  maxSourceBytes?: number;
+  /** Treat `node:*` imports as forbidden rather than unresolved. */
+  forbidNodeBuiltins?: boolean;
+  /** Treat remote URL imports as forbidden. */
+  forbidRemoteImports?: boolean;
+  /**
+   * Deny these specifiers even when registered. Prefix keys ending in `/`
+   * deny a whole subtree, matching registry prefix semantics.
+   */
+  denySpecifiers?: readonly string[];
 }
 
 /**
@@ -69,13 +84,36 @@ export function validateSnippet(
   source: string,
   options: ValidateOptions = {},
 ): ValidationResult {
-  const { modules, ...transpileOptions } = options;
+  const {
+    modules,
+    maxSourceBytes,
+    forbidNodeBuiltins,
+    forbidRemoteImports,
+    denySpecifiers,
+    ...transpileOptions
+  } = options;
   const resolved = { ...defaultTranspileOptions, ...transpileOptions };
 
   const registryKeys = [
     ...BUILTIN_SPECIFIERS,
     ...(Array.isArray(modules) ? (modules as string[]) : Object.keys(modules ?? {})),
   ];
+
+  if (maxSourceBytes !== undefined) {
+    const bytes = new TextEncoder().encode(source).length;
+    if (bytes > maxSourceBytes) {
+      return {
+        ok: false,
+        issues: [
+          {
+            kind: 'source-too-large',
+            message: `Snippet is ${bytes} bytes, exceeding the limit of ${maxSourceBytes}.`,
+          },
+        ],
+        imports: [],
+      };
+    }
+  }
 
   let code: string;
   try {
@@ -88,6 +126,16 @@ export function validateSnippet(
   const issues: ValidationIssue[] = [];
 
   for (const specifier of imports) {
+    const policyIssue = policyViolation(specifier, {
+      forbidNodeBuiltins,
+      forbidRemoteImports,
+      denySpecifiers,
+    });
+    if (policyIssue) {
+      issues.push(policyIssue);
+      continue;
+    }
+
     if (isIgnoredSpecifier(specifier)) continue;
     if (matchRegistryKey(specifier, registryKeys)) continue;
 
@@ -103,6 +151,47 @@ export function validateSnippet(
   }
 
   return { ok: issues.length === 0, issues, imports };
+}
+
+function policyViolation(
+  specifier: string,
+  options: {
+    forbidNodeBuiltins?: boolean;
+    forbidRemoteImports?: boolean;
+    denySpecifiers?: readonly string[];
+  },
+): ValidationIssue | null {
+  if (options.forbidNodeBuiltins && specifier.startsWith('node:')) {
+    return {
+      kind: 'forbidden-import',
+      specifier,
+      message: `Import '${specifier}' is forbidden: Node built-ins are not available to snippets.`,
+    };
+  }
+
+  if (
+    options.forbidRemoteImports &&
+    (/^https?:\/\//.test(specifier) || specifier.startsWith('//'))
+  ) {
+    return {
+      kind: 'forbidden-import',
+      specifier,
+      message: `Import '${specifier}' is forbidden: remote modules are not available to snippets.`,
+    };
+  }
+
+  if (options.denySpecifiers?.length) {
+    const denied = matchRegistryKey(specifier, options.denySpecifiers);
+    if (denied !== undefined) {
+      return {
+        kind: 'forbidden-import',
+        specifier,
+        message: `Import '${specifier}' is forbidden by policy (matched deny rule '${denied}').`,
+      };
+    }
+  }
+
+  return null;
 }
 
 /**

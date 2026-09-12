@@ -17,7 +17,7 @@ import { NextResponse, type NextRequest } from 'next/server';
  */
 
 /** Routes that evaluate snippets, and therefore need `'unsafe-eval'`. */
-const RUNNER_ROUTES = ['/playground'];
+const RUNNER_ROUTES = ['/playground', '/apps'];
 
 function buildCsp(pathname: string, isDev: boolean): string {
   // React uses eval in development to reconstruct server error stacks, so dev

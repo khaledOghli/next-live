@@ -4,7 +4,7 @@ import { evaluate, runModule } from './evaluate';
 import { createRequire, resolveModules, scanRequires } from './resolver';
 import { filterUserFrames, mapPosition } from './stacks';
 import { defaultTranspileOptions, transpile } from './transpile';
-import type { CompileOptions, CompileResult } from './types';
+import type { CompileModuleResult, CompileOptions, CompileResult } from './types';
 
 export interface CompileInput extends CompileOptions {
   code: string;
@@ -25,7 +25,7 @@ export async function compile(input: CompileInput): Promise<CompileResult> {
   const prepared = await prepare(input);
   try {
     const { renderable, via } = evaluate(prepared.evaluateOptions);
-    return { renderable, via, code: prepared.code };
+    return { renderable, via, code: prepared.code, imports: prepared.imports };
   } catch (cause) {
     throw enrichRuntimeError(cause, prepared.meta);
   }
@@ -59,9 +59,11 @@ async function prepare(input: CompileInput) {
   // while `react/jsx-runtime` stays available without anyone registering it.
   const registry = { ...builtinModules, ...modules };
 
+  const imports = [...scanRequires(transformed.code)].sort();
+
   const resolved = await resolveModules({
     registry,
-    specifiers: scanRequires(transformed.code),
+    specifiers: imports,
     resolveSubpaths,
     ...(signal ? { signal } : {}),
   });
@@ -69,6 +71,7 @@ async function prepare(input: CompileInput) {
 
   return {
     code: transformed.code,
+    imports,
     evaluateOptions: {
       code: transformed.code,
       filePath: options.filePath,
@@ -84,13 +87,6 @@ async function prepare(input: CompileInput) {
   };
 }
 
-export interface CompileModuleResult {
-  /** Everything the snippet exported. */
-  exports: Record<string, unknown>;
-  /** The transpiled JavaScript. */
-  code: string;
-}
-
 /**
  * Compiles and runs a snippet, returning its exports rather than a component.
  *
@@ -103,7 +99,7 @@ export async function compileModule(input: CompileInput): Promise<CompileModuleR
   const prepared = await prepare(input);
   try {
     const { exports } = runModule(prepared.evaluateOptions);
-    return { exports, code: prepared.code };
+    return { exports, code: prepared.code, imports: prepared.imports };
   } catch (cause) {
     throw enrichRuntimeError(cause, prepared.meta);
   }
@@ -158,4 +154,5 @@ function positionFromStack(stack: string | undefined): { line: number; column?: 
   return null;
 }
 
+export type { CompileModuleResult } from './types';
 export { LiveCompileError };

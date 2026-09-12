@@ -23,7 +23,8 @@ Live TSX/JSX evaluation for the Next.js App Router.
 - **New here?** [Getting started](./01-getting-started.md), then
   [the module registry](./02-module-registry.md).
 - **Adding this to a real application?** Jump to the
-  [integration guide](./08-integration-guide.md).
+  [integration guide](./08-integration-guide.md), then try the live
+  **`/apps` shell demo** in the playground repository.
 - **Something is broken?** [Troubleshooting](./07-troubleshooting.md).
 - **About to deploy?** [Security](./05-security.md) — it takes ten minutes and
   covers the one rule that actually protects you.
@@ -72,3 +73,9 @@ Yes — `useLiveModule` returns raw exports.
 **How do I know when I break my stored apps?**
 Validate them in CI.
 [Validating in CI](./10-validating-in-ci.md).
+
+**Do React hooks and Tailwind work in snippets?**
+Hooks yes — snippets share your React instance.
+[Troubleshooting — hooks](./07-troubleshooting.md#do-react-hooks-work-in-snippets).
+Tailwind only through registered UI components or an explicit safelist —
+[Module registry — styling](./02-module-registry.md#styling-and-tailwind).

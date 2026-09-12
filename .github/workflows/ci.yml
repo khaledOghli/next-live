@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
   pull_request:
 
 jobs:
@@ -44,6 +44,7 @@ jobs:
       # Every stored snippet must still compile against the current SDK
       # surface. Without this, renaming a module breaks stored apps silently.
       - run: npm run validate:apps -w playground
+      - run: npm run validate:apps:test -w playground
 
   # Exercises the lower end of the supported Node range.
   #

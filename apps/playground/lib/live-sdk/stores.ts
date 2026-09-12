@@ -1,5 +1,6 @@
 import { registryFromGlob } from 'next-live';
 import type { ModuleRegistry } from 'next-live';
+import { pathToAppSpecifier } from './app-module-specifier';
 
 /**
  * Everything in `./modules` is exposed to snippets, generated from the
@@ -16,8 +17,5 @@ import type { ModuleRegistry } from 'next-live';
  */
 export const storeModules: ModuleRegistry = registryFromGlob(
   import.meta.glob('./modules/*.ts'),
-  (path) => {
-    const name = path.split('/').pop()?.replace(/\.tsx?$/, '');
-    return name ? `@app/${name}` : null;
-  },
+  pathToAppSpecifier,
 );

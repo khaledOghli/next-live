@@ -4,6 +4,28 @@
 
 Every error below is one you can actually hit, with its real message text.
 
+## `LiveEditor` is not exported from `next-live`
+
+```
+The requested module 'next-live' does not provide an export named 'LiveEditor'
+```
+
+`<LiveEditor>` lives on its own entry point so preview-only pages never pay for
+a syntax highlighter:
+
+```tsx
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
+```
+
+Install the optional peer when you use the editor:
+
+```bash
+npm install prism-react-renderer
+```
+
+See [API reference — entry points](./06-api-reference.md#components).
+
 ## `Module 'x' is not registered in the next-live scope`
 
 ```
@@ -169,6 +191,66 @@ server and on the client's first pass.
 If you see one, check whether *your* runner component renders something
 different between server and client, for example `Date.now()` or
 `window.matchMedia`, outside of `next-live`.
+
+## Precompile ignores my edits
+
+You enabled server precompile and passed `precompiledTransform(compiled)` as
+`transform`, but editing the snippet no longer updates the preview.
+
+**Cause:** `precompiledTransform` returns a constant closure. It always serves
+the server-compiled output regardless of what `code` says now.
+
+**Fix:** only apply the transform while `code` still matches the catalog source
+that was precompiled. As soon as the author edits, set `transform={undefined}`
+(or re-precompile the new source):
+
+```tsx
+const usingPrecompile =
+  precompileEnabled && compiled && code === catalogSource;
+
+<LiveProvider
+  code={code}
+  transform={usingPrecompile ? precompiledTransform(compiled) : undefined}
+/>
+```
+
+See [Scaling — compile cost](./04-scaling.md#compile-cost-and-skipping-the-transpiler).
+
+## Tailwind classes in my snippet do nothing
+
+Tailwind scans your **host** source files at build time. Utility classes written
+only inside stored snippet strings are invisible to the scanner, so no CSS is
+generated for them.
+
+**Fix (recommended):** expose pre-built components through the registry:
+
+```ts
+// lib/live-sdk/modules/ui.ts
+export { Button, Card } from '@/components/ui';
+```
+
+```tsx
+// snippet
+import { Button, Card } from '@app/ui';
+export default () => <Card><Button>Save</Button></Card>;
+```
+
+The components' classes are compiled into your host bundle. This is what the
+`/apps` shell demo does with shadcn.
+
+**Alternative:** add a `@source` directive in your global CSS pointing at a
+file that contains the utility class names your snippets use, or safelist them
+in your Tailwind config. See the playground's `app/globals.css` for an example.
+
+## Do React hooks work in snippets?
+
+Yes. Snippets import the **host's** React instance (`react` is a built-in
+module), so `useState`, `useEffect`, `useContext`, and the rest work normally.
+The `/apps` shell demo includes timer and fetch examples.
+
+Common pitfalls are the same as in any React app: missing effect cleanup,
+state updates during render, and dependency arrays. The render-loop breaker catches
+runaway re-renders — see [above](#this-component-rendered-more-than-1000-times-in-1000ms).
 
 ## The first compile is slow
 

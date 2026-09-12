@@ -162,6 +162,78 @@ enumerating them. There is a build-time cost — see
 wrong for packages whose subpaths are not re-exported from the barrel — and a
 silently wrong value is worse than a clear error.
 
+## Generating entries from the filesystem
+
+### Turbopack — `import.meta.glob`
+
+```ts
+import { registryFromGlob } from 'next-live';
+
+export const storeModules = registryFromGlob(
+  import.meta.glob('./modules/*.ts'),
+  (path) => {
+    const name = path.split('/').pop()?.replace(/\.tsx?$/, '');
+    return name ? `@app/${name}` : null;
+  },
+);
+```
+
+### Webpack — `require.context`
+
+`registryFromGlob` accepts any `Record<string, () => Promise<unknown>>`. Under
+webpack, build that object from `require.context`:
+
+```ts
+import { registryFromGlob } from 'next-live';
+
+const context = require.context('./modules', false, /\.tsx?$/);
+
+export const storeModules = registryFromGlob(
+  Object.fromEntries(
+    context.keys().map((key) => [
+      key,
+      () => Promise.resolve(context(key)),
+    ]),
+  ),
+  (path) => {
+    const name = path.replace(/^\.\//, '').replace(/\.tsx?$/, '');
+    return `@app/${name}`;
+  },
+);
+```
+
+See [Scaling](./04-scaling.md#generate-entries-from-the-filesystem) for the
+directory rule that silently breaks globs.
+
+## Styling and Tailwind
+
+Snippets can use `className`, but Tailwind only generates CSS for classes it
+finds in your **host** source at build time. Arbitrary utility strings inside
+stored snippet source will not produce styles unless you safelist them or add
+a `@source` scan target.
+
+The reliable pattern is to register UI components whose classes are already
+compiled:
+
+```ts
+// lib/live-sdk/modules/ui.ts
+export { Button, Card, Badge } from '@/components/ui';
+```
+
+```tsx
+import { Card, Button } from '@app/ui';
+
+export default function App() {
+  return (
+    <Card>
+      <Button>Styled by the host bundle</Button>
+    </Card>
+  );
+}
+```
+
+See [Troubleshooting — Tailwind in snippets](./07-troubleshooting.md#tailwind-classes-in-my-snippet-do-nothing).
+
 ## Asset imports are ignored
 
 `import './styles.css'` resolves to an empty module rather than failing, so a

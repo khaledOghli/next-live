@@ -45,8 +45,9 @@ import Widget from '@demo/vendor/Widget';
 export default () => <b>Widget.__owner = {String(Widget.__owner)}</b>;
 ```
 
-It renders `Widget.__owner = host-app`. One object. Run the **Shared instance**
-demo in the playground to see it.
+It renders `Widget.__owner = host-app`. One object. Run the **Shared instance** demo in `/playground` to see it. The **`/apps`**
+shell demo shows the same pattern with `@app/store` and `@app/format` — the
+header cart count updates when a snippet calls `addItem` through the registry.
 
 ## Why this matters much more than bundle size
 

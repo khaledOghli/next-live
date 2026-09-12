@@ -128,6 +128,65 @@ describe('validateSnippet', () => {
     expect(validateSnippet(`<b>hello</b>`, { modules }).ok).toBe(true);
   });
 
+  it('rejects snippets over maxSourceBytes before transpile', () => {
+    const result = validateSnippet(`export default () => <b/>;`, {
+      modules,
+      maxSourceBytes: 10,
+    });
+    expect(result.ok).toBe(false);
+    expect(result.issues[0]?.kind).toBe('source-too-large');
+  });
+
+  it('forbids node: builtins when opted in', () => {
+    const result = validateSnippet(
+      `import fs from 'node:fs';\nexport default () => String(fs);`,
+      { modules, forbidNodeBuiltins: true },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues[0]).toMatchObject({
+      kind: 'forbidden-import',
+      specifier: 'node:fs',
+    });
+  });
+
+  it('forbids remote imports when opted in', () => {
+    const result = validateSnippet(
+      `import x from 'https://cdn.example/x.js';\nexport default () => String(x);`,
+      { modules, forbidRemoteImports: true },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues[0]?.kind).toBe('forbidden-import');
+  });
+
+  it('denies specifiers even when registered', () => {
+    const result = validateSnippet(
+      `import { useCart } from '@app/store';\nexport default () => useCart().length;`,
+      { modules, denySpecifiers: ['@app/store'] },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues[0]).toMatchObject({
+      kind: 'forbidden-import',
+      specifier: '@app/store',
+    });
+  });
+
+  it('denies a prefix subtree via denySpecifiers', () => {
+    const result = validateSnippet(
+      `import C from 'big-lib/charts/Bar';\nexport default () => <C/>;`,
+      { modules: ['big-lib/'], denySpecifiers: ['big-lib/'] },
+    );
+    expect(result.ok).toBe(false);
+    expect(result.issues[0]?.kind).toBe('forbidden-import');
+  });
+
+  it('keeps default validation unchanged without policy flags', () => {
+    const result = validateSnippet(
+      `import { useCart } from '@app/store';\nexport default () => <b/>;`,
+      { modules },
+    );
+    expect(result.ok).toBe(true);
+  });
+
   it('never evaluates the snippet', () => {
     // Safe to run over stored content in CI: a side effect at module scope
     // must not fire, and an import that would throw must not be executed.

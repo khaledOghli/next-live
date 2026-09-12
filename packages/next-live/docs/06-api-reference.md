@@ -37,6 +37,7 @@ inside it.
 | `language` | `string` | `'tsx'` | Highlighting hint for `<LiveEditor>`. |
 | `onError` | `(error: Error) => void` | — | Called on every compile and runtime error. |
 | `onCodeChange` | `(code: string) => void` | — | Called when the code is edited from inside. Not called when the `code` prop changes from outside, so it cannot echo your own saves back. |
+| `onCompileSuccess` | `(info: CompileSuccessInfo) => void` | — | Called after every successful compile with `compileId`, sorted `imports`, optional `via`, and `durationMs`. Not called on failure or abort. |
 | `debounce` | `number` | `150` | Milliseconds before recompiling after a change. |
 | `keepLastGood` | `boolean` | `true` | Keep the last working component mounted when a recompile fails. |
 | `maxRendersPerSecond` | `number` | `1000` | Render-loop breaker threshold. |
@@ -70,14 +71,18 @@ stays small and has no SSR quirks.
 | `readOnly` | `boolean` | `false` | |
 | `tabSize` | `number` | `2` | Spaces inserted by the Tab key. |
 | `padding` | `number` | `16` | |
+| `errorLineStyle` | `CSSProperties \| null` | red inset highlight | Paint-only highlight on the error line from context. Pass `null` to disable. |
+| `errorLineClassName` | `string` | — | Extra class on the error line. |
 | `className` / `style` | | | |
+
+`LiveEditorRenderProps` also exposes `error`, `errorLine`, and `errorColumn` for custom editors.
 
 Dropping in a different editor:
 
 ```tsx
 <LiveEditor
-  renderEditor={({ code, onChange, language }) => (
-    <CodeMirror value={code} onChange={onChange} lang={language} />
+  renderEditor={({ code, onChange, language, errorLine }) => (
+    <CodeMirror value={code} onChange={onChange} lang={language} highlightLine={errorLine} />
   )}
 />
 ```
@@ -114,7 +119,7 @@ const { code, setCode, Component, element, error, isCompiling, compileId } =
 ```
 
 Accepts every `LiveProvider` option except `props`, `language`, `onError`, and
-`fallback`. Returns:
+`fallback` — including `onCompileSuccess`. Returns:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -192,8 +197,9 @@ The always-registered map: `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`
 
 | Export | Purpose |
 |---|---|
-| `compile(input)` | Transpile + resolve + evaluate. Returns `{ renderable, via, code }`. Throws if the snippet produced nothing renderable. |
-| `compileModule(input)` | The same pipeline, returning `{ exports, code }` with no component required. |
+| `compile(input)` | Transpile + resolve + evaluate. Returns `{ renderable, via, code, imports }`. Throws if the snippet produced nothing renderable. |
+| `compileModule(input)` | The same pipeline, returning `{ exports, code, imports }` with no component required. |
+| `errorPosition(error)` | Reads `{ line, column? }` from a compile or runtime error, if present. |
 | `transpile(source, options, transform?)` | Source → CommonJS. No evaluation. |
 | `preloadTranspiler()` | Warm the Sucrase chunk during idle time. |
 | `precompiledTransform(result)` | Wraps a server-precompiled result as a `transform`, so the client never loads Sucrase. Exported from the **client** entry — importing it from `next-live/server` would pull the transpiler into your page. |
@@ -226,6 +232,15 @@ const result = validateSnippet(source, { modules: ['@app/store', 'big-lib/'] });
 
 `modules` accepts a registry object or just its keys.
 
+Optional policy flags (all opt-in; defaults unchanged):
+
+| Option | Notes |
+|---|---|
+| `maxSourceBytes` | Reject snippets over this UTF-8 byte count before transpile. |
+| `forbidNodeBuiltins` | Treat `node:*` imports as forbidden. |
+| `forbidRemoteImports` | Treat `https://`, `http://`, and `//` imports as forbidden. |
+| `denySpecifiers` | Deny listed specifiers even when registered (prefix `/` denies a subtree). |
+
 ### `validateSnippets(snippets, options?)`
 
 Validates many at once and returns only the failures, as
@@ -249,12 +264,12 @@ All extend `LiveError` (exported as `LiveErrorBase` to avoid colliding with the
 
 `ModuleRegistry`, `ModuleLoader`, `ModuleValue`, `NormalizedModule`, `LiveScope`,
 `LiveRenderable`, `LiveRunnerState`, `LiveContextValue`, `CompileOptions`,
-`CompileResult`, `CompileInput`, `TranspileOptions`, `TransformFn`,
-`TransformResult`, `ExtractionSource`, `UseLiveRunnerOptions`,
+`CompileResult`, `CompileInput`, `CompileSuccessInfo`, `TranspileOptions`,
+`TransformFn`, `TransformResult`, `ExtractionSource`, `UseLiveRunnerOptions`,
 `RenderBudgetOptions`, `GlobResult`, `CompileModuleResult`, `LiveModuleState`,
-`UseLiveModuleOptions`, `ValidationResult`, `ValidationIssue`,
-`ValidationIssueKind`, `ValidateOptions`, plus the props type for each
-component.
+`UseLiveModuleOptions`, `PositionedError`, `ValidationResult`, `ValidationIssue`,
+`ValidationIssueKind` (`syntax`, `unresolved-import`, `source-too-large`,
+`forbidden-import`), `ValidateOptions`, plus the props type for each component.
 
 ---
 

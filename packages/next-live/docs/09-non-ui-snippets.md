@@ -98,6 +98,11 @@ respect that matters:
 - Changes are debounced, and a superseded compile never commits its result.
 - A failed recompile keeps the last good `exports` (`keepLastGood`, default on).
 - `compileId` increments on every successful run.
+- `onCompileSuccess` fires after each successful run with sorted `imports` and
+  `durationMs`.
+
+The playground's **API script** tab (`/playground`) fetches non-UI source from
+an API route and runs it with `useLiveModule` against `@app/store`.
 
 The one thing it does **not** share: there is no render-loop breaker, because
 nothing is being rendered. A snippet that loops inside an exported function

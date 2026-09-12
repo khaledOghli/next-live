@@ -52,9 +52,13 @@ export {
   TranspilerLoadError,
 } from './core/errors';
 
+export { errorPosition } from './core/positions';
+export type { PositionedError } from './core/positions';
+
 export type {
   CompileOptions,
   CompileResult,
+  CompileSuccessInfo,
   ExtractionSource,
   LiveContextValue,
   LiveRenderable,

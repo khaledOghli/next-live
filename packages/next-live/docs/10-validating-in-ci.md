@@ -28,11 +28,10 @@ your registry. Run it in CI and the rename fails the build instead.
 // scripts/validate-apps.ts
 import { validateSnippets } from 'next-live/server';
 import { getAllApps } from '../lib/db';
-
-const MODULE_KEYS = ['@app/store', '@app/ui', '@app/data', 'big-lib/'];
+import { LIVE_MODULE_KEYS } from '../lib/live-sdk/module-keys';
 
 const apps = await getAllApps();          // [{ id, source }, …]
-const failures = validateSnippets(apps, { modules: MODULE_KEYS });
+const failures = validateSnippets(apps, { modules: [...LIVE_MODULE_KEYS] });
 
 if (failures.length === 0) {
   console.log(`✓ all ${apps.length} stored apps validate`);
@@ -62,7 +61,20 @@ Output when someone renames a module:
 - run: npm run validate:apps
 ```
 
-A working version is in `apps/playground/scripts/validate-apps.ts`.
+A working version is in `apps/playground/scripts/validate-apps.ts`. It validates
+both the lab catalogue (`lib/apps.ts`) and the shell catalogue
+(`lib/shell-apps.ts`), plus a non-UI API script.
+
+### Keeping the key list honest
+
+Do not hand-maintain registry keys. Derive `@app/*` keys from your
+`modules/` directory in Node (the playground uses `readdirSync` in
+`lib/live-sdk/module-keys.ts` because `import.meta.glob` cannot run in a CI
+script). Add a drift check that compares keys on disk to `LIVE_MODULE_KEYS`:
+
+```bash
+npm run validate:apps:test -w playground
+```
 
 ## What it checks, and what it does not
 
@@ -74,6 +86,9 @@ A working version is in `apps/playground/scripts/validate-apps.ts`.
   (`react`, the JSX runtimes), prefix entries (`big-lib/`), and ignored asset
   imports.
 - Unresolved specifiers come with a "did you mean" suggestion.
+- Optional policy flags (all opt-in): `maxSourceBytes`, `forbidNodeBuiltins`,
+  `forbidRemoteImports`, `denySpecifiers`. See
+  [API reference — validateSnippet](./06-api-reference.md#validatesnippetsource-options).
 
 **Does not check:**
 
@@ -112,13 +127,23 @@ The real registry is full of bundler-specific dynamic imports and is awkward to
 load in a plain Node script. `validateSnippet` accepts a registry object too,
 if yours is simple enough to import.
 
-To keep the list honest, export it from one place your app and the script both
-read:
+To keep the list honest, derive it from the filesystem rather than maintaining
+a parallel list:
 
 ```ts
-// lib/live-sdk/keys.ts — no bundler-specific code, importable anywhere
-export const MODULE_KEYS = ['@app/store', '@app/ui', '@app/data'] as const;
+// lib/live-sdk/module-keys.ts — Node-safe, no import.meta.glob
+import { readdirSync } from 'node:fs';
+import { vendorModules } from './vendor';
+
+const appKeys = readdirSync('./modules')
+  .filter((f) => /\.tsx?$/.test(f))
+  .map((f) => `@app/${f.replace(/\.tsx?$/, '')}`);
+
+export const LIVE_MODULE_KEYS = [...Object.keys(vendorModules), ...appKeys];
 ```
+
+Do **not** re-export `LIVE_MODULE_KEYS` from the client registry barrel — it
+pulls `node:fs` into the browser bundle.
 
 ## Validate on write, too
 

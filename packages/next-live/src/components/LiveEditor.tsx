@@ -4,12 +4,16 @@ import { useCallback, useRef } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Highlight, themes } from 'prism-react-renderer';
 import type { PrismTheme } from 'prism-react-renderer';
+import { errorPosition } from '../core/positions';
 import { useLiveContext } from '../hooks/useLiveContext';
 
 export interface LiveEditorRenderProps {
   code: string;
   onChange: (code: string) => void;
   language: string;
+  error: Error | null;
+  errorLine?: number;
+  errorColumn?: number;
 }
 
 export interface LiveEditorProps {
@@ -21,12 +25,20 @@ export interface LiveEditorProps {
   /** Spaces inserted by the Tab key. Default 2. */
   tabSize?: number;
   padding?: number;
+  /** Paint-only highlight for the error line. Pass `null` to disable. */
+  errorLineStyle?: CSSProperties | null;
+  errorLineClassName?: string;
   /**
    * Replaces the built-in editor entirely — drop in CodeMirror, Monaco, or
    * anything else while keeping the rest of the provider wiring.
    */
   renderEditor?: (props: LiveEditorRenderProps) => ReactNode;
 }
+
+const DEFAULT_ERROR_LINE_STYLE: CSSProperties = {
+  background: 'rgba(179, 38, 30, 0.35)',
+  boxShadow: 'inset 3px 0 0 #b3261e',
+};
 
 /**
  * Typography shared by the textarea and the highlighted layer beneath it.
@@ -65,19 +77,33 @@ export function LiveEditor(props: LiveEditorProps): ReactNode {
     readOnly = false,
     tabSize = 2,
     padding = 16,
+    errorLineStyle = DEFAULT_ERROR_LINE_STYLE,
+    errorLineClassName,
     renderEditor,
   } = props;
 
   const live = useLiveContext();
   const highlightRef = useRef<HTMLPreElement>(null);
+  const position = live.error ? errorPosition(live.error) : null;
+  const errorLine = position?.line;
+  const errorColumn = position?.column;
 
   const handleChange = useCallback(
     (value: string) => live.setCode(value),
     [live],
   );
 
+  const renderProps: LiveEditorRenderProps = {
+    code: live.code,
+    onChange: handleChange,
+    language: live.language,
+    error: live.error,
+    errorLine,
+    errorColumn,
+  };
+
   if (renderEditor) {
-    return <>{renderEditor({ code: live.code, onChange: handleChange, language: live.language })}</>;
+    return <>{renderEditor(renderProps)}</>;
   }
 
   // The highlighted layer does not scroll on its own — it is not focusable —
@@ -134,15 +160,30 @@ export function LiveEditor(props: LiveEditorProps): ReactNode {
             aria-hidden="true"
             style={{ ...prismStyle, ...layerStyle }}
           >
-            {tokens.map((line, i) => (
-              // eslint-disable-next-line react/no-array-index-key
-              <div key={i} {...getLineProps({ line })}>
-                {line.map((token, key) => (
-                  // eslint-disable-next-line react/no-array-index-key
-                  <span key={key} {...getTokenProps({ token })} />
-                ))}
-              </div>
-            ))}
+            {tokens.map((line, i) => {
+              const isErrorLine = errorLineStyle !== null && errorLine === i + 1;
+              const lineProps = getLineProps({ line });
+              return (
+                // eslint-disable-next-line react/no-array-index-key
+                <div
+                  key={i}
+                  {...lineProps}
+                  className={[lineProps.className, isErrorLine ? errorLineClassName : undefined]
+                    .filter(Boolean)
+                    .join(' ')}
+                  style={
+                    isErrorLine
+                      ? { ...lineProps.style, ...errorLineStyle }
+                      : lineProps.style
+                  }
+                >
+                  {line.map((token, key) => (
+                    // eslint-disable-next-line react/no-array-index-key
+                    <span key={key} {...getTokenProps({ token })} />
+                  ))}
+                </div>
+              );
+            })}
           </pre>
         )}
       </Highlight>

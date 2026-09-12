@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import * as React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -7,6 +8,8 @@ import { LivePreview } from '../src/components/LivePreview';
 import { LiveError } from '../src/components/LiveError';
 import { useLiveModule } from '../src/hooks/useLiveModule';
 import { useLiveRunner } from '../src/hooks/useLiveRunner';
+import { LiveEditor, type LiveEditorRenderProps } from '../src/components/LiveEditor';
+import type { CompileSuccessInfo } from '../src/core/types';
 
 afterEach(cleanup);
 
@@ -247,5 +250,174 @@ describe('onCodeChange', () => {
 
     // Echoing the host's own update back at it would make a save loop.
     await waitFor(() => expect(seen).toEqual([]));
+  });
+});
+
+describe('onCompileSuccess', () => {
+  it('fires once with imports and durationMs after a successful compile', async () => {
+    const seen: CompileSuccessInfo[] = [];
+
+    render(
+      <LiveProvider
+        code={`import { useState } from 'react';\nexport default function App() { useState(0); return <b data-testid="ok">ok</b>; }`}
+        onCompileSuccess={(info) => seen.push(info)}
+        debounce={0}
+      >
+        <LivePreview />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('ok')).toBeTruthy(), { timeout: 4000 });
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0));
+    expect(seen[0]?.imports).toContain('react');
+    expect(seen[0]?.durationMs).toBeTypeOf('number');
+    expect(seen[0]?.compileId).toBeGreaterThan(0);
+  });
+
+  it('does not fire on a syntax error', async () => {
+    const seen: CompileSuccessInfo[] = [];
+
+    render(
+      <LiveProvider
+        code={`export default () => <div>`}
+        onCompileSuccess={(info) => seen.push(info)}
+        debounce={0}
+      >
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+    expect(seen).toEqual([]);
+  });
+
+  it('still fires when keepLastGood preserves the previous result', async () => {
+    const seen: CompileSuccessInfo[] = [];
+
+    const { rerender } = render(
+      <LiveProvider
+        code={`export default () => <b data-testid="ok">ok</b>;`}
+        onCompileSuccess={(info) => seen.push(info)}
+        debounce={0}
+      >
+        <LivePreview />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('ok')).toBeTruthy(), { timeout: 4000 });
+    const firstCount = seen.length;
+
+    rerender(
+      <LiveProvider
+        code={`export default () => <div>`}
+        onCompileSuccess={(info) => seen.push(info)}
+        debounce={0}
+      >
+        <LivePreview />
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+    expect(seen.length).toBe(firstCount);
+  });
+
+  it('survives a throwing callback', async () => {
+    render(
+      <LiveProvider
+        code={`export default () => <b data-testid="ok">ok</b>;`}
+        onCompileSuccess={() => {
+          throw new Error('host blew up');
+        }}
+        debounce={0}
+      >
+        <LivePreview />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('ok')).toBeTruthy(), { timeout: 4000 });
+  });
+
+  it('fires for useLiveModule', async () => {
+    const seen: CompileSuccessInfo[] = [];
+
+    function Harness() {
+      useLiveModule({
+        code: `export const answer = 42;`,
+        onCompileSuccess: (info) => seen.push(info),
+        debounce: 0,
+      });
+      return null;
+    }
+
+    render(<Harness />);
+    await waitFor(() => expect(seen.length).toBeGreaterThan(0), { timeout: 4000 });
+  });
+});
+
+describe('LiveEditor error highlight', () => {
+  it('highlights the syntax error line', async () => {
+    const broken = `const a = 1;\nexport default () => <div>`;
+
+    const { container } = render(
+      <LiveProvider code={broken} debounce={0}>
+        <LiveEditor />
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+
+    const lines = container.querySelectorAll('pre[aria-hidden="true"] > div');
+    expect(lines[1]?.getAttribute('style')).toContain('179, 38, 30');
+    expect(lines[0]?.getAttribute('style') ?? '').not.toContain('179, 38, 30');
+  });
+
+  it('passes error position to renderEditor', async () => {
+    const broken = `const a = 1;\nexport default () => <div>`;
+    let props: LiveEditorRenderProps | null = null;
+
+    render(
+      <LiveProvider code={broken} debounce={0}>
+        <LiveEditor
+          renderEditor={(renderProps) => {
+            props = renderProps;
+            return null;
+          }}
+        />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(props?.errorLine).toBe(2), { timeout: 4000 });
+    expect(props?.error).toBeTruthy();
+  });
+
+  it('opts out with errorLineStyle={null}', async () => {
+    const broken = `export default () => <div>`;
+
+    const { container } = render(
+      <LiveProvider code={broken} debounce={0}>
+        <LiveEditor errorLineStyle={null} />
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+    expect(container.querySelector('pre[aria-hidden="true"] [style*="179, 38, 30"]')).toBeNull();
+  });
+
+  it('does not highlight line 1 for errors without a position', async () => {
+    render(
+      <LiveProvider
+        code={`export default () => { throw new Error('boom'); };`}
+        debounce={0}
+      >
+        <LiveEditor />
+        <LivePreview />
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
   });
 });

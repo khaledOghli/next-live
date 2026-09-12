@@ -1,3 +1,5 @@
+import { storeScriptSource } from './store-script.ts';
+
 /**
  * Stands in for the database behind a control panel.
  *
@@ -115,7 +117,7 @@ export default function Cart() {
       </button>
       <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>
         addItem runs here via @app/store. Clear cart is on the host panel;
-        remove last runs from the API script below.
+        remove last runs from the API script tab.
       </p>
     </div>
   );
@@ -167,6 +169,12 @@ export default function SharedInstance() {
   );
 }
 `,
+  },
+  {
+    id: 'api-script',
+    name: 'API script',
+    description: 'Non-UI code fetched from an API and run with useLiveModule.',
+    source: storeScriptSource,
   },
   {
     id: 'inline',

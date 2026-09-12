@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { compile } from '../src/core/compile';
+import { compile, compileModule } from '../src/core/compile';
 import type { CompileInput } from '../src/core/compile';
 import { ModuleNotFoundError, NoComponentError } from '../src/core/errors';
 import { defineLoader } from '../src/core/resolver';
@@ -215,6 +215,24 @@ describe('scope and props', () => {
       scope: { React: 'shadowed', 'not-an-identifier': 1, valid: 2 },
     });
     expect(html).toBe('<b>ok</b>');
+  });
+});
+
+describe('imports', () => {
+  it('returns sorted imports from compile()', async () => {
+    const result = await compile({
+      code: `import { useState } from 'react';\nimport { rate } from '@app/config';\nexport default function App() { const [n] = useState(rate); return n; }`,
+      modules: { '@app/config': { rate: 1 } },
+    });
+    expect(result.imports).toEqual(['@app/config', 'react']);
+  });
+
+  it('returns sorted imports from compileModule()', async () => {
+    const { imports } = await compileModule({
+      code: `import { z } from 'z-lib';\nimport { a } from 'a-lib';\nexport const x = z + a;`,
+      modules: { 'z-lib': { z: 1 }, 'a-lib': { a: 2 } },
+    });
+    expect(imports).toEqual(['a-lib', 'z-lib']);
   });
 });
 

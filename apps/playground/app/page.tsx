@@ -8,12 +8,20 @@ export default function Home() {
         Live TSX evaluation for the Next.js App Router — real ESM imports, a module
         registry instead of a global scope, and no hydration mismatches.
       </p>
-      <Link
-        href="/playground"
-        className="justify-self-start rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background"
-      >
-        Open the playground
-      </Link>
+      <div className="flex flex-wrap gap-3">
+        <Link
+          href="/apps"
+          className="rounded-full bg-foreground px-5 py-2.5 text-sm font-medium text-background"
+        >
+          Open apps shell
+        </Link>
+        <Link
+          href="/playground"
+          className="rounded-full border border-black/15 px-5 py-2.5 text-sm font-medium hover:bg-black/5 dark:border-white/20 dark:hover:bg-white/10"
+        >
+          Open the playground
+        </Link>
+      </div>
     </main>
   );
 }

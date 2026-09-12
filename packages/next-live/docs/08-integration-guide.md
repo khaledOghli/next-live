@@ -225,12 +225,12 @@ components carry `'use client'` themselves.
 
 ```ts
 // proxy.ts
-const RUNNER_ROUTES = ['/apps'];
+const RUNNER_ROUTES = ['/apps'];   // add '/playground' too if you have a lab route
 ```
 
 Full file in [Security](./05-security.md#3-scope-unsafe-eval-to-the-routes-that-run-snippets).
-**Do not skip this** — without `'unsafe-eval'` on `/apps`, nothing runs in
-production, and you want the directive confined to that route.
+**Do not skip this** — without `'unsafe-eval'` on your runner routes, nothing
+runs in production, and you want the directive confined to those routes.
 
 ## Step 10 — The editor side
 
@@ -251,14 +251,13 @@ export function AppEditor({ initialSource, onSave }: {
   const [source, setSource] = useState(initialSource);
 
   return (
-    <LiveProvider code={source} modules={liveModules}>
+    <LiveProvider
+      code={source}
+      modules={liveModules}
+      onCodeChange={setSource}
+    >
       <div className="grid gap-4 lg:grid-cols-2">
-        <LiveEditor renderEditor={({ code, onChange }) => (
-          <textarea
-            value={code}
-            onChange={(e) => { onChange(e.target.value); setSource(e.target.value); }}
-          />
-        )} />
+        <LiveEditor />
         <div>
           <LivePreview />
           <LiveError />
@@ -286,8 +285,15 @@ const result = precompile(app.source, { filePath: `${app.id}.tsx` });
 ```
 
 ```tsx
-<LiveProvider code={source} transform={() => compiled} />
+import { precompiledTransform } from 'next-live';
+
+// Only while code === the source that was precompiled:
+<LiveProvider code={source} transform={precompiledTransform(compiled)} />
 ```
+
+When the author edits the snippet, `precompiledTransform` still returns the
+old server output — drop `transform` (or re-fetch with the new source) as soon
+as `code` diverges from the catalog version.
 
 ## Pre-launch checklist
 
@@ -306,16 +312,28 @@ const result = precompile(app.source, { filePath: `${app.id}.tsx` });
 
 ## A worked example
 
-`apps/playground` in this repository implements all of the above: a fake
-database of apps, an API route that serves and optionally precompiles them, a
-composed lazy registry, scoped CSP, and demo apps covering deep subpaths, a
-shared store, lazy heavy modules, and module-instance identity.
+`apps/playground` in this repository implements the full pattern in two routes:
+
+| Route | Purpose |
+|---|---|
+| **`/apps`** | Production-shaped shell — header, sidebar tabs, `LivePreview` only. Source fetched from `/api/shell-apps/[id]`. Demos React hooks (`useEffect`), `@app/ui` (shadcn/Tailwind via registry), `@app/format`, and `@app/store`. |
+| **`/playground`** | Developer lab — editor, precompile toggle, localStorage save, and pedagogical panels. Source from `/api/apps/[id]`. |
+
+Both share the same composed lazy registry (`lib/live-sdk`), scoped CSP
+(`RUNNER_ROUTES = ['/playground', '/apps']`), and CI validation
+(`npm run validate:apps`).
 
 ```bash
 npm install
 npm run dev
-# http://localhost:3000/playground
+# http://localhost:3000/apps        — shell demo (what users see)
+# http://localhost:3000/playground    — lab (editor + experiments)
 ```
+
+Registry modules live in `lib/live-sdk/modules/` — one thin re-export per
+namespace (`store.ts`, `ui.ts`, `format.ts`). CI keys are derived from that
+directory in Node (`lib/live-sdk/module-keys.ts`) so renames fail the build
+without hand-maintaining a key list.
 
 ---
 

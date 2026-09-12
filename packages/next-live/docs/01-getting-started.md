@@ -200,6 +200,18 @@ export function RemoteApp({ id }: { id: string }) {
 query parameter, hash fragment, or `localStorage` — see
 [Security](./05-security.md).
 
+## Try the live demos
+
+This repository's playground includes two routes:
+
+- **`/apps`** — production-shaped shell (sidebar tabs, API-fetched snippets,
+  shadcn UI via `@app/ui`, hooks demos)
+- **`/playground`** — developer lab with editor and experiments
+
+```bash
+npm install && npm run dev
+```
+
 ## Next steps
 
 - [Module registry](./02-module-registry.md) — how imports resolve
@@ -207,6 +219,7 @@ query parameter, hash fragment, or `localStorage` — see
   single-instance question
 - [Scaling to many apps](./04-scaling.md) — keeping the bundle small
 - [Security](./05-security.md) — read before deploying
+- [Integration guide](./08-integration-guide.md) — apps stored in a database
 
 ---
 

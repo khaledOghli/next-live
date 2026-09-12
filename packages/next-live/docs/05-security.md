@@ -55,7 +55,7 @@ It does **not** have to apply to your whole application. In `proxy.ts`:
 import { NextResponse, type NextRequest } from 'next/server';
 
 /** Only these routes evaluate snippets. */
-const RUNNER_ROUTES = ['/apps'];
+const RUNNER_ROUTES = ['/apps', '/playground'];
 
 export function proxy(request: NextRequest) {
   const isDev = process.env.NODE_ENV !== 'production';

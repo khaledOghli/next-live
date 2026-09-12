@@ -101,6 +101,24 @@ export interface CompileResult {
   via: ExtractionSource;
   /** The transpiled JavaScript, for debugging and for the server cache. */
   code: string;
+  /** Every module specifier the snippet imported, sorted. */
+  imports: readonly string[];
+}
+
+export interface CompileModuleResult {
+  /** Everything the snippet exported. */
+  exports: Record<string, unknown>;
+  /** The transpiled JavaScript. */
+  code: string;
+  /** Every module specifier the snippet imported, sorted. */
+  imports: readonly string[];
+}
+
+export interface CompileSuccessInfo {
+  compileId: number;
+  imports: readonly string[];
+  via?: ExtractionSource;
+  durationMs: number;
 }
 
 export interface UseLiveRunnerOptions extends CompileOptions {
@@ -113,6 +131,8 @@ export interface UseLiveRunnerOptions extends CompileOptions {
    * This is what a control panel needs to persist an author's edits.
    */
   onCodeChange?: (code: string) => void;
+  /** Called after every successful compile. Not called on failure or abort. */
+  onCompileSuccess?: (info: CompileSuccessInfo) => void;
   /** Milliseconds to wait after a change before recompiling. Default 150. */
   debounce?: number;
   /**

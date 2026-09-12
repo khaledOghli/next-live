@@ -9,25 +9,24 @@
  */
 import { validateSnippet, validateSnippets } from 'next-live/server';
 import { apps } from '../lib/apps.ts';
+import { shellApps } from '../lib/shell-apps.ts';
 import { storeScriptSource } from '../lib/store-script.ts';
+import { LIVE_MODULE_KEYS } from '../lib/live-sdk/module-keys.ts';
 
-// Only the keys are needed, and keys are all a CI script can easily get: the
-// real registry is full of bundler-specific dynamic imports.
-const MODULE_KEYS = [
-  '@demo/vendor',
-  '@demo/vendor/',
-  '@app/store',
+const failures = [
+  ...validateSnippets(apps, { modules: [...LIVE_MODULE_KEYS] }),
+  ...validateSnippets(shellApps, { modules: [...LIVE_MODULE_KEYS] }),
 ];
 
-const failures = validateSnippets(apps, { modules: MODULE_KEYS });
-
-const scriptResult = validateSnippet(storeScriptSource, { modules: MODULE_KEYS });
+const scriptResult = validateSnippet(storeScriptSource, { modules: [...LIVE_MODULE_KEYS] });
 if (!scriptResult.ok) {
   failures.push({ id: 'store-script', result: scriptResult });
 }
 
 if (failures.length === 0) {
-  console.log(`✓ all ${apps.length} stored apps and the store API script validate against the current SDK`);
+  console.log(
+    `✓ all ${apps.length} lab apps, ${shellApps.length} shell apps, and the store API script validate against the current SDK`,
+  );
   process.exit(0);
 }
 

@@ -65,7 +65,7 @@
     "dev": "tsup --watch --onSuccess \"node scripts/add-use-client.mjs\"",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:node": "vitest run --exclude '**/react.test.tsx'",
+    "test:node": "vitest run --exclude '**/*.test.tsx'",
     "test:watch": "vitest"
   },
   "dependencies": {

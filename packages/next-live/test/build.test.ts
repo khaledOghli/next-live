@@ -133,3 +133,30 @@ describe('source directives', () => {
     expect(first).toMatch(/^["']use client["'];?$/);
   });
 });
+
+/**
+ * The Node-floor CI job runs `test:node`, which excludes `**\/*.test.tsx`.
+ *
+ * That exclusion is a filename pattern, so it only holds while every
+ * jsdom-requiring suite is a `.tsx` file. jsdom pulls in undici, which needs
+ * Node 22, so a jsdom docblock in a `.ts` file makes the floor job fail on a
+ * test-tooling constraint the published package does not have, exactly how the
+ * job broke once already.
+ */
+describe('test file conventions', () => {
+  const testDir = dirname(fileURLToPath(import.meta.url));
+
+  const walk = (dir: string): string[] =>
+    readdirSync(dir).flatMap((name) => {
+      const full = join(dir, name);
+      return statSync(full).isDirectory() ? walk(full) : [full];
+    });
+
+  it('keeps every jsdom suite in a .tsx file', () => {
+    const misplaced = walk(testDir)
+      .filter((file) => /\.test\.[cm]?ts$/.test(file))
+      .filter((file) => /@vitest-environment\s+jsdom/.test(readFileSync(file, 'utf8')));
+
+    expect(misplaced).toEqual([]);
+  });
+});

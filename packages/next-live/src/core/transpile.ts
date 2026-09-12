@@ -51,6 +51,61 @@ const MODULE_SYNTAX_RE = /^[ \t]*(?:export\b|import\s*[({'"*]|import\s+[A-Za-z_$
 const RENDER_CALL_RE = /(^|[^.\w$])render\s*\(/m;
 
 /**
+ * Whether a snippet is a module body rather than a bare expression.
+ *
+ * Imports and exports are unambiguous; a `render(...)` call is a statement, so
+ * it is one too. Anything else may be a lone expression like `<div/>`, which is
+ * not a valid module body and has to be wrapped.
+ */
+export function isModuleSource(source: string): boolean {
+  return MODULE_SYNTAX_RE.test(source) || RENDER_CALL_RE.test(source);
+}
+
+/** The Sucrase options every entry point uses, so they cannot drift apart. */
+export function sucraseOptions(options: Required<TranspileOptions>) {
+  return {
+    transforms: ['jsx', 'typescript', 'imports'] as Array<'jsx' | 'typescript' | 'imports'>,
+    jsxRuntime: options.jsxRuntime,
+    jsxImportSource: options.jsxImportSource,
+    production: options.production,
+    filePath: options.filePath,
+    // Leaving native `import()` intact would resolve against the *page* URL
+    // and 404 on './utils'; routing it through our shim is the only sane
+    // behaviour inside an evaluated snippet.
+    preserveDynamicImport: false,
+  };
+}
+
+/**
+ * Applies the transpile pass, wrapping a bare expression so it becomes a valid
+ * module body. Shared by the async browser path and the sync server path.
+ */
+export function runTranspile(
+  transformFn: (input: string, opts: ReturnType<typeof sucraseOptions>) => { code: string },
+  source: string,
+  options: Required<TranspileOptions>,
+): TransformResult {
+  const opts = sucraseOptions(options);
+
+  if (!isModuleSource(source)) {
+    // The newlines matter: they shift the user's code down exactly one line,
+    // which `linePrefixOffset` corrects, whereas inlining would destroy line
+    // mapping for the whole snippet.
+    try {
+      return {
+        code: transformFn(`export default (\n${source}\n)`, opts).code,
+        linePrefixOffset: 1,
+        expression: true,
+      };
+    } catch {
+      // Multi-statement code with no exports — fall through to module mode.
+    }
+  }
+
+  return { code: transformFn(source, opts).code, linePrefixOffset: 0, expression: false };
+}
+
+/**
  * Transpiles a snippet to CommonJS that `new Function` can evaluate.
  *
  * Three authoring styles are supported, resolved without ever asking the user
@@ -75,40 +130,8 @@ export async function transpile(
 
   const { transform: sucraseTransform } = await loadTranspiler();
 
-  const run = (input: string): string =>
-    sucraseTransform(input, {
-      transforms: ['jsx', 'typescript', 'imports'],
-      jsxRuntime: resolved.jsxRuntime,
-      jsxImportSource: resolved.jsxImportSource,
-      production: resolved.production,
-      filePath: resolved.filePath,
-      // Leaving native `import()` intact would resolve against the *page* URL
-      // and 404 on './utils'; routing it through our shim is the only sane
-      // behaviour inside an evaluated snippet.
-      preserveDynamicImport: false,
-    }).code;
-
-  // A snippet with imports or exports is unambiguously a module.
-  // A `render(...)` call is a statement, so it is one too.
-  const isModule = MODULE_SYNTAX_RE.test(source) || RENDER_CALL_RE.test(source);
-
-  if (!isModule) {
-    // Try the expression form first. The newlines matter: they shift the
-    // user's code down exactly one line, which `linePrefixOffset` corrects,
-    // whereas inlining would destroy line mapping for the whole snippet.
-    try {
-      return {
-        code: run(`export default (\n${source}\n)`),
-        linePrefixOffset: 1,
-        expression: true,
-      };
-    } catch {
-      // Multi-statement code with no exports — fall through to module mode.
-    }
-  }
-
   try {
-    return { code: run(source), linePrefixOffset: 0, expression: false };
+    return runTranspile(sucraseTransform, source, resolved);
   } catch (cause) {
     throw toCompileError(cause);
   }

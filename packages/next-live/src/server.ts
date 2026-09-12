@@ -9,7 +9,7 @@
  * React, so it is safe to import from a Route Handler or a Server Component.
  */
 import { transform } from 'sucrase';
-import { defaultTranspileOptions } from './core/transpile';
+import { defaultTranspileOptions, runTranspile } from './core/transpile';
 import { LiveCompileError } from './core/errors';
 import type { TransformResult, TranspileOptions } from './core/types';
 
@@ -28,35 +28,11 @@ export interface PrecompileResult extends TransformResult {
 export function precompile(source: string, options: TranspileOptions = {}): PrecompileResult {
   const resolved = { ...defaultTranspileOptions, ...options };
 
-  const run = (input: string): string =>
-    transform(input, {
-      transforms: ['jsx', 'typescript', 'imports'],
-      jsxRuntime: resolved.jsxRuntime,
-      jsxImportSource: resolved.jsxImportSource,
-      production: resolved.production,
-      filePath: resolved.filePath,
-      preserveDynamicImport: false,
-    }).code;
-
-  const isModule = /^[ \t]*(?:export\b|import\s*[({'"*]|import\s+[A-Za-z_$])/m.test(source) ||
-    /(^|[^.\w$])render\s*\(/m.test(source);
-
-  if (!isModule) {
-    try {
-      const code = run(`export default (\n${source}\n)`);
-      return { code, linePrefixOffset: 1, expression: true, hash: hashOf(source, resolved) };
-    } catch {
-      // Multi-statement code with no exports — fall through to module mode.
-    }
-  }
-
   try {
-    return {
-      code: run(source),
-      linePrefixOffset: 0,
-      expression: false,
-      hash: hashOf(source, resolved),
-    };
+    // The exact same pass the browser runs, so a precompiled result and a
+    // client-compiled one are interchangeable.
+    const result = runTranspile(transform, source, resolved);
+    return { ...result, hash: hashOf(source, resolved) };
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
     const match = /\((\d+):(\d+)\)\s*$/.exec(message);
@@ -94,4 +70,11 @@ function hashOf(source: string, options: Required<TranspileOptions>): string {
 }
 
 export { LiveCompileError } from './core/errors';
+export { validateSnippet, validateSnippets } from './validate';
+export type {
+  ValidateOptions,
+  ValidationIssue,
+  ValidationIssueKind,
+  ValidationResult,
+} from './validate';
 export type { TransformResult, TranspileOptions } from './core/types';

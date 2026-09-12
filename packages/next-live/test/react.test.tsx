@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { LiveProvider } from '../src/components/LiveProvider';
 import { LivePreview } from '../src/components/LivePreview';
 import { LiveError } from '../src/components/LiveError';
+import { useLiveModule } from '../src/hooks/useLiveModule';
 
 afterEach(cleanup);
 
@@ -181,5 +182,35 @@ export default function Loop() {
       { timeout: 8000 },
     );
     expect(screen.getByTestId('host').textContent).toBe('host survives');
+  });
+});
+
+describe('useLiveModule', () => {
+  function Probe({ code }: { code: string }) {
+    const { exports, error } = useLiveModule({ code });
+    if (error) return <span data-testid="err">{error.message}</span>;
+    if (!exports) return <span data-testid="pending">pending</span>;
+    const validate = exports['validate'] as ((n: number) => boolean) | undefined;
+    return <span data-testid="out">{String(validate?.(5))}</span>;
+  }
+
+  it('returns exports for a snippet that is not a component', async () => {
+    render(<Probe code={`export function validate(n) { return n > 0; }`} />);
+    await waitFor(() => expect(screen.getByTestId('out').textContent).toBe('true'), {
+      timeout: 4000,
+    });
+  });
+
+  it('renders nothing on the server pass, like the component hook', () => {
+    const html = renderToStaticMarkup(
+      <Probe code={`export function validate(n) { return n > 0; }`} />,
+    );
+    // Same hydration guarantee: no evaluation during the server render.
+    expect(html).toContain('pending');
+  });
+
+  it('surfaces errors instead of throwing', async () => {
+    render(<Probe code={`export function validate(n) { return n > 0 }` + '\n@@@'} />);
+    await waitFor(() => expect(screen.getByTestId('err')).toBeTruthy(), { timeout: 4000 });
   });
 });

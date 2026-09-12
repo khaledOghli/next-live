@@ -14,12 +14,14 @@ export type { LiveErrorBoundaryProps } from './components/LiveErrorBoundary';
 
 // Hooks and context, for hosts building their own UI.
 export { useLiveRunner } from './hooks/useLiveRunner';
+export { useLiveModule } from './hooks/useLiveModule';
+export type { LiveModuleState, UseLiveModuleOptions } from './hooks/useLiveModule';
 export { useLiveContext } from './hooks/useLiveContext';
 export { LiveContext } from './context/LiveContext';
 
 // Engine, for advanced use — a custom scheduler, or compiling outside React.
-export { compile } from './core/compile';
-export type { CompileInput } from './core/compile';
+export { compile, compileModule } from './core/compile';
+export type { CompileInput, CompileModuleResult } from './core/compile';
 export { transpile, preloadTranspiler, setTranspiler } from './core/transpile';
 export { builtinModules } from './core/builtins';
 export {

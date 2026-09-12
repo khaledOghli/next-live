@@ -75,7 +75,40 @@ export interface EvaluateResult {
  * harmless.
  */
 export function evaluate(options: EvaluateOptions): EvaluateResult {
-  const { code, filePath, require: requireFn, scope, onRender } = options;
+  const { exports, rendered } = runModule(options);
+
+  const extracted = pickRenderable(exports, rendered);
+
+  if (options.onRender && extracted.renderable.kind === 'component') {
+    return {
+      via: extracted.via,
+      renderable: {
+        kind: 'component',
+        component: withRenderBudget(extracted.renderable.component, options.onRender),
+      },
+    };
+  }
+
+  return extracted;
+}
+
+export interface ModuleResult {
+  /** Everything the snippet exported. */
+  exports: Record<string, unknown>;
+  /** Present only when the snippet called the injected `render()` helper. */
+  rendered?: { rendered: unknown };
+}
+
+/**
+ * Runs a snippet and returns its raw exports, without insisting that it
+ * produced a React component.
+ *
+ * Plenty of stored code is not UI — validators, transformers, calculated
+ * fields, config builders. Those are perfectly good modules, and asking them
+ * to export a component would be nonsense.
+ */
+export function runModule(options: EvaluateOptions): ModuleResult {
+  const { code, filePath, require: requireFn, scope } = options;
 
   const scopeKeys = usableScopeKeys(scope);
   const epilogue = buildEpilogue(code);
@@ -116,22 +149,10 @@ export function evaluate(options: EvaluateOptions): EvaluateResult {
     ...scopeKeys.map((key) => scope[key]),
   );
 
-  const extracted = pickRenderable(
-    moduleObject.exports,
-    didRender ? { rendered } : undefined,
-  );
-
-  if (onRender && extracted.renderable.kind === 'component') {
-    return {
-      via: extracted.via,
-      renderable: {
-        kind: 'component',
-        component: withRenderBudget(extracted.renderable.component, onRender),
-      },
-    };
-  }
-
-  return extracted;
+  return {
+    exports: moduleObject.exports,
+    ...(didRender ? { rendered: { rendered } } : {}),
+  };
 }
 
 /**

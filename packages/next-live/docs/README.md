@@ -14,6 +14,8 @@ Live TSX/JSX evaluation for the Next.js App Router.
 | **[6. API reference](./06-api-reference.md)** | Every export, prop, and type. |
 | **[7. Troubleshooting](./07-troubleshooting.md)** | Real error messages and their fixes. |
 | **[8. Integration guide](./08-integration-guide.md)** | End-to-end: apps stored in a database, authored in a control panel. |
+| **[9. Snippets that are not components](./09-non-ui-snippets.md)** | Validators, transformers, config — code with no UI. |
+| **[10. Validating stored snippets in CI](./10-validating-in-ci.md)** | Catch an SDK rename breaking stored apps before your users do. |
 
 ## Where to start
 
@@ -50,3 +52,15 @@ No. They are stripped, not verified —
 **Do I need `next/dynamic` with `ssr: false`?**
 No. It is already SSR-safe.
 [How](./01-getting-started.md#ssr-and-hydration).
+
+**Does this require Next.js?**
+No. The library imports only React — it works in Vite, CRA, Remix, or anywhere
+React runs. The name reflects where it was designed, not what it needs.
+
+**Can a snippet export something other than a component?**
+Yes — `useLiveModule` returns raw exports.
+[Non-UI snippets](./09-non-ui-snippets.md).
+
+**How do I know when I break my stored apps?**
+Validate them in CI.
+[Validating in CI](./10-validating-in-ci.md).

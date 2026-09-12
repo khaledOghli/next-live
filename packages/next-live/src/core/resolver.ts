@@ -204,6 +204,31 @@ export async function resolveModules(options: ResolveOptions): Promise<ResolvedM
 /** Sentinel distinguishing "not registered" from a registered `undefined`. */
 const MISSING = Symbol('missing');
 
+/** Specifiers resolved to an empty module rather than an error. */
+export function isIgnoredSpecifier(specifier: string): boolean {
+  return ASSET_RE.test(specifier);
+}
+
+/**
+ * The registry key that would serve a specifier, or undefined if none would.
+ *
+ * Key matching only — no values, no loaders, nothing executed. That is what
+ * lets a snippet be checked on a server, or in CI, without running it.
+ */
+export function matchRegistryKey(
+  specifier: string,
+  keys: readonly string[],
+): string | undefined {
+  if (keys.includes(specifier)) return specifier;
+
+  let best: string | undefined;
+  for (const key of keys) {
+    if (!key.endsWith('/') || !specifier.startsWith(key)) continue;
+    if (best === undefined || key.length > best.length) best = key;
+  }
+  return best;
+}
+
 function lookup(
   registry: ModuleRegistry,
   specifier: string,

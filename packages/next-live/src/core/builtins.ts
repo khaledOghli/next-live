@@ -1,6 +1,7 @@
 import * as React from 'react';
 import * as JsxRuntime from 'react/jsx-runtime';
 import * as JsxDevRuntime from 'react/jsx-dev-runtime';
+import { BUILTIN_SPECIFIERS } from './builtin-specifiers';
 import type { ModuleRegistry } from './types';
 
 /**
@@ -20,7 +21,7 @@ import type { ModuleRegistry } from './types';
  * does can register it explicitly.
  */
 export const builtinModules: ModuleRegistry = {
-  react: React,
-  'react/jsx-runtime': JsxRuntime,
-  'react/jsx-dev-runtime': JsxDevRuntime,
+  [BUILTIN_SPECIFIERS[0]]: React,
+  [BUILTIN_SPECIFIERS[1]]: JsxRuntime,
+  [BUILTIN_SPECIFIERS[2]]: JsxDevRuntime,
 };

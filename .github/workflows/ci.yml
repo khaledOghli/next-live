@@ -38,3 +38,7 @@ jobs:
       # Catches a Next-level regression the unit tests cannot see, such as the
       # 'use client' directive failing to survive into a real consumer build.
       - run: npm run build -w playground
+
+      # Every stored snippet must still compile against the current SDK
+      # surface. Without this, renaming a module breaks stored apps silently.
+      - run: npm run validate:apps -w playground

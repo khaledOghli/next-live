@@ -298,6 +298,8 @@ const result = precompile(app.source, { filePath: `${app.id}.tsx` });
 - [ ] `fallback` matches your loading skeleton.
 - [ ] `npm ls react` shows exactly one version.
 - [ ] Every registry entry is a loader, not a value.
+- [ ] CI validates every stored snippet against the registry
+      ([Validating in CI](./10-validating-in-ci.md)).
 - [ ] An author-facing note explains that TypeScript types are stripped, not
       checked.
 

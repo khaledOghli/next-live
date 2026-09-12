@@ -1,6 +1,6 @@
 import { builtinModules } from './builtins';
 import { LiveCompileError, LiveError, LiveRuntimeError } from './errors';
-import { evaluate } from './evaluate';
+import { evaluate, runModule } from './evaluate';
 import { createRequire, resolveModules, scanRequires } from './resolver';
 import { filterUserFrames, mapPosition } from './stacks';
 import { defaultTranspileOptions, transpile } from './transpile';
@@ -22,6 +22,23 @@ export interface CompileInput extends CompileOptions {
  * loader — must be resolved *before* evaluation begins.
  */
 export async function compile(input: CompileInput): Promise<CompileResult> {
+  const prepared = await prepare(input);
+  try {
+    const { renderable, via } = evaluate(prepared.evaluateOptions);
+    return { renderable, via, code: prepared.code };
+  } catch (cause) {
+    throw enrichRuntimeError(cause, prepared.meta);
+  }
+}
+
+/**
+ * Everything up to evaluation: transpile, then resolve every specifier the
+ * output requires.
+ *
+ * Resolution has to finish first because Sucrase emits synchronous `require()`
+ * calls, which cannot await an async loader.
+ */
+async function prepare(input: CompileInput) {
   const {
     code: source,
     modules,
@@ -50,21 +67,45 @@ export async function compile(input: CompileInput): Promise<CompileResult> {
   });
   signal?.throwIfAborted();
 
-  try {
-    const { renderable, via } = evaluate({
+  return {
+    code: transformed.code,
+    evaluateOptions: {
       code: transformed.code,
       filePath: options.filePath,
       require: createRequire(resolved),
       scope,
       ...(onRender ? { onRender } : {}),
-    });
-    return { renderable, via, code: transformed.code };
-  } catch (cause) {
-    throw enrichRuntimeError(cause, {
+    },
+    meta: {
       linePrefixOffset: transformed.linePrefixOffset,
       generatedLineCount: countLines(transformed.code),
       sourceLineCount: countLines(source),
-    });
+    },
+  };
+}
+
+export interface CompileModuleResult {
+  /** Everything the snippet exported. */
+  exports: Record<string, unknown>;
+  /** The transpiled JavaScript. */
+  code: string;
+}
+
+/**
+ * Compiles and runs a snippet, returning its exports rather than a component.
+ *
+ * Use this for stored code that is not UI — a validator, a data transformer, a
+ * calculated field. {@link compile} is the right call when you need something
+ * to render; this one makes no such demand and will happily return
+ * `{ validate, schema }`.
+ */
+export async function compileModule(input: CompileInput): Promise<CompileModuleResult> {
+  const prepared = await prepare(input);
+  try {
+    const { exports } = runModule(prepared.evaluateOptions);
+    return { exports, code: prepared.code };
+  } catch (cause) {
+    throw enrichRuntimeError(cause, prepared.meta);
   }
 }
 

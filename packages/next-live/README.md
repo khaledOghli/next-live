@@ -73,6 +73,11 @@ snippet should share your page's React instance and your live objects.
 - **SSR-safe.** No hydration mismatch, no `next/dynamic` needed.
 - **Contained failures.** An error boundary and a render-loop breaker keep a bad
   snippet from taking down the page.
+- **Not just components.** `useLiveModule` runs snippets that export
+  validators, transformers, or config rather than UI.
+- **CI validation.** `validateSnippets` checks every stored snippet still
+  compiles against your registry, so an SDK rename fails the build instead of
+  breaking apps silently.
 - **Headless if you want it.** `useLiveRunner` for a completely custom UI.
 - **Server precompilation** via `next-live/server`, so the browser can skip the
   transpiler entirely.
@@ -91,6 +96,8 @@ snippet should share your page's React instance and your live objects.
 | [API reference](./docs/06-api-reference.md) | Every export and prop |
 | [Troubleshooting](./docs/07-troubleshooting.md) | Real errors and their fixes |
 | [Integration guide](./docs/08-integration-guide.md) | End-to-end walkthrough |
+| [Snippets that are not components](./docs/09-non-ui-snippets.md) | Validators, transformers, config |
+| [Validating stored snippets in CI](./docs/10-validating-in-ci.md) | Catch SDK renames before users do |
 
 ## Two things to know up front
 
@@ -104,7 +111,12 @@ people you trust.
 
 ## Requirements
 
-React 19+, Next.js 16+ (App Router), Node 20.9+.
+React 19+ and Node 20.9+.
+
+**Next.js is not required.** The library imports only `react`,
+`react/jsx-runtime`, `prism-react-renderer`, and `sucrase` — it works in Vite,
+CRA, Remix, or anywhere React runs. The name reflects where it was designed and
+what it is tuned for: App Router SSR safety, and docs written against Next 16.
 
 ## License
 

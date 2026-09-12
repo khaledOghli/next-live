@@ -43,3 +43,18 @@ next-env.d.ts
 # build output
 dist/
 *.tgz
+
+# AI agent scratch files
+#
+# `next dev` regenerates AGENTS.md and CLAUDE.md on every run (see
+# next/dist/server/lib/generate-agent-files.js), so these are ignored rather
+# than deleted once, otherwise every contributor gets them back as an
+# uncommitted change.
+AGENTS.md
+CLAUDE.md
+.claude/
+.cursor/
+.cursorrules
+.windsurfrules
+.aider*
+.github/copilot-instructions.md

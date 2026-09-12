@@ -40,7 +40,8 @@ export function DocGuideCards() {
           <div className="flex size-10 items-center justify-center rounded-full bg-muted text-foreground">
             {card.icon}
           </div>
-          <h3 className="mt-4 font-semibold text-foreground">{card.title}</h3>
+          {/* A <p>, not a heading: these cards are navigation, not sections of the article. */}
+          <p className="mt-4 font-semibold text-foreground">{card.title}</p>
           <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted-foreground">{card.description}</p>
           <span className="mt-4 text-sm font-medium text-brand group-hover:underline">{card.cta}</span>
         </Link>

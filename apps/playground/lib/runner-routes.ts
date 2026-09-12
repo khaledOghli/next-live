@@ -8,7 +8,7 @@
  *
  * Point 2 is the non-obvious one. A Content Security Policy is attached to a
  * **document**, and a Next client-side navigation does not fetch a new
- * document — so the policy from wherever the visitor first landed stays in
+ * document, so the policy from wherever the visitor first landed stays in
  * force for the whole session. Soft-navigating from `/` (no `'unsafe-eval'`)
  * into `/docs` therefore leaves the live demos blocked, even though `/docs`
  * would have been served with the right policy had it been loaded directly.

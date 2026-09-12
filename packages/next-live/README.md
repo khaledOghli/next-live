@@ -8,6 +8,16 @@ mismatches.
 npm install next-live
 ```
 
+Using the built-in editor? It needs one optional peer, which npm does **not**
+install for you:
+
+```bash
+npm install next-live prism-react-renderer
+```
+
+Preview-only pages never import `next-live/editor`, and should skip it, that is
+the whole point of keeping the highlighter on a separate entry.
+
 ## Quick start
 
 ```tsx
@@ -119,7 +129,8 @@ people you trust.
 React 19+ and Node 20.9+.
 
 **Next.js is not required.** The library imports only `react`,
-`react/jsx-runtime`, `prism-react-renderer`, and `sucrase` - it works in Vite,
+`react/jsx-runtime`, `react/jsx-dev-runtime`, `prism-react-renderer`, and
+`sucrase` - it works in Vite,
 CRA, Remix, or anywhere React runs. The name reflects where it was designed and
 what it is tuned for: App Router SSR safety, and docs written against Next 16.
 

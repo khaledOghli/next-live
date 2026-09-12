@@ -13,7 +13,7 @@
  * the moment a second client entry was added, leaving a chunk that calls
  * client-only React APIs with no directive on it.
  *
- * The chunk must stay shared, incidentally — bundling it into each entry
+ * The chunk must stay shared, incidentally, bundling it into each entry
  * instead would give `next-live` and `next-live/editor` separate `createContext`
  * calls, so `useLiveContext` inside `<LiveEditor>` would never see the value
  * `<LiveProvider>` supplies.
@@ -47,5 +47,5 @@ for (const file of files) {
 console.log(
   stamped.length === 0
     ? 'add-use-client: nothing to stamp'
-    : `add-use-client: stamped ${stamped.length} file(s) — ${stamped.join(', ')}`,
+    : `add-use-client: stamped ${stamped.length} file(s), ${stamped.join(', ')}`,
 );

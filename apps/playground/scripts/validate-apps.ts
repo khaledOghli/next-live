@@ -18,7 +18,7 @@ import { LIVE_MODULE_KEYS } from '../lib/live-sdk/module-keys.ts';
  * The documentation's own live demos, held to the same standard as stored apps.
  *
  * They import `@app/*` exactly as a real snippet does, so an SDK rename breaks
- * them too — on the site that teaches the library, which is the worst place to
+ * them too, on the site that teaches the library, which is the worst place to
  * find out late.
  */
 const demoSnippets = Object.entries(docsDemos)

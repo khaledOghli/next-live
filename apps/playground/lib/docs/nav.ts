@@ -11,7 +11,7 @@ export interface DocNavGroup {
 
 const items: Record<string, DocNavItem> = {
   'getting-started': { slug: 'getting-started', title: 'Getting started', description: 'Install and first live preview' },
-  'module-registry': { slug: 'module-registry', title: 'Module registry', description: 'How import resolves' },
+  'module-registry': { slug: 'module-registry', title: 'Module registry', description: 'How snippet imports map to your app code' },
   'sharing-libraries': { slug: 'sharing-libraries', title: 'Sharing libraries', description: 'One React instance, one store' },
   scaling: { slug: 'scaling', title: 'Scaling', description: 'Bundle size and precompile' },
   security: { slug: 'security', title: 'Security', description: 'Trust model and access control' },
@@ -29,7 +29,7 @@ export const docNavGroups: DocNavGroup[] = [
   { title: 'Reference', slugs: ['api-reference', 'troubleshooting', 'non-ui-snippets', 'migrating'] },
 ];
 
-/** Flat list in nav order — used for pager and sitemap. */
+/** Flat list in nav order, used for pager and sitemap. */
 export const docNav: DocNavItem[] = docNavGroups.flatMap((group) =>
   group.slugs.map((slug) => items[slug]).filter(Boolean),
 );

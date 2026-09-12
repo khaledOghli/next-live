@@ -47,9 +47,10 @@ function buildCsp(pathname: string, isDev: boolean): string {
     "base-uri 'self'",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    // Add 'upgrade-insecure-requests' when you deploy behind HTTPS. It is
-    // omitted here so this demo can be exercised over http://localhost, where
-    // upgrading subresource requests would break asset loading.
+    // Production only: over http://localhost, upgrading subresource requests
+    // would break asset loading. Gating it on the environment means a real
+    // deployment gets it without anyone remembering to switch it on.
+    ...(isDev ? [] : ['upgrade-insecure-requests']),
   ].join('; ');
 }
 

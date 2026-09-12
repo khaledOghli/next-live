@@ -2,82 +2,390 @@ import Link from 'next/link';
 import { LiveDemo } from '@/components/docs/LiveDemo';
 import { CodeBlock } from '@/components/docs/CodeBlock';
 import { Callout } from '@/components/docs/Callout';
-import { uiImportDemo, formatDemo } from '@/lib/docs/demos';
+import { uiImportDemo, formatDemo, storeDemo } from '@/lib/docs/demos';
 
-This is the core concept. Everything else follows from it.
+This page explains the idea behind `modules`. If you only remember one thing: **live snippets cannot import anything you did not register**. You choose what they can reach, and you give each thing a name.
 
-## There is no npm in the browser
+## The problem in plain terms
 
-Your page bundle contains only what **you** imported when it was built. A snippet saying `import _ from 'lodash'` cannot conjure lodash into existence — you hand it over via the `modules` prop:
+In normal Next.js code you write:
 
-<CodeBlock code={`<LiveProvider
+<CodeBlock code={`import { Button } from '@/components/ui/button';`} />
+
+Your bundler finds that file at build time and ships it to the browser. Done.
+
+A live snippet is different. It is a **string** stored somewhere (a database, a CMS, a textarea). It was not part of the build. When the browser runs it, there is no bundler sitting there resolving `@/` paths or fetching npm packages.
+
+So this inside a snippet:
+
+<CodeBlock code={`import _ from 'lodash';`} />
+
+does **not** mean "go install lodash." It means "look up `lodash` in the registry I was given." If you never registered `lodash`, the snippet stops with an error that names the missing specifier.
+
+That registry is the `modules` prop on `<LiveProvider>`.
+
+## A simple mental model
+
+Think of `modules` as a **phone book** for your snippets:
+
+| Snippet writes | Phone book entry | What actually loads |
+|---|---|---|
+| `import { Button } from '@app/ui'` | `'@app/ui'` | Your real UI module |
+| `import { useCart } from '@app/store'` | `'@app/store'` | Your real store |
+| `import _ from 'lodash'` | *(missing)* | Error |
+
+The snippet only knows the **label** (`'@app/ui'`). You decide which real code that label points to.
+
+## Walkthrough: from string to rendered component
+
+Here is what happens when a user runs a snippet.
+
+**1. You pass the source string and a registry**
+
+<CodeBlock code={`'use client';
+
+import { LiveProvider, LivePreview, defineLoader } from 'next-live';
+
+<LiveProvider
   code={source}
   modules={{
-    '@app/store': defineLoader(() => import('@/lib/store')),
+    '@app/format': defineLoader(() => import('@/lib/format')),
   }}
-/>`} />
+>
+  <LivePreview />
+</LiveProvider>`} />
 
-If the specifier is not registered, the snippet fails with a clear error naming it.
+**2. The snippet uses a normal import**
 
-This replaces react-live's flat `scope` object, where every helper had to be injected as a global and `import` was impossible.
+<CodeBlock code={`import { formatMoney } from '@app/format';
 
-## The key is just a string
+export default function Price() {
+  return <p>{formatMoney(99)}</p>;
+}`} />
 
-A registry key does not have to be a real package name. Pick names that read like a deliberate SDK:
+**3. next-live compiles the import**
 
-<CodeBlock code={`modules={{
-  '@app/store':   /* … */,
-  '@/store':      /* … */,
-  'my-utils':     /* … */,
-}}`} />
+It turns `import { formatMoney } from '@app/format'` into a lookup: "give me whatever is registered under `'@app/format'`."
 
-## Loaders vs values
+**4. The loader runs**
 
-**Loader (default):** code-split, fetched only when a snippet imports it.
+`defineLoader(() => import('@/lib/format'))` is a lazy dynamic import. It only runs when a snippet actually imports `'@app/format'`. Your bundler can code-split it.
 
-<CodeBlock code={`'@app/store': defineLoader(() => import('@/lib/store'))`} />
+**5. The export is handed to the snippet**
 
-**Value:** simpler, but always in your page bundle.
+`formatMoney` comes from your real `@/lib/format` file. The snippet renders with it.
 
-<CodeBlock code={`import * as store from '@/lib/store';
-modules={{ '@app/store': store }}`} />
-
-Use loaders. A registry of 300 loaders costs nothing at runtime — only specifiers that appear in the compiled snippet are resolved.
-
-## Live demo: @app/ui
-
-This snippet imports shadcn components through the registry. Tailwind classes are compiled by the **host**, not inside the snippet.
-
-<LiveDemo source={uiImportDemo} filePath="UiDemo.tsx" />
-
-## Live demo: @app/format
-
-<CodeBlock code={`'@app/format': defineLoader(() => import('@/lib/format'))`} />
+Try it live:
 
 <LiveDemo source={formatDemo} filePath="FormatDemo.tsx" />
 
-## Always available
+## The key is just a string you choose
 
-Registered for you with no configuration:
+The left side of `modules` does **not** have to be a real npm package or a real file path. It is whatever you want snippet authors to type.
+
+All of these are valid. They could even point at the **same** file:
+
+<CodeBlock code={`modules={{
+  '@app/store': defineLoader(() => import('@/lib/store')),
+  '@/store':    defineLoader(() => import('@/lib/store')),
+  'my-store':   defineLoader(() => import('@/lib/store')),
+}}`} />
+
+Pick names that read like a small SDK surface, not a dump of your folder tree. This site uses `@app/ui`, `@app/store`, and `@app/format` so docs and demos look like deliberate imports rather than internal paths.
+
+On this playground, files in `lib/live-sdk/modules/` are exposed automatically as `@app/{filename}`. That is a convention we chose. You could name them anything.
+
+<Callout variant="info" title="Registration is not security">
+  The registry controls what snippets can **conveniently** import. It does not sandbox the browser. Snippets still run in your page with access to `fetch`, `localStorage`, and cookies. See [Security](/docs/security).
+</Callout>
+
+## What fails, and what the error looks like
+
+If a snippet imports something you forgot to register:
+
+<CodeBlock code={`import { Chart } from '@app/charts';  // never registered`} />
+
+next-live stops with a message naming `'@app/charts'` and listing what **is** registered. No silent undefined, no blank screen without explanation.
+
+Unused imports are stripped during compile (same as TypeScript would). A typo in an import the snippet never calls will not error; it simply disappears.
+
+## react-live `scope` vs `modules`
+
+If you used react-live before, you may remember passing everything as globals:
+
+<CodeBlock title="react-live style" code={`<LiveProvider
+  code={code}
+  scope={{ useState, Button, formatMoney }}
+/>`} />
+
+<CodeBlock title="Snippet (no imports allowed)" code={`export default function App() {
+  const [n, setN] = useState(0);
+  return <Button>{formatMoney(n)}</Button>;
+}`} />
+
+Every helper had to be injected by name. There was no `import`. As the list grew, the `scope` object became hard to maintain.
+
+next-live lets snippets write real imports:
+
+<CodeBlock title="next-live style" code={`<LiveProvider
+  code={code}
+  modules={{
+    '@app/ui': defineLoader(() => import('@/components/ui')),
+    '@app/format': defineLoader(() => import('@/lib/format')),
+  }}
+/>`} />
+
+<CodeBlock title="Snippet (normal imports)" code={`import { useState } from 'react';
+import { Button } from '@app/ui';
+import { formatMoney } from '@app/format';
+
+export default function App() {
+  const [n, setN] = useState(0);
+  return <Button>{formatMoney(n)}</Button>;
+}`} />
+
+`react` is built in. Everything else you register explicitly. Snippets read like real files.
+
+You can still use `scope` for bare identifiers if you need react-live compatibility. Prefer `modules` for anything new.
+
+## Loaders vs values
+
+Two ways to put something in the registry.
+
+**Loader (recommended):**
+
+<CodeBlock code={`'@app/store': defineLoader(() => import('@/lib/store'))`} />
+
+- Loaded only when a snippet imports it
+- Code-split by your bundler
+- Cheap to register many entries (300 loaders cost almost nothing until used)
+
+**Value (direct import):**
+
+<CodeBlock code={`import * as store from '@/lib/store';
+
+modules={{ '@app/store': store }}`} />
+
+- Simpler to read
+- Always included in your page bundle for every visitor, even if no snippet uses it
+
+Use loaders for anything non-trivial. Use a plain value only for tiny constants.
+
+## Organizing your registry in separate files
+
+You do not need a giant `modules={{ … }}` object on `<LiveProvider>`. Put the full list in a dedicated SDK folder and import one object.
+
+**100 registered loaders does not mean 100 network requests.** Each entry is a tiny loader function. next-live scans the snippet, finds which specifiers it imports, and only runs those loaders. Snippet A that imports `@app/x` loads only `x`. Snippet B that imports `@app/z` loads only `z`.
+
+### Recommended layout
+
+<CodeBlock title="lib/live-sdk/" code={`index.ts              # export liveModules (one import for LiveProvider)
+ui-modules.ts         # manual group: @app/ui
+format-modules.ts     # manual group: @app/format
+store-modules.ts      # manual group: @app/store
+vendor.ts             # third-party / prefix loaders
+app-modules-glob.ts   # optional: auto-register from ./modules/*.ts
+modules/
+  ui.ts               # re-exports Button, Card, …
+  format.ts           # re-exports formatMoney, …
+  store.ts            # re-exports useCart, addItem, …`} />
+
+### Option A: manual groups + `createRegistry`
+
+Split by domain. Each file holds `defineLoader` entries:
+
+<CodeBlock title="lib/live-sdk/format-modules.ts" code={`import { defineLoader } from 'next-live';
+
+export const formatModules = {
+  '@app/format': defineLoader(() => import('./modules/format')),
+  '@app/x': defineLoader(() => import('@/lib/x')),
+  '@app/z': defineLoader(() => import('@/lib/z')),
+};`} />
+
+Merge in one place:
+
+<CodeBlock title="lib/live-sdk/index.ts" code={`import { createRegistry } from 'next-live';
+import { vendorModules } from './vendor';
+import { uiModules } from './ui-modules';
+import { formatModules } from './format-modules';
+import { storeModules } from './store-modules';
+
+export const liveModules = createRegistry(
+  vendorModules,
+  uiModules,
+  formatModules,
+  storeModules,
+);`} />
+
+Keep the runner thin:
+
+<CodeBlock title="app/apps/Runner.tsx" code={`'use client';
+
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { liveModules } from '@/lib/live-sdk';
+
+export function Runner({ source, user }) {
+  return (
+    <LiveProvider code={source} modules={liveModules} props={{ user }}>
+      <LivePreview />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+
+This playground uses Option A for `@app/ui`, `@app/format`, and `@app/store`. See [`lib/live-sdk/`](https://github.com/khaledoghli/next-live/tree/main/apps/playground/lib/live-sdk) in the repo.
+
+### Option B: `registryFromGlob` when the list grows
+
+When you have dozens of SDK modules, hand lists get tedious. Auto-register every file in a folder:
+
+<CodeBlock title="lib/live-sdk/app-modules-glob.ts" code={`import { registryFromGlob } from 'next-live';
+
+export const appModulesFromGlob = registryFromGlob(
+  import.meta.glob('./modules/*.ts'),
+  (path) => {
+    const name = path.split('/').pop()?.replace(/\\.tsx?$/, '');
+    return name ? \`@app/\${name}\` : null;
+  },
+);`} />
+
+Add `lib/live-sdk/modules/charts.ts` and it becomes `@app/charts` with no edit to `LiveProvider`.
+
+`import.meta.glob` must stay in your file (the bundler resolves it statically). Under webpack, build an equivalent object from `require.context` instead.
+
+### Option C: hybrid
+
+Use manual groups for special cases (prefix loaders, npm packages) and glob for the rest:
+
+<CodeBlock code={`export const liveModules = createRegistry(
+  vendorModules,        // '@demo/vendor/' prefix loader
+  appModulesFromGlob,   // every file in ./modules/
+);`} />
+
+<Callout variant="info" title="Lazy loading still applies">
+  Registering many modules only adds small loader functions to your page bundle. The heavy code behind each loader is code-split and fetched only when a snippet imports that specifier.
+</Callout>
+
+## Live demo: UI components through the registry
+
+This snippet imports shadcn components as `@app/ui`. Tailwind classes are compiled by the **host app**, not inside the snippet string. The preview is the point — a styled Card, Badge, and Button loaded through your registry. Click the button to confirm it is a real component (the counter updates below it).
+
+<LiveDemo source={uiImportDemo} filePath="UiDemo.tsx" />
+
+Host-side, the registration looks like:
+
+<CodeBlock code={`// lib/live-sdk/modules/ui.ts
+export { Button } from '@/components/ui/button';
+export { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+
+// LiveProvider registry
+'@app/ui': defineLoader(() => import('@/lib/live-sdk/modules/ui'))`} />
+
+Snippet authors get styled components without you exposing every internal path.
+
+## Live demo: shared app state
+
+When you register your real store, the snippet shares **one instance** with the rest of your app. Not a copy.
+
+<LiveDemo source={storeDemo} filePath="CartDemo.tsx" />
+
+See [Sharing libraries](/docs/sharing-libraries) for why that matters and when it breaks.
+
+## Built in: no registration needed
+
+These work in every snippet with zero config:
 
 - `react`
 - `react/jsx-runtime`
 - `react/jsx-dev-runtime`
 
+They come from **your** React install, which is why hooks and context work across the snippet boundary.
+
+`react-dom` is not included. Register it yourself if snippets need `createPortal`.
+
 ## Every import form works
+
+Once `'@app/ui'` is registered, all of these work:
+
+<CodeBlock code={`// default export (or the module itself if there is no default)
+import ui from '@app/ui';
+
+// named exports
+import { Button, Card } from '@app/ui';
+
+// namespace
+import * as ui from '@app/ui';
+
+// side effects only
+import '@app/ui';`} />
 
 | Snippet writes | Gets |
 |---|---|
 | `import ui from '@app/ui'` | default export, or the module itself |
-| `import { Button } from '@app/ui'` | named export |
-| `import * as ui from '@app/ui'` | namespace |
+| `import { Button } from '@app/ui'` | the named export |
+| `import * as ui from '@app/ui'` | the namespace |
 | `import '@app/ui'` | side effects only |
 
-<Callout variant="info" title="Styling and Tailwind">
-  Snippets cannot run their own Tailwind build. Classes work when they are compiled by your host app, or when snippets import your registered UI components. See [Troubleshooting](/docs/troubleshooting) for safelist guidance.
-</Callout>
+## Passing data without registering it
+
+Not everything needs to be a module. Host objects can go through `props`:
+
+<CodeBlock code={`<LiveProvider code={source} props={{ user, theme }} />`} />
+
+<CodeBlock code={`export default function App({ user, theme }) {
+  return <p>{user.name} · {theme.mode}</p>;
+}`} />
+
+`props` are passed **by reference**. Mutations on shared objects (stores, panel handles) update your app immediately. See [Sharing libraries](/docs/sharing-libraries).
+
+Use `modules` for reusable code snippets should import. Use `props` for one-off instance data from the host page.
+
+## Common mistakes
+
+**Import name typo**
+
+<CodeBlock code={`import { formatCurrency } from '@app/format';  // export is formatMoney`} />
+
+The module loads, but the named export is missing. Fix the import or add an alias in your SDK module.
+
+**Registered a different path than your app uses**
+
+If your app imports `@/stores/cart` but the registry loads `@/lib/store-copy`, you get two store instances. Keep one canonical path. See [Sharing libraries](/docs/sharing-libraries).
+
+**Expecting npm packages to work automatically**
+
+<CodeBlock code={`import { format } from 'date-fns';  // only works if YOU register date-fns`} />
+
+Register it explicitly:
+
+<CodeBlock code={`'date-fns': defineLoader(() => import('date-fns'))`} />
+
+**Raw Tailwind classes in stored source**
+
+Arbitrary class strings in a snippet may not produce CSS unless your host Tailwind scan picks them up. Prefer importing registered UI components whose classes are already compiled. See [Troubleshooting](/docs/troubleshooting).
+
+## Putting it together
+
+Minimal host setup (registry lives in [`lib/live-sdk/`](https://github.com/khaledoghli/next-live/tree/main/apps/playground/lib/live-sdk), not inline on the provider):
+
+<CodeBlock code={`'use client';
+
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { liveModules } from '@/lib/live-sdk';
+
+export function Runner({ source, user }) {
+  return (
+    <LiveProvider code={source} modules={liveModules} props={{ user }}>
+      <LivePreview />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+
+Snippet authors then write ordinary React with imports you allow. You control the surface. They get a familiar developer experience.
 
 ## Next
 
-- [Sharing libraries](/docs/sharing-libraries) — one React instance, one store
-- [Scaling](/docs/scaling) — keep the bundle small with many modules
+- [Sharing libraries](/docs/sharing-libraries): one React instance, one store
+- [Scaling](/docs/scaling): many modules without bloating the bundle
+- [Integration](/docs/integration): wiring this into a real app layout

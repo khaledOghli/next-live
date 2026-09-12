@@ -102,7 +102,7 @@ quiet.
 
 A policy is attached to a **document**. A Next `<Link>` navigation fetches no
 new document, so the policy from wherever the visitor first landed stays in
-force for the rest of the session. Land on `/` — no `'unsafe-eval'` — click a
+force for the rest of the session. Land on `/` (no `'unsafe-eval'`), click a
 `<Link>` to `/apps`, and every snippet fails to compile, even though `/apps`
 would have been served the right policy had it been loaded directly.
 
@@ -119,7 +119,7 @@ Cross that boundary with a real page load:
 ```
 
 The playground wraps this in a `RunnerLink` component that reads the same
-`RUNNER_ROUTES` list the proxy uses, so the two cannot drift — see
+`RUNNER_ROUTES` list the proxy uses, so the two cannot drift. See
 `apps/playground/components/RunnerLink.tsx` and `lib/runner-routes.ts`.
 
 The cost is one full page load when entering the runner section. The
@@ -128,8 +128,8 @@ this whole section exists to avoid.
 
 One consequence worth planning for: every page a visitor can reach *from* a
 runner route by soft navigation also needs the runner policy, or it needs its
-own hard link back. Keeping the runner section contiguous — one prefix, as the
-playground does with `/docs` — is simpler than scattering eval-enabled pages
+own hard link back. Keeping the runner section contiguous (one prefix, as the
+playground does with `/docs`) is simpler than scattering eval-enabled pages
 through the app.
 
 ## 4. Keep the rest of the policy strict
@@ -138,7 +138,15 @@ through the app.
 (`eval`, `Function`, `setTimeout("…")`). It does **not** permit loading external
 scripts, so `script-src 'self' 'unsafe-eval'` still blocks attacker-hosted code.
 
-Two directives are worth particular attention:
+**`'unsafe-inline'` in `script-src` is the one weakening worth naming.** The
+policy above carries it because Next injects inline bootstrap and streaming
+scripts; without it a stock App Router page does not run. On a runner route it
+costs you little extra, since `'unsafe-eval'` is already present and is the
+stronger capability of the two. Removing it means adopting a nonce, which is
+worth doing on your non-runner routes if you can accept the cost described
+below, and which buys you nothing on the runner routes themselves.
+
+Two further directives are worth particular attention:
 
 - **`connect-src`** bounds a misbehaving snippet: it can read whatever the page
   can, but it cannot send it anywhere you did not allow. Widen it per-host,

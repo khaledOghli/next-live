@@ -9,7 +9,7 @@ import type { LiveContextValue } from '../core/types';
  *
  * The context is cached on a global symbol rather than being a plain
  * module-level constant, because a plain one is only unique per module
- * instance — and there are realistic ways to end up with more than one:
+ * instance, and there are realistic ways to end up with more than one:
  *
  * - The CommonJS build cannot code-split, so `index.cjs` and `editor.cjs` each
  *   inline their own copy. Without this, `<LiveEditor>` from `next-live/editor`

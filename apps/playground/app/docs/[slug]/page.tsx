@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { DocArticle } from '@/components/docs/DocArticle';
@@ -23,12 +24,12 @@ export async function generateMetadata({ params }: DocPageProps): Promise<Metada
   if (!meta) return {};
 
   return {
-    title: `${meta.title} — next-live docs`,
+    title: `${meta.title} | next-live docs`,
     description: meta.description,
     alternates: { canonical: `/docs/${slug}` },
     openGraph: {
       type: 'article',
-      title: `${meta.title} — next-live docs`,
+      title: `${meta.title} | next-live docs`,
       description: meta.description,
       url: `/docs/${slug}`,
     },
@@ -44,9 +45,19 @@ export default async function DocPage({ params }: DocPageProps) {
 
   return (
     <DocArticle
+      breadcrumb={
+        <nav aria-label="Breadcrumb" className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+          <Link href="/docs" className="transition-colors hover:text-foreground">
+            Docs
+          </Link>
+          <span aria-hidden>/</span>
+          <span className="text-foreground">{meta.title}</span>
+        </nav>
+      }
       title={meta.title}
       description={meta.description}
       intro={slug === 'getting-started' ? <DocGuideCards /> : undefined}
+      editPath={`apps/playground/content/docs/${slug}.mdx`}
       footer={<DocPager slug={slug} />}
     >
       <Content />

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState, type RefObject } from 'react';
+import { usePathname } from 'next/navigation';
 import { LiveError, LivePreview, LiveProvider, type ModuleRegistry } from 'next-live';
 import { LiveEditor } from 'next-live/editor';
 import { liveModules } from '@/lib/live-sdk';
@@ -14,6 +15,42 @@ interface LiveDemoProps {
   filePath?: string;
   props?: Record<string, unknown>;
   className?: string;
+  /** Defer compile until near the viewport. Use only for demos that throw on purpose. */
+  deferUntilVisible?: boolean;
+}
+
+const demoFallback = (
+  <div className="grid gap-2 p-4">
+    <Skeleton className="h-8 w-32" />
+    <Skeleton className="h-16 w-full max-w-xs" />
+  </div>
+);
+
+function useDeferredVisible(enabled: boolean): { rootRef: RefObject<HTMLDivElement | null>; ready: boolean } {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(!enabled);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const node = rootRef.current;
+    if (!node) return;
+
+    // Docs scroll inside the shell's overflow container, not the window.
+    const root = node.closest<HTMLElement>('.overflow-y-auto') ?? null;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setReady(true);
+      },
+      { root, rootMargin: '240px 0px', threshold: 0 },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [enabled]);
+
+  return { rootRef, ready };
 }
 
 export function LiveDemo({
@@ -23,42 +60,44 @@ export function LiveDemo({
   filePath = 'Demo.tsx',
   props,
   className,
+  deferUntilVisible = false,
 }: LiveDemoProps) {
+  const pathname = usePathname();
   const [code, setCode] = useState(source);
+  const { rootRef, ready } = useDeferredVisible(deferUntilVisible);
 
   return (
-    <div className={cn('live-demo-breakout', className)}>
-      <LiveProvider
-        key={filePath}
-        code={editable ? code : source}
-        modules={modules}
-        props={props}
-        filePath={filePath}
-        onCodeChange={editable ? setCode : undefined}
-        fallback={
-          <div className="grid gap-2 p-4">
-            <Skeleton className="h-8 w-32" />
-            <Skeleton className="h-16 w-full max-w-xs" />
+    <div ref={rootRef} className={cn('live-demo-breakout', className)}>
+      {ready ? (
+        <LiveProvider
+          key={`${pathname}:${filePath}`}
+          code={editable ? code : source}
+          modules={modules}
+          props={props}
+          filePath={filePath}
+          onCodeChange={editable ? setCode : undefined}
+          fallback={demoFallback}
+        >
+          <div className="grid gap-3 rounded-xl border border-border bg-card xl:grid-cols-2">
+            <section className="grid gap-2 p-4">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Preview</p>
+              <LivePreview className="min-h-32 rounded-lg border border-border bg-background p-4" />
+              <LiveError className="text-xs" />
+            </section>
+            <section className="grid gap-2 border-t border-border p-4 xl:border-t-0 xl:border-l">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {editable ? 'Source (editable)' : 'Source sent to LiveProvider'}
+              </p>
+              <LiveEditor
+                readOnly={!editable}
+                className="min-h-32 overflow-hidden rounded-lg border border-border"
+              />
+            </section>
           </div>
-        }
-      >
-        <div className="grid gap-3 rounded-xl border border-border bg-card xl:grid-cols-2">
-          <section className="grid gap-2 p-4">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Preview</p>
-            <LivePreview className="min-h-32 rounded-lg border border-border bg-background p-4" />
-            <LiveError className="text-xs" />
-          </section>
-          <section className="grid gap-2 border-t border-border p-4 xl:border-t-0 xl:border-l">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {editable ? 'Source (editable)' : 'Source sent to LiveProvider'}
-            </p>
-            <LiveEditor
-              readOnly={!editable}
-              className="min-h-32 overflow-hidden rounded-lg border border-border"
-            />
-          </section>
-        </div>
-      </LiveProvider>
+        </LiveProvider>
+      ) : (
+        <div className="rounded-xl border border-border bg-card">{demoFallback}</div>
+      )}
     </div>
   );
 }

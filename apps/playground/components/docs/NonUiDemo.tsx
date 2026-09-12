@@ -20,7 +20,7 @@ export function NonUiDemo() {
 
   return (
     <div className="my-6 rounded-xl border border-border bg-card p-4">
-      <p className="mb-3 text-sm font-medium">useLiveModule — non-UI snippet</p>
+      <p className="mb-3 text-sm font-medium">useLiveModule: non-UI snippet</p>
       {error && <p className="mb-2 text-xs text-destructive">{error.message}</p>}
       <Button
         type="button"

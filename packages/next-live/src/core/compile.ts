@@ -11,8 +11,6 @@ export interface CompileInput extends CompileOptions {
   code: string;
   /** Reports each render of the compiled component to the loop breaker. */
   onRender?: () => void;
-  /** Opt in to resolving `pkg/sub` against a registered `pkg`. Default false. */
-  resolveSubpaths?: boolean;
 }
 
 /**

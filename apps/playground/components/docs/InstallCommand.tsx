@@ -3,23 +3,45 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CodeBlock } from './CodeBlock';
 
-export function InstallCommand() {
+const MANAGERS = [
+  { id: 'npm', command: 'npm install next-live' },
+  { id: 'pnpm', command: 'pnpm add next-live' },
+  { id: 'yarn', command: 'yarn add next-live' },
+  { id: 'bun', command: 'bun add next-live' },
+] as const;
+
+interface InstallCommandProps {
+  /** Override the package list, e.g. for the optional editor peer dependency. */
+  packages?: string;
+}
+
+const INSTALL_VERB: Record<string, string> = {
+  npm: 'npm install',
+  pnpm: 'pnpm add',
+  yarn: 'yarn add',
+  bun: 'bun add',
+};
+
+export function InstallCommand({ packages }: InstallCommandProps) {
   return (
     <Tabs defaultValue="npm" className="my-6">
       <TabsList>
-        <TabsTrigger value="npm">npm</TabsTrigger>
-        <TabsTrigger value="pnpm">pnpm</TabsTrigger>
-        <TabsTrigger value="yarn">yarn</TabsTrigger>
+        {MANAGERS.map((manager) => (
+          <TabsTrigger key={manager.id} value={manager.id}>
+            {manager.id}
+          </TabsTrigger>
+        ))}
       </TabsList>
-      <TabsContent value="npm">
-        <CodeBlock code="npm install next-live" language="bash" variant="install" />
-      </TabsContent>
-      <TabsContent value="pnpm">
-        <CodeBlock code="pnpm add next-live" language="bash" variant="install" />
-      </TabsContent>
-      <TabsContent value="yarn">
-        <CodeBlock code="yarn add next-live" language="bash" variant="install" />
-      </TabsContent>
+      {MANAGERS.map((manager) => (
+        <TabsContent key={manager.id} value={manager.id}>
+          <CodeBlock
+            code={packages ? `${INSTALL_VERB[manager.id]} ${packages}` : manager.command}
+            language="bash"
+            variant="install"
+            title="Terminal"
+          />
+        </TabsContent>
+      ))}
     </Tabs>
   );
 }

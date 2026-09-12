@@ -2,7 +2,7 @@ const features = [
   {
     title: 'Real ESM imports',
     description:
-      "Snippets use import and export default like real files — not a flat scope object of globals.",
+      "Snippets use import and export default like real files, not a flat scope object of globals.",
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
         <polyline points="16 18 22 12 16 6" />
@@ -13,7 +13,7 @@ const features = [
   {
     title: 'SSR-safe by design',
     description:
-      'Nothing compiles on the server. The first client render matches exactly — no hydration errors.',
+      'Nothing compiles on the server. The first client render matches exactly, with no hydration errors.',
     icon: (
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
         <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />

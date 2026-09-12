@@ -16,9 +16,12 @@ export default function Counter() {
 }
 `;
 
-export const uiImportDemo = `import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@app/ui';
+export const uiImportDemo = `import { useState } from 'react';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@app/ui';
 
 export default function UiDemo() {
+  const [clicks, setClicks] = useState(0);
+
   return (
     <Card className="max-w-sm">
       <CardHeader>
@@ -26,8 +29,28 @@ export default function UiDemo() {
           Module registry <Badge variant="secondary">@app/ui</Badge>
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <Button size="sm">Registered import works</Button>
+      <CardContent className="grid gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button size="sm" onClick={() => setClicks((n) => n + 1)}>
+            Registered import works
+          </Button>
+          <Badge variant="outline">{clicks} clicks</Badge>
+        </div>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 14,
+            lineHeight: 1.5,
+            color: 'var(--muted-foreground, #737373)',
+          }}
+        >
+          {clicks === 0
+            ? 'Click the button — shadcn Button + Badge from @app/ui (counter updates here).'
+            : 'Clicked ' +
+              clicks +
+              (clicks === 1 ? ' time' : ' times') +
+              ' — real Button from @app/ui'}
+        </p>
       </CardContent>
     </Card>
   );
@@ -87,5 +110,31 @@ export default function Timer() {
 
 export const minimalPreviewDemo = `export default function Hello() {
   return <p className="text-sm">LivePreview renders this component.</p>;
+}
+`;
+
+/**
+ * Shows host → snippet data flow: `user` arrives through LiveProvider's
+ * `props`, not through an import.
+ */
+export const propsDemo = `export default function Greeting({ user, plan }) {
+  return (
+    <div className="grid gap-1">
+      <p className="text-sm">
+        Signed in as <strong>{user.name}</strong>
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Plan: {plan}, passed in from the host page, not imported.
+      </p>
+    </div>
+  );
+}
+`;
+
+/** A snippet that throws on render, so <LiveError> has something to show. */
+export const runtimeErrorDemo = `export default function Broken() {
+  const items = null;
+  // items is null, so .map throws while rendering.
+  return <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>;
 }
 `;

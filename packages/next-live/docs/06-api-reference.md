@@ -17,7 +17,7 @@ Three entry points, so you only ship what you use:
 | Entry | Contains | Why separate |
 |---|---|---|
 | `next-live` | Provider, preview, error, hooks, registry, engine | - |
-| `next-live/editor` | `<LiveEditor>` | It is the only thing needing `prism-react-renderer`. Measured: a preview-only page pays 16.1 KB instead of 97.2 KB. `prism-react-renderer` is an **optional peer dependency**, so it is not installed unless you import this. |
+| `next-live/editor` | `<LiveEditor>` | It is the only thing needing `prism-react-renderer`. Measured: a preview-only page pays 16.1 KB instead of 97.2 KB. `prism-react-renderer` is an **optional peer dependency**: npm never installs it automatically, so run `npm install prism-react-renderer` yourself if you use this entry. |
 | `next-live/server` | `precompile`, `validateSnippet(s)` | Imports Sucrase statically; must never reach the client bundle. |
 
 ## Components

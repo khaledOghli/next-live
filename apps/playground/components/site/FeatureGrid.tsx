@@ -6,7 +6,7 @@ const features = [
   },
   {
     title: 'Live props',
-    description: 'Pass stores and objects by reference — mutations show up in your app immediately.',
+    description: 'Pass stores and objects by reference, mutations show up in your app immediately.',
     icon: '↔',
   },
   {
@@ -21,7 +21,7 @@ const features = [
   },
   {
     title: 'Non-UI snippets',
-    description: 'useLiveModule runs validators, transformers, and config — not just components.',
+    description: 'useLiveModule runs validators, transformers, and config, not just components.',
     icon: '⚙',
   },
   {

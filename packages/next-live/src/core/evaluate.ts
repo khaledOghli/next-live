@@ -75,9 +75,9 @@ export interface EvaluateResult {
  * harmless.
  */
 export function evaluate(options: EvaluateOptions): EvaluateResult {
-  const { exports, rendered } = runModule(options);
+  const { exports, rendered, recovered } = runModule(options);
 
-  return pickRenderable(exports, rendered);
+  return pickRenderable(exports, rendered, recovered);
 }
 
 export interface ModuleResult {
@@ -85,6 +85,12 @@ export interface ModuleResult {
   exports: Record<string, unknown>;
   /** Present only when the snippet called the injected `render()` helper. */
   rendered?: { rendered: unknown };
+  /**
+   * True when the default export came from the recovery epilogue rather than
+   * from the author. Recorded on the module object, which never leaves this
+   * function, so a snippet's own `exports` stay clean for `compileModule`.
+   */
+  recovered?: boolean;
 }
 
 /**
@@ -106,7 +112,9 @@ export function runModule(options: EvaluateOptions): ModuleResult {
   // be filtered down to user code and DevTools shows a stable file name.
   const body = `${code}\n${epilogue}\n//# sourceURL=next-live:///${filePath}`;
 
-  const moduleObject = { exports: Object.create(null) as Record<string, unknown> };
+  const moduleObject: { exports: Record<string, unknown>; __nextLiveRecovered?: boolean } = {
+    exports: Object.create(null) as Record<string, unknown>,
+  };
 
   let rendered: unknown;
   let didRender = false;
@@ -148,6 +156,7 @@ export function runModule(options: EvaluateOptions): ModuleResult {
   return {
     exports: moduleObject.exports,
     ...(didRender ? { rendered: { rendered } } : {}),
+    ...(moduleObject.__nextLiveRecovered === true ? { recovered: true } : {}),
   };
 }
 
@@ -170,7 +179,7 @@ function buildEpilogue(code: string): string {
   return ranked
     .map(
       (name) =>
-        `;if(!('default' in exports)){try{if(typeof ${name}!=='undefined')exports.default=${name}}catch(e){}}`,
+        `;if(!('default' in exports)){try{if(typeof ${name}!=='undefined'){exports.default=${name};module.__nextLiveRecovered=true}}catch(e){}}`,
     )
     .join('');
 }
@@ -197,6 +206,7 @@ function rankCandidates(names: string[]): string[] {
 export function pickRenderable(
   exports: Record<string, unknown>,
   renderCall?: { rendered: unknown },
+  recovered?: boolean,
 ): EvaluateResult {
   if (renderCall) {
     const found = asRenderable(renderCall.rendered);
@@ -206,10 +216,20 @@ export function pickRenderable(
     );
   }
 
+  // `module.exports = Component` replaces the exports object wholesale, so the
+  // record handed in here *is* the component. Sucrase's ESM output never does
+  // that, which is why this is checked ahead of the named-export scan rather
+  // than as part of it - and why `ExtractionSource` has a 'module.exports'
+  // member at all.
+  const asCommonJs = asRenderable(exports);
+  if (asCommonJs) return { renderable: asCommonJs, via: 'module.exports' };
+
   const defaultExport = exports['default'];
   if (defaultExport !== undefined) {
     const found = asRenderable(defaultExport);
-    if (found) return { renderable: found, via: 'export default' };
+    // A recovered default was synthesised by the epilogue, not written by the
+    // author - saying 'export default' would misreport it in error messages.
+    if (found) return { renderable: found, via: recovered ? 'declaration' : 'export default' };
     throw new NoComponentError(
       `The default export is ${describe(defaultExport)}, which React cannot render. ` +
         'Export a component or an element instead.',

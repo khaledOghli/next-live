@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { DocsShell } from '@/components/docs/DocsShell';
 
 export const metadata: Metadata = {
-  title: { default: 'Documentation — next-live', template: '%s — next-live docs' },
+  title: { default: 'Documentation | next-live', template: '%s | next-live docs' },
   description: 'Install, integrate, and run live TSX snippets with next-live.',
 };
 

@@ -10,7 +10,7 @@ Your app imports a store in normal code. You register the same store for snippet
 
 ## The answer: one instance
 
-**No.** JavaScript modules are instantiated once per resolved specifier. Your static `import` and the registry's dynamic `import()` resolve to the same module object — the same reason fifty files importing React get one React.
+**No.** JavaScript modules are instantiated once per resolved specifier. Your static `import` and the registry's dynamic `import()` resolve to the same module object, for the same reason fifty files importing React get one React.
 
 This matters most for **state**. If a snippet got its own store copy, its cart and your app's cart would be unrelated objects. Everything would look fine while sharing nothing.
 
@@ -18,7 +18,7 @@ Because there is one instance, the store a snippet imports **is** your store:
 
 <LiveDemo source={storeDemo} filePath="CartDemo.tsx" />
 
-Add an item in the demo above — the cart count in the docs header (if wired) and the [Apps shell](/apps) header reflect the same Zustand store.
+Add an item in the demo above. The cart count in the docs header (if wired) and the [Apps shell](/apps) header reflect the same Zustand store.
 
 ## Live props by reference
 
@@ -33,10 +33,10 @@ The snippet receives the same object references. Mutations propagate immediately
 Two copies appear when you register a **different path** to what your app uses, or bundle the library twice under different specifiers. Keep one canonical import path in your SDK surface.
 
 <Callout variant="warning" title="iframe sandboxes cannot do this">
-  Running snippets on a separate origin would require structured-clone props — no live store, no functions by reference. next-live is designed for same-realm, trusted authors.
+  Running snippets on a separate origin would require structured-clone props: no live store, no functions by reference. next-live is designed for same-realm, trusted authors.
 </Callout>
 
 ## Try it
 
-- [Apps shell](/apps) — shared cart via `@app/store`
-- [Playground](/playground) — Shared instance demo with `@demo/vendor`
+- [Apps shell](/apps): shared cart via `@app/store`
+- [Playground](/playground): Shared instance demo with `@demo/vendor`

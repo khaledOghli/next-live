@@ -62,10 +62,27 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
 
   const compileIdRef = useRef(runner.compileId);
   compileIdRef.current = runner.compileId;
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const lastRuntimeReport = useRef<{ compileId: number; message: string } | null>(null);
 
   const reportRuntimeError = useCallback(
     (error: Error) => {
-      setRuntimeError({ error, compileId: compileIdRef.current });
+      if (!mountedRef.current) return;
+      const compileId = compileIdRef.current;
+      const last = lastRuntimeReport.current;
+      if (last !== null && last.compileId === compileId && last.message === error.message) {
+        return;
+      }
+      lastRuntimeReport.current = { compileId, message: error.message };
+      setRuntimeError({ error, compileId });
       onError?.(error);
     },
     [onError],

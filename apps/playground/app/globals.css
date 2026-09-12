@@ -148,3 +148,31 @@ html.docs-layout body {
   overflow: hidden;
   height: 100%;
 }
+
+.scrollbar-thin,
+html.docs-layout :is(.overflow-y-auto, .overflow-x-auto) {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 45%, transparent) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar,
+html.docs-layout :is(.overflow-y-auto, .overflow-x-auto)::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track,
+html.docs-layout :is(.overflow-y-auto, .overflow-x-auto)::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb,
+html.docs-layout :is(.overflow-y-auto, .overflow-x-auto)::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 40%, transparent);
+  border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover,
+html.docs-layout :is(.overflow-y-auto, .overflow-x-auto)::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--muted-foreground) 60%, transparent);
+}

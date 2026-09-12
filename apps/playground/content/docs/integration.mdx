@@ -1,43 +1,128 @@
 import Link from 'next/link';
 import { CodeBlock } from '@/components/docs/CodeBlock';
+import { CodeTabs } from '@/components/docs/CodeTabs';
 import { Callout } from '@/components/docs/Callout';
 import { Steps } from '@/components/docs/Steps';
 
-An end-to-end walkthrough: staff author apps in a control panel, source lives in a database, users open them in the browser.
+An end-to-end walkthrough for running snippets that live outside your build -
+wherever they come from and whoever writes them.
 
 ## Architecture
 
-<CodeBlock code={`Control panel  ──writes──▶  database  ──serves──▶  /api/apps/[id]
-                                                      │
-                                                      ▼
-                                            /apps/[id]  ──▶  <LiveProvider>
-                                                                  │
-                                                     compiles in the browser
-                                                                  ▼
-                                                         the running app`} />
+Only three things have to be true. Everything else is your application's
+existing shape:
+
+<CodeBlock
+  title="Data flow"
+  language="text"
+  code={`1. STORE
+   the snippet source lives somewhere you already control
+   (database row, CMS field, file in your repo)
+                        │
+                        │   2. SERVE
+                        │   your app hands it to the client
+                        │   as a plain string
+                        ▼
+            <LiveProvider code={source}>
+                        │
+                        │   3. RUN
+                        │   compiled in the browser
+                        ▼
+               a live React component`}
+  caption="Nothing compiles on the server. The snippet travels as a string and becomes a component in the browser."
+/>
+
+<Callout variant="info" title="The names below are illustrative">
+  This guide uses a database, an admin UI, and a `/api/apps/[id]` route because
+  a concrete example is easier to follow than an abstract one, but next-live
+  has no opinion about any of them. It never fetches anything itself. If your
+  snippets are Markdown frontmatter, rows in Postgres, or a constant in the
+  repo, keep whatever you already have: the only requirement is that `code` is
+  a **string** by the time it reaches `<LiveProvider>` in the browser.
+</Callout>
 
 <Steps steps={[
   {
     title: 'Decide your SDK surface first',
     children: (
       <>
-        <p>Pick stable namespaces before writing code — they become a public contract with authors.</p>
-        <CodeBlock code={`@app/store   — application state
-@app/ui      — buttons, cards, layout
-@app/format  — dates, currency
-@app/data    — fetch helpers`} />
+        <p>
+          Pick stable namespaces before you write any code. These become a public
+          contract with your authors, renaming <code>@app/store</code> later
+          breaks every stored snippet that imported it.
+        </p>
+        <CodeBlock
+          language="text"
+          title="The contract"
+          code={`@app/store    application state (hooks + actions)
+@app/ui       buttons, cards, layout primitives
+@app/format   dates, currency, numbers
+@app/data     fetch helpers`}
+        />
+        <p>
+          Keep the surface small and boring. Every export is something you have
+          to keep working.
+        </p>
       </>
     ),
   },
   {
-    title: 'Build the registry',
+    title: 'Build the registry from small files',
     children: (
       <>
-        <p>Thin re-exports in <code>lib/live-sdk/modules/</code>, composed in <code>index.ts</code>.</p>
-        <CodeBlock code={`export const liveModules = createRegistry(
+        <p>
+          One file per domain, composed in an <code>index.ts</code>. This beats a
+          literal inlined on <code>LiveProvider</code>: the groups are testable,
+          and <code>createRegistry</code> warns in development when two of them
+          claim the same key.
+        </p>
+        <CodeTabs
+          files={[
+            {
+              name: 'lib/live-sdk/index.ts',
+              highlight: '7-12',
+              code: `import { createRegistry } from 'next-live';
+import { formatModules } from './format-modules';
+import { storeModules } from './store-modules';
+import { uiModules } from './ui-modules';
+import { vendorModules } from './vendor';
+
+export const liveModules = createRegistry(
   vendorModules,
+  uiModules,
+  formatModules,
   storeModules,
-);`} />
+);`,
+            },
+            {
+              name: 'ui-modules.ts',
+              code: `import { defineLoader } from 'next-live';
+import type { ModuleRegistry } from 'next-live';
+
+export const uiModules: ModuleRegistry = {
+  '@app/ui': defineLoader(() => import('./modules/ui')),
+};`,
+            },
+            {
+              name: 'store-modules.ts',
+              code: `import { defineLoader } from 'next-live';
+import type { ModuleRegistry } from 'next-live';
+
+export const storeModules: ModuleRegistry = {
+  '@app/store': defineLoader(() => import('./modules/store')),
+};`,
+            },
+            {
+              name: 'modules/ui.ts',
+              code: `// A thin re-export, so the specifier's surface is explicit and reviewable
+// rather than "whatever happens to be in the components folder".
+export { Button } from '@/components/ui/button';
+export { Badge } from '@/components/ui/badge';
+export { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';`,
+            },
+          ]}
+          caption="Every entry is defineLoader, so a snippet that never imports @app/ui does not pull it into the page."
+        />
       </>
     ),
   },
@@ -45,39 +130,96 @@ An end-to-end walkthrough: staff author apps in a control panel, source lives in
     title: 'Store snippets as strings',
     children: (
       <>
-        <p>A snippet is TSX source text — not a file path. You can author <code>.tsx</code> files in your repo and read them server-side, but <code>LiveProvider</code> always receives a string.</p>
-        <CodeBlock code={`// database row
-{ id: 'dashboard-widget', source: 'import … export default …' }`} />
+        <p>
+          A snippet is TSX source text, not a file path. You can author{' '}
+          <code>.tsx</code> files in your repo and read them server-side, but{' '}
+          <code>LiveProvider</code> always receives a string.
+        </p>
+        <CodeBlock
+          title="Whatever your storage looks like, the snippet is text"
+          language="ts"
+          code={`{
+  id: 'dashboard-widget',
+  name: 'Revenue widget',
+  source: "import { Card } from '@app/ui';\\n\\nexport default function App() { … }",
+}`}
+          caption="A database row, a CMS entry, or a .tsx file you read at build time, next-live only sees the string."
+        />
       </>
     ),
   },
   {
-    title: 'Serve from an authenticated API',
+    title: 'Serve it behind whatever auth you already have',
     children: (
       <>
-        <CodeBlock code={`export async function GET(req, { params }) {
+        <p>
+          If the source is already in your bundle or read at build time, skip
+          this step entirely; there is nothing to fetch. If you serve it over
+          HTTP, the route is an ordinary authenticated endpoint:
+        </p>
+        <CodeBlock
+          title="app/api/apps/[id]/route.ts"
+          highlight="2-5"
+          code={`export async function GET(request: Request, { params }) {
+  const session = await auth(request);
+  if (!session) {
+    return Response.json({ error: 'unauthorized' }, { status: 401 });
+  }
+
   const app = await db.apps.find(params.id);
   if (!app) return Response.json({ error: 'not found' }, { status: 404 });
+
   return Response.json({ id: app.id, source: app.source });
-}`} />
-        <p>Authorize the write path strictly. Whoever can POST a snippet can run JS on your site.</p>
+}`}
+        />
+        <Callout variant="danger" title="Guard the write path even harder">
+          Whoever can POST a snippet can run JavaScript on your site, as your
+          users, with their cookies. Read access controls who sees an app; write
+          access controls who owns your frontend. See{' '}
+          <Link href="/docs/security">Security</Link>.
+        </Callout>
       </>
     ),
   },
   {
-    title: 'Render with LiveProvider',
+    title: 'Render it, and persist edits',
     children: (
       <>
-        <CodeBlock code={`'use client';
+        <p>
+          <code>onCodeChange</code> fires only for edits made <em>inside</em> the
+          runner, never when the <code>code</code> prop changes from outside. That
+          is what makes it safe to save from: it cannot echo your own writes back
+          at you in a loop.
+        </p>
+        <CodeBlock
+          title="app/apps/[id]/AppRunner.tsx"
+          highlight="14-16"
+          code={`'use client';
 
-export function AppRunner({ source }) {
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
+import { liveModules } from '@/lib/live-sdk';
+
+export function AppRunner({ id, source, user, canEdit }) {
   return (
-    <LiveProvider code={source} modules={liveModules} props={{ user }}>
-      <LivePreview fallback={<Skeleton />} />
+    <LiveProvider
+      code={source}
+      modules={liveModules}
+      props={{ user }}
+      filePath={\`app-\${id}.tsx\`}
+      onCodeChange={
+        canEdit ? (next) => saveDraft(id, next) : undefined
+      }
+      fallback={<Skeleton className="h-80 w-full" />}
+    >
+      {canEdit && <LiveEditor />}
+      <LivePreview />
       <LiveError />
     </LiveProvider>
   );
-}`} />
+}`}
+          caption="filePath gives each app a stable identity, so stack traces and DevTools name the right thing."
+        />
       </>
     ),
   },
@@ -85,7 +227,30 @@ export function AppRunner({ source }) {
     title: 'Add CSP and CI validation',
     children: (
       <>
-        <p>Scope <code>unsafe-eval</code> to runner routes. Run <code>validateSnippets</code> in CI. See <Link href="/docs/security">Security</Link> and <Link href="/docs/validating-ci">Validating in CI</Link>.</p>
+        <p>
+          Scope <code>unsafe-eval</code> to the runner routes only, and run{' '}
+          <code>validateSnippets</code> over every stored app in CI so an SDK
+          rename fails your build instead of your users' pages.
+        </p>
+        <CodeBlock
+          title="A CI gate"
+          language="ts"
+          code={`import { validateSnippets } from 'next-live/server';
+
+const failures = validateSnippets(await db.apps.all(), {
+  modules: LIVE_MODULE_KEYS,
+  forbidRemoteImports: true,
+});
+
+if (failures.length > 0) {
+  console.error(failures);
+  process.exit(1);
+}`}
+        />
+        <p>
+          Full detail in <Link href="/docs/security">Security</Link> and{' '}
+          <Link href="/docs/validating-ci">Validating in CI</Link>.
+        </p>
       </>
     ),
   },
@@ -93,8 +258,12 @@ export function AppRunner({ source }) {
 
 ## See it running
 
-The [Apps shell demo](/apps) in this repo implements this pattern: sidebar tabs, API-fetched snippets, shadcn via `@app/ui`, shared store via `@app/store`.
+The [Apps shell demo](/apps) in this repo implements exactly this pattern:
+sidebar tabs, API-fetched snippets, shadcn components through `@app/ui`, and a
+store shared with the host page through `@app/store`.
 
 <Callout variant="info" title="Code is always a string">
-  Whether it comes from a database, an API, or a template literal — <code>code={'{source}'}</code> is the only input next-live accepts.
+  Whether it comes from a database, an API, or a template literal in your repo,
+  <code>{' code={source} '}</code> is the only input next-live accepts. There is
+  no file-path mode to look for.
 </Callout>

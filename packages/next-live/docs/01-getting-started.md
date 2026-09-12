@@ -7,17 +7,29 @@ renders it as a live React component.
 
 **Requirements:** React 19+ and Node 20.9+.
 
-Next.js is **not** required — the library imports only `react`,
-`react/jsx-runtime`, `prism-react-renderer` and `sucrase`, and Next is not even
-a peer dependency. This guide is written against the Next 16 App Router because
-that is what it is tuned for (SSR safety, the CSP notes), but everything works
-in Vite, Remix, or anywhere React runs.
+Next.js is **not** required. The library imports only `react`,
+`react/jsx-runtime`, `react/jsx-dev-runtime`, `prism-react-renderer` and
+`sucrase`, and Next is not even a peer dependency. This guide is written
+against the Next 16 App Router because that is what it is tuned for (SSR
+safety, the CSP notes), but everything works in Vite, Remix, or anywhere React
+runs.
 
 ## Step 1: Install
 
 ```bash
 npm install next-live
 ```
+
+This guide uses the built-in `<LiveEditor>`, which needs one **optional peer
+dependency**. npm does not install it for you, so add it too:
+
+```bash
+npm install prism-react-renderer
+```
+
+If you only ever *run* stored snippets and never edit them, skip it - a
+preview-only page never imports `next-live/editor`, and that is exactly why the
+highlighter lives on a separate entry.
 
 ## Step 2: Create the runner
 

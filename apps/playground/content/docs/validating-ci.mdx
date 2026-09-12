@@ -3,11 +3,11 @@ import { Callout } from '@/components/docs/Callout';
 
 ## The problem
 
-Snippets live in a database. When you rename an export in your SDK, stored apps break silently — tests pass, users hit errors days later.
+Snippets live in a database. When you rename an export in your SDK, stored apps break silently. Tests pass, users hit errors days later.
 
 ## The fix
 
-`validateSnippets` transpiles every stored snippet and checks imports against your registry. **It never evaluates** — safe to run in CI with no DOM.
+`validateSnippets` transpiles every stored snippet and checks imports against your registry. **It never evaluates**, so it is safe to run in CI with no DOM.
 
 <CodeBlock title="scripts/validate-apps.ts" code={`import { validateSnippets } from 'next-live/server';
 import { getAllApps } from '../lib/db';

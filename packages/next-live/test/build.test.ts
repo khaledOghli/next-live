@@ -121,7 +121,7 @@ describe.skipIf(!built)('build output', () => {
  * The source must be honest about being client-only too.
  *
  * `dist` is stamped by a post-build script, so a missing directive in source is
- * invisible in the published package — until someone compiles the package
+ * invisible in the published package, until someone compiles the package
  * directly instead of consuming `dist`, at which point a barrel without the
  * directive silently becomes a server module.
  */

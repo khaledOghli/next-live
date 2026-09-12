@@ -4,14 +4,32 @@
 
 This is the core concept. Everything else follows from it.
 
+If you only remember one thing: **live snippets cannot import anything you did
+not register.** You choose what they can reach, and you give each thing a name.
+
 ## The mental model
 
 **There is no npm in the browser.** No bundler, no package resolution, no
 network fetch for `lodash`. Your application's JavaScript contains only what
 *you* imported when it was built.
 
-So a snippet saying `import _ from 'lodash'` cannot conjure lodash into
-existence. You have to hand it over. The `modules` prop is how:
+In normal app code:
+
+```tsx
+import { Button } from '@/components/ui/button';
+```
+
+Your bundler resolves that path at build time and ships the file. A live snippet
+is a **string** that was not part of the build. When it says:
+
+```tsx
+import _ from 'lodash';
+```
+
+that does not install or fetch lodash. It means "look up `lodash` in the
+registry I was given."
+
+You hand real code over through the `modules` prop:
 
 ```tsx
 <LiveProvider
@@ -25,25 +43,110 @@ existence. You have to hand it over. The `modules` prop is how:
 `next-live` compiles `import x from 'y'` into a lookup against that map. If the
 specifier is not registered, the snippet fails with a clear error naming it.
 
-This replaces `react-live`'s flat `scope` object, where every hook and helper had
-to be injected as a global variable and `import` could not be used at all.
+Think of `modules` as a **phone book**:
+
+| Snippet writes | Registry key | What loads |
+|---|---|---|
+| `import { Button } from '@app/ui'` | `'@app/ui'` | Your UI module |
+| `import { useCart } from '@app/store'` | `'@app/store'` | Your store |
+| `import _ from 'lodash'` | *(missing)* | Error |
+
+The snippet only knows the label. You decide which real code it points to.
+
+## Walkthrough: from string to component
+
+**1. Host setup**
+
+```tsx
+<LiveProvider
+  code={source}
+  modules={{
+    '@app/format': defineLoader(() => import('@/lib/format')),
+  }}
+>
+  <LivePreview />
+</LiveProvider>
+```
+
+**2. Snippet source**
+
+```tsx
+import { formatMoney } from '@app/format';
+
+export default function Price() {
+  return <p>{formatMoney(99)}</p>;
+}
+```
+
+**3. Compile** - the import becomes a registry lookup for `'@app/format'`.
+
+**4. Load** - the loader runs `import('@/lib/format')` (lazy, code-split).
+
+**5. Render** - `formatMoney` from your real file is passed to the snippet.
+
+## react-live `scope` vs `modules`
+
+**react-live** injected globals; snippets could not use `import`:
+
+```tsx
+<LiveProvider scope={{ useState, Button, formatMoney }} />
+```
+
+```tsx
+export default () => <Button>{formatMoney(42)}</Button>;
+```
+
+**next-live** uses real imports against a registry:
+
+```tsx
+modules={{
+  '@app/ui': defineLoader(() => import('@/components/ui')),
+  '@app/format': defineLoader(() => import('@/lib/format')),
+}}
+```
+
+```tsx
+import { Button } from '@app/ui';
+import { formatMoney } from '@app/format';
+```
+
+`react` is built in. Everything else you register. Prefer `modules` over `scope`
+for new code.
 
 ## The key is just a string
 
 A registry key does **not** have to be a real path or a real package name. It is
-whatever you want snippet authors to type:
+whatever you want snippet authors to type. These could all point at the same
+file:
 
 ```tsx
 modules={{
-  '@app/store':   /* … */,   // looks like a package
-  '@/store':      /* … */,   // looks like a path alias
-  'my-utils':     /* … */,   // looks like a dependency
-  './helpers':    /* … */,   // looks like a relative import
+  '@app/store': defineLoader(() => import('@/lib/store')),
+  '@/store':    defineLoader(() => import('@/lib/store')),
+  'my-store':   defineLoader(() => import('@/lib/store')),
 }}
 ```
 
-Pick names that read like a deliberate SDK. See
-[Scaling](./04-scaling.md#design-an-sdk-surface-not-a-mirror-of-your-codebase).
+Pick names that read like a deliberate SDK, not a mirror of your folder tree.
+See [Scaling](./04-scaling.md#design-an-sdk-surface-not-a-mirror-of-your-codebase).
+
+## Common mistakes
+
+**Typo in a named export** - the module loads but the export is missing. Fix
+the import or re-export from your SDK module.
+
+**Two paths to the same library** - registering a different import path than
+your app uses creates two instances (two stores, two React copies). Keep one
+canonical path. See [Sharing libraries](./03-sharing-your-app-libraries.md).
+
+**Expecting npm packages to work automatically** - register them explicitly:
+
+```tsx
+'date-fns': defineLoader(() => import('date-fns')),
+```
+
+**Unused typo imports** - stripped at compile time like TypeScript. Only imports
+that survive compilation are resolved.
 
 ## Two ways to register
 
@@ -69,6 +172,80 @@ used or not. Fine for something tiny; wrong for anything large.
 **Use loaders.** A registry of 300 loaders costs nothing at runtime - only
 specifiers that appear in the compiled snippet are ever resolved. See
 [Scaling](./04-scaling.md) for the measured difference.
+
+## Organizing your registry in separate files
+
+You do not need a giant `modules={{ … }}` on `<LiveProvider>`. Put the full list
+in a dedicated SDK folder and import one object:
+
+```tsx
+import { liveModules } from '@/lib/live-sdk';
+
+<LiveProvider code={source} modules={liveModules}>
+  <LivePreview />
+</LiveProvider>
+```
+
+**100 registered loaders does not mean 100 network requests.** Each entry is a
+small loader function. next-live scans the compiled snippet and only runs
+loaders for specifiers the snippet actually imports.
+
+### Recommended layout
+
+```
+lib/live-sdk/
+  index.ts              # export liveModules
+  ui-modules.ts         # manual group
+  format-modules.ts
+  store-modules.ts
+  vendor.ts             # prefix / npm loaders
+  app-modules-glob.ts   # optional auto-register
+  modules/
+    ui.ts               # re-exports for snippets
+    format.ts
+    store.ts
+```
+
+### Option A: manual groups + `createRegistry`
+
+```ts
+// lib/live-sdk/format-modules.ts
+export const formatModules = {
+  '@app/format': defineLoader(() => import('./modules/format')),
+  '@app/x': defineLoader(() => import('@/lib/x')),
+};
+
+// lib/live-sdk/index.ts
+export const liveModules = createRegistry(
+  vendorModules,
+  uiModules,
+  formatModules,
+  storeModules,
+);
+```
+
+### Option B: `registryFromGlob`
+
+```ts
+export const appModulesFromGlob = registryFromGlob(
+  import.meta.glob('./modules/*.ts'),
+  (path) => `@app/${path.split('/').pop()!.replace(/\.tsx?$/, '')}`,
+);
+```
+
+Add a file under `modules/` and it is registered automatically.
+
+### Option C: hybrid
+
+Manual groups for special cases (prefix loaders, npm packages) plus glob for
+the `./modules/` surface:
+
+```ts
+export const liveModules = createRegistry(vendorModules, appModulesFromGlob);
+```
+
+The playground uses Option A for `@app/ui`, `@app/format`, and `@app/store`,
+with `app-modules-glob.ts` kept as a ready-made Option B example.
 
 ## Every import form works
 

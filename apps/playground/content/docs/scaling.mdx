@@ -26,14 +26,14 @@ Measured on the playground with a 192 KB vendor module:
 
 | Page imports | Entry chunk |
 |---|---|
-| `LiveProvider` + `LivePreview` + `LiveError` | **~16 KB** |
-| above + `LiveEditor` from `next-live/editor` | ~102 KB |
+| `LiveProvider` + `LivePreview` + `LiveError` | **16.1 KB** |
+| above + `LiveEditor` from `next-live/editor` | 97.2 KB |
 
 Sucrase is fetched on first compile, or skipped entirely with [server precompilation](#precompile-on-the-server).
 
 ## Design an SDK surface
 
-Expose a handful of stable namespaces — not a mirror of your entire codebase:
+Expose a handful of stable namespaces, not a mirror of your entire codebase:
 
 | Specifier | Contains |
 |---|---|
@@ -70,4 +70,4 @@ See the precompile tab in the [Playground](/playground).
 
 ## Next
 
-[Security](/docs/security) — scope `'unsafe-eval'` to runner routes only.
+[Security](/docs/security): scope `'unsafe-eval'` to runner routes only.

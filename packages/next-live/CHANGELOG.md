@@ -20,10 +20,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `CompileResult` and `CompileModuleResult` now include sorted `imports`.
 - Opt-in stricter `validateSnippet` options: `maxSourceBytes`, `forbidNodeBuiltins`, `forbidRemoteImports`, `denySpecifiers`.
 - `errorPosition` and `PositionedError` exported from `next-live`.
+- `resolveSubpaths` on `<LiveProvider>` / `useLiveRunner` / `useLiveModule`, opt in to resolving `pkg/Sub` against a registered `pkg` by property access.
 
 ### Changed
 
 - **`<LiveEditor>` is exported from `next-live/editor`, not `next-live`.** Preview-only pages that never edit snippets should import only from `next-live`, measured ~16 KB instead of ~97 KB when Prism is not needed.
-- `prism-react-renderer` is an optional peer dependency, installed only when you import `next-live/editor`.
+- `prism-react-renderer` is an **optional** peer dependency. Package managers do not install it automatically, so run `npm install prism-react-renderer` yourself if you import `next-live/editor`. Preview-only pages need nothing extra.
 
 [0.1.0]: https://github.com/khaledoghli/next-live/releases/tag/v0.1.0

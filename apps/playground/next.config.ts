@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
 /**
  * MDX defaults to CommonMark, which has no tables, task lists, strikethrough,
  * or autolinks. Without `remark-gfm` every markdown table renders as literal
- * pipe characters — and these docs are full of tables, so a large share of the
+ * pipe characters, and these docs are full of tables, so a large share of the
  * content was unreadable.
  *
  * Plugins are named as **strings**, not imported functions: Turbopack (the

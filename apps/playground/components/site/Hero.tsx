@@ -24,7 +24,7 @@ export function Hero() {
 
         <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
           Real ESM imports, a module registry instead of a scope bag, and zero hydration
-          mismatches — built for the Next.js App Router.
+          mismatches, built for the Next.js App Router.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">

@@ -61,6 +61,30 @@ export function isModuleSource(source: string): boolean {
   return MODULE_SYNTAX_RE.test(source) || RENDER_CALL_RE.test(source);
 }
 
+/**
+ * Whether a snippet carries no code at all - empty, whitespace, or only
+ * comments.
+ *
+ * Such a snippet must not go down the bare-expression path: wrapping it
+ * produces `export default ( )`, which Sucrase happily emits because it is a
+ * token-based transform rather than a validating parser. The invalid code then
+ * survives all the way to `new Function`, where the author sees a bare
+ * `Unexpected token ')'` instead of being told the snippet is empty. Routing it
+ * through module mode yields an empty module, and the normal "did not produce a
+ * component" message.
+ *
+ * Only line-initial `//` is treated as a comment, so a URL inside a string on a
+ * line of real code cannot make that line look blank. The check errs towards
+ * "has content", which is the safe direction: it only ever restores the
+ * previous behaviour.
+ */
+export function isBlankSource(source: string): boolean {
+  const withoutComments = source
+    .replace(/\/\*[\s\S]*?\*\//g, ' ')
+    .replace(/^[ \t]*\/\/.*$/gm, ' ');
+  return withoutComments.trim() === '';
+}
+
 /** The Sucrase options every entry point uses, so they cannot drift apart. */
 export function sucraseOptions(options: Required<TranspileOptions>) {
   return {
@@ -87,7 +111,7 @@ export function runTranspile(
 ): TransformResult {
   const opts = sucraseOptions(options);
 
-  if (!isModuleSource(source)) {
+  if (!isModuleSource(source) && !isBlankSource(source)) {
     // The newlines matter: they shift the user's code down exactly one line,
     // which `linePrefixOffset` corrects, whereas inlining would destroy line
     // mapping for the whole snippet.
@@ -154,16 +178,29 @@ function toCompileError(cause: unknown): LiveCompileError {
  * Names declared at the top level of compiled output, used to recover a
  * component from a snippet that never exported one.
  *
- * Anchored at column zero because Sucrase leaves top-level declarations
- * unindented. A false positive from inside a template literal is harmless -
- * the generated epilogue guards every name with `typeof`.
+ * Matched at the start of a line *or* just after a `;`. Column zero alone is
+ * not enough: Sucrase prepends its own preamble - `"use strict";var _jsxruntime
+ * = require(...)` - to line 1, so a component declared on the snippet's first
+ * line no longer sits at column zero and was silently skipped. The snippet
+ * below then exported `y`, and the author was told the default export was a
+ * number:
+ *
+ * ```js
+ * const App = () => <b/>;   // invisible: shares line 1 with the preamble
+ * const y = 2;              // found, and wrongly chosen
+ * ```
+ *
+ * Matching after `;` also admits declarations nested inside a function body,
+ * which is harmless by the same reasoning as any other false positive: the
+ * generated epilogue guards every name with `typeof`, and a block-scoped name
+ * is `undefined` at module level, so it is skipped.
  */
 export function scanTopLevelDeclarations(code: string): string[] {
   const names: string[] = [];
   const patterns = [
-    /^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm,
-    /^class\s+([A-Za-z_$][\w$]*)/gm,
-    /^(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/gm,
+    /(?:^|;)\s*(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm,
+    /(?:^|;)\s*class\s+([A-Za-z_$][\w$]*)/gm,
+    /(?:^|;)\s*(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/gm,
   ];
 
   for (const pattern of patterns) {

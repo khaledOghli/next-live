@@ -61,6 +61,14 @@ export function useCompileTask<T>(
   });
   const [isCompiling, setIsCompiling] = useState(false);
   const compileIdRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     setCode(initialCode);
@@ -104,6 +112,7 @@ export function useCompileTask<T>(
     if (filePath === prevFilePath.current) return;
     prevFilePath.current = filePath;
     compileIdRef.current += 1;
+    if (!mountedRef.current) return;
     setState({ result: null, error: null, compileId: compileIdRef.current });
   }, [filePath]);
 
@@ -112,7 +121,7 @@ export function useCompileTask<T>(
     let cancelled = false;
 
     const spinnerTimer = setTimeout(() => {
-      if (!cancelled) setIsCompiling(true);
+      if (!cancelled && mountedRef.current) setIsCompiling(true);
     }, 200);
 
     const timer = setTimeout(() => {
@@ -129,7 +138,7 @@ export function useCompileTask<T>(
           ...(current.transform ? { transform: current.transform } : {}),
         })
         .then((result) => {
-          if (cancelled) return;
+          if (cancelled || !mountedRef.current) return;
           const nextCompileId = compileIdRef.current + 1;
           compileIdRef.current = nextCompileId;
           setState({
@@ -148,7 +157,7 @@ export function useCompileTask<T>(
           }
         })
         .catch((error: unknown) => {
-          if (cancelled) return;
+          if (cancelled || !mountedRef.current) return;
           const asError = error instanceof Error ? error : new Error(String(error));
           if (keepLastGood) {
             setState((previous) => ({ ...previous, error: asError }));
@@ -159,7 +168,7 @@ export function useCompileTask<T>(
           }
         })
         .finally(() => {
-          if (cancelled) return;
+          if (cancelled || !mountedRef.current) return;
           clearTimeout(spinnerTimer);
           setIsCompiling(false);
         });

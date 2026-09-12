@@ -11,6 +11,17 @@ By the end of this page you will have a page that takes a string of TSX and rend
 
 <InstallCommand />
 
+This guide uses the built-in `<LiveEditor>`, which needs one **optional peer
+dependency**. Package managers do not install it for you:
+
+<InstallCommand packages="prism-react-renderer" />
+
+<Callout variant="info" title="Preview-only pages should skip it">
+  If you only run stored snippets and never edit them, you never import
+  `next-live/editor`, which is exactly why the highlighter lives on a separate
+  entry. Skipping it is what keeps a preview-only page at 16.1 KB.
+</Callout>
+
 ## Step 2: Create the runner
 
 `next-live` compiles in the browser, so the component that uses it must be a Client Component.
@@ -30,7 +41,7 @@ export function Runner({ source }: { source: string }) {
   );
 }`} />
 
-That is already a working playground — `react` is registered for you, so snippets can use hooks immediately.
+That is already a working playground. `react` is registered for you, so snippets can use hooks immediately.
 
 ## Step 3: Your first preview
 
@@ -54,12 +65,15 @@ export default function AppsPage() {
 }`} />
 
 <Callout variant="info" title="You do not need next/dynamic with ssr: false">
-  next-live never compiles during the server pass. The first client render matches the server exactly — no hydration mismatch.
+  next-live never compiles during the server pass, so the first client render
+  matches the server exactly. [How it works](#ssr-and-hydration).
 </Callout>
 
 ## Step 4: Give snippets access to your app
 
-By default a snippet can only import `react`. Pass a `modules` registry for your own code:
+By default a snippet can only import `react`. It cannot reach your store, UI kit, or npm packages on its own. You declare what it may import through the `modules` prop: a map from **import name** to **real code in your app**.
+
+Example: register `'@app/store'` so snippets can write `import { useCart } from '@app/store'` and get your actual store module.
 
 <CodeBlock code={`'use client';
 
@@ -91,22 +105,58 @@ export default function App({ user }) {
   return <Button>{user.name}: {cart.length} items</Button>;
 }`} />
 
-Read [Module registry](/docs/module-registry) next — it is the core concept.
+Read [Module registry](/docs/module-registry) next for a full walkthrough, live demos, and common mistakes. It is the most important concept in next-live.
 
 ## What each piece does
 
 | Component | Purpose |
 |---|---|
 | `<LiveProvider>` | Compiles `code` and provides the result. Everything else must be inside it. |
-| `<LiveEditor>` | Textarea with syntax highlighting. Optional — omit for read-only runners. |
+| `<LiveEditor>` | Textarea with syntax highlighting. Optional; omit for read-only runners. |
 | `<LivePreview>` | Renders the compiled component inside an error boundary. |
 | `<LiveError>` | Shows compile or runtime errors; renders nothing when healthy. |
 
 You can skip the components and use [`useLiveRunner`](/docs/api-reference) for a fully custom UI.
 
+## What a snippet may look like
+
+All of these work:
+
+<CodeBlock
+  title="Supported snippet shapes"
+  code={`export default function App() { return <div/> }   // a module (recommended)
+function App() { return <div/> }                  // bare declaration
+<div>hello</div>                                  // bare expression
+() => <div/>                                      // bare expression
+render(<App prop="x"/>)                           // explicit render call`}
+  caption="export default is the unambiguous form. The others are recovered heuristically for react-live compatibility."
+/>
+
+Prefer `export default` in anything you store; the heuristics exist for
+migration, not as a style to adopt.
+
+TypeScript works too: types, interfaces, and generics are all stripped. Note
+that they are **not checked**; see
+[Troubleshooting](/docs/troubleshooting).
+
+## SSR and hydration
+
+Nothing is compiled during the server pass. `<LivePreview>` renders its
+`fallback` on the server **and** on the client's first render, so the two are
+identical and hydration cannot mismatch. Compilation starts afterwards, in an
+effect.
+
+That is why you do not need `next/dynamic(..., { ssr: false })`. The reflex
+most people reach for first.
+
+Give the fallback roughly the size of your content to avoid layout shift:
+
+<CodeBlock code={`<LivePreview fallback={<div style={{ height: 320 }} />} />`} />
+
+
 ## Loading snippets from your API
 
-The real use case is code stored elsewhere. `code` is controlled — change it and the preview follows:
+The real use case is code stored elsewhere. `code` is controlled: change it and the preview follows:
 
 <CodeBlock code={`'use client';
 

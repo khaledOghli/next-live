@@ -12,7 +12,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     { url: siteUrl, changeFrequency: 'monthly', priority: 1 },
-    { url: `${siteUrl}/docs/getting-started`, changeFrequency: 'monthly', priority: 0.95 },
+    // The docs index is its own page (overview, FAQ, full page list), not a
+    // redirect to the first guide, so it is listed once in its own right.
+    { url: `${siteUrl}/docs`, changeFrequency: 'monthly', priority: 0.95 },
     ...docPages,
   ];
 }

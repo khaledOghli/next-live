@@ -66,7 +66,7 @@ export function DocsShell({ children }: { children: ReactNode }) {
           id="docs-sidebar"
           inert={isMobile && !mobileOpen ? true : undefined}
           className={cn(
-            'fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-border bg-docs-sidebar pt-14 transition-transform lg:static lg:z-0 lg:shrink-0 lg:translate-x-0 lg:pt-0',
+            'fixed inset-y-0 left-0 z-30 flex w-72 flex-col border-r border-border/40 bg-docs-sidebar pt-14 transition-transform lg:static lg:z-0 lg:shrink-0 lg:translate-x-0 lg:pt-0',
             mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
           )}
         >
@@ -82,13 +82,15 @@ export function DocsShell({ children }: { children: ReactNode }) {
           />
         )}
 
-        <div className="flex min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
-          <main
-            id="docs-content"
-            className="mx-auto w-full min-w-0 max-w-3xl flex-1 px-6 py-10 sm:px-8 lg:px-12"
-          >
-            {children}
-          </main>
+        <div className="flex min-h-0 min-w-0 flex-1">
+          <div className="min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain">
+            <main
+              id="docs-content"
+              className="mx-auto w-full min-w-0 max-w-3xl px-6 py-10 sm:px-8 lg:px-12"
+            >
+              {children}
+            </main>
+          </div>
           <DocToc />
         </div>
       </div>

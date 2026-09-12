@@ -7,7 +7,7 @@ Read this before you deploy. The first rule is the one that matters.
 
 ## The model in one paragraph
 
-next-live runs code with `new Function` on your page. That code has the page's full authority — cookies, storage, DOM, and your APIs as the signed-in user.
+next-live runs code with `new Function` on your page. That code has the page's full authority: cookies, storage, DOM, and your APIs as the signed-in user.
 
 **Safe when snippet authors are people you trust. Unsafe when they are not.**
 
@@ -19,7 +19,7 @@ next-live runs code with `new Function` on your page. That code has the page's f
 |---|---|---|
 | **Snippet author** (admin, internal dev) | Save TSX that runs on your origin | Strict auth on the **write** API; audit trail; version history |
 | **Visitor** | View the compiled preview | Cannot inject code unless they also control the write path |
-| **Attacker with URL param access** | Run arbitrary JS on your site | **Block this** — never pass user-controlled strings to `code` |
+| **Attacker with URL param access** | Run arbitrary JS on your site | **Block this.** Never pass user-controlled strings to `code` |
 
 <Callout variant="danger" title="Whoever can save a snippet can run JavaScript on your site">
   Treat a row in your snippets table like a production deploy. That endpoint deserves your strictest authorization check.
@@ -33,13 +33,13 @@ const { source } = await fetch(\`/api/apps/\${id}\`).then((r) => r.json());
 // ❌ never
 const source = new URLSearchParams(location.search).get('code');`} />
 
-If an attacker controls what reaches `code`, no CSP setting prevents execution — that is by design.
+If an attacker controls what reaches `code`, no CSP setting prevents execution. That is by design.
 
 ## Rule 2: Scope unsafe-eval to runner routes
 
 `new Function` requires `'unsafe-eval'` in `script-src`. It does not have to apply to your whole app:
 
-<CodeBlock title="lib/runner-routes.ts + proxy.ts" code={`// Shared list — proxy.ts and RunnerLink must agree.
+<CodeBlock title="lib/runner-routes.ts + proxy.ts" code={`// Shared list: proxy.ts and RunnerLink must agree.
 export const RUNNER_ROUTES = ['/playground', '/apps', '/docs'] as const;
 
 export function isRunnerRoute(pathname: string): boolean {
@@ -51,26 +51,36 @@ export function isRunnerRoute(pathname: string): boolean {
 // proxy.ts: grant 'unsafe-eval' only when isRunnerRoute(pathname)
 // RunnerLink: use <a> (real navigation) for runner destinations`} />
 
-Per-route CSP and client-side routing do not compose — soft-navigating from `/` into `/docs` keeps the landing policy without \`'unsafe-eval'\`. Use \`RunnerLink\` for cross-boundary links. Working copy: [`apps/playground/proxy.ts`](https://github.com/khaledoghli/next-live). Visit `/rsc-check` to see CSP blocking eval.
+Per-route CSP and client-side routing do not compose. Soft-navigating from `/` into `/docs` keeps the landing policy without \`'unsafe-eval'\`. Use \`RunnerLink\` for cross-boundary links. Working copy: [`apps/playground/proxy.ts`](https://github.com/khaledoghli/next-live/blob/main/apps/playground/proxy.ts). Visit `/rsc-check` to see CSP blocking eval.
 
 <Callout variant="info" title="unsafe-eval is narrower than it sounds">
-  It gates string-to-code APIs only (`eval`, `Function`). It does **not** allow loading external scripts.
+  It gates string-to-code APIs only (`eval`, `Function`). It does **not** allow loading external scripts, so `script-src 'self' 'unsafe-eval'` still blocks attacker-hosted code.
 </Callout>
 
-## What is contained — and what is not
+The policy also carries `'unsafe-inline'` in `script-src`, because Next injects
+inline bootstrap and streaming scripts. It is the one real weakening in an
+otherwise strict policy, worth replacing with a nonce on your non-runner
+routes, though it buys nothing on the runner routes, where `'unsafe-eval'` is
+already the stronger capability. A nonce-based CSP also forces fully dynamic
+rendering, which is a genuine cost to weigh.
+
+## What is contained (and what is not)
 
 **Contained:** runtime errors, render loops. `<LiveErrorBoundary>` keeps a broken snippet from crashing the host. A render-rate breaker stops runaway `setState`.
 
-**Not contained:** full page authority. A synchronous `while (true)` hangs the tab. `window`, `fetch`, and the DOM are always available — the module registry limits convenience, not capability.
+**Not contained:** full page authority. A synchronous `while (true)` hangs the tab. `window`, `fetch`, and the DOM are always available. The module registry limits convenience, not capability.
 
 ## If authors stop being trusted
 
-Same-realm evaluation is for cooperative authors, not a security boundary. Public marketplaces or cross-tenant code need an iframe on a **separate origin** — a different product with different trade-offs (no live props by reference).
+Same-realm evaluation is for cooperative authors, not a security boundary. Public marketplaces or cross-tenant code need an iframe on a **separate origin**, a different product with different trade-offs (no live props by reference).
 
 ## Checklist before production
 
 - [ ] Snippet source only from authenticated write API
 - [ ] Audit log + version history on stored snippets
 - [ ] `'unsafe-eval'` scoped to runner routes in `proxy.ts`
-- [ ] Strict `connect-src` — snippets cannot exfiltrate to arbitrary hosts
-- [ ] `validateSnippets` in CI — [Validating in CI](/docs/validating-ci)
+- [ ] Strict `connect-src`: snippets cannot exfiltrate to arbitrary hosts
+- [ ] `object-src 'none'` and `base-uri 'self'` set, they close known bypasses and cost nothing
+- [ ] `upgrade-insecure-requests` on in production (gated on `NODE_ENV` so localhost still works)
+- [ ] `RunnerLink` used for every link that crosses into a runner route
+- [ ] `validateSnippets` in CI ([Validating in CI](/docs/validating-ci))

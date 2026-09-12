@@ -160,6 +160,37 @@ describe('error handling', () => {
     expect(screen.getByRole('alert').textContent).toContain('kaboom');
   });
 
+  it('does not report the same runtime error twice for one compile', async () => {
+    const onError = vi.fn();
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { rerender } = render(
+      <LiveProvider
+        code={`export default function Boom() { throw new Error('kaboom'); }`}
+        onError={onError}
+      >
+        <LivePreview />
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+    expect(onError).toHaveBeenCalledTimes(1);
+
+    rerender(
+      <LiveProvider
+        code={`export default function Boom() { throw new Error('kaboom'); }`}
+        onError={onError}
+      >
+        <LivePreview />
+        <LiveError />
+      </LiveProvider>,
+    );
+
+    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+    expect(onError).toHaveBeenCalledTimes(1);
+  });
+
   it('recovers when the snippet is fixed', async () => {
     const { rerender } = render(
       <LiveProvider code={`export default () => <div>`} keepLastGood={false}>

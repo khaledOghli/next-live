@@ -6,7 +6,7 @@ import { vendorModules } from './vendor.ts';
 
 const modulesDir = join(dirname(fileURLToPath(import.meta.url)), 'modules');
 
-/** @app/* keys derived from lib/live-sdk/modules/ - same rule as stores.ts. */
+/** @app/* keys derived from lib/live-sdk/modules/ - same rule as app-modules-glob.ts. */
 function appModuleKeys(): string[] {
   return readdirSync(modulesDir)
     .filter((file) => /\.tsx?$/.test(file))

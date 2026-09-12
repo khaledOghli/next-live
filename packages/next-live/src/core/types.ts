@@ -92,6 +92,13 @@ export interface CompileOptions extends TranspileOptions {
   modules?: ModuleRegistry;
   scope?: LiveScope;
   transform?: TransformFn;
+  /**
+   * Resolve `pkg/Sub` against a registered `pkg` by walking the remaining
+   * segments as property accesses. Correct for barrel-shaped packages, wrong
+   * for those whose subpaths are not re-exported - so it is opt-in rather than
+   * a silent guess. Default false.
+   */
+  resolveSubpaths?: boolean;
   /** Aborts a compile whose result is no longer wanted. */
   signal?: AbortSignal;
 }

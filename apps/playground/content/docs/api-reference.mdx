@@ -3,84 +3,464 @@ import { PropTable } from '@/components/docs/PropTable';
 import { CodeBlock } from '@/components/docs/CodeBlock';
 import { Callout } from '@/components/docs/Callout';
 import { NonUiDemo } from '@/components/docs/NonUiDemo';
-import { counterDemo, minimalPreviewDemo, timerDemo } from '@/lib/docs/demos';
+import { ApiEntry } from '@/components/docs/ApiEntry';
+import {
+  counterDemo,
+  minimalPreviewDemo,
+  propsDemo,
+  runtimeErrorDemo,
+  timerDemo,
+} from '@/lib/docs/demos';
 
-Three entry points — import only what you use:
+Every export is a **named** binding, never a property on a parent object.
+Across the RSC boundary a Server Component receives a *client reference*, so
+`Live.Preview` would resolve to `undefined`.
 
-<CodeBlock code={`import { LiveProvider, LivePreview, defineLoader } from 'next-live';
-import { LiveEditor } from 'next-live/editor';   // optional peer: prism-react-renderer
-import { precompile, validateSnippets } from 'next-live/server'; // server only`} />
+<CodeBlock
+  title="Three entry points"
+  code={`import { LiveProvider, LivePreview, defineLoader } from 'next-live';
+import { LiveEditor } from 'next-live/editor';          // optional peer: prism-react-renderer
+import { precompile, validateSnippets } from 'next-live/server'; // server only`}
+/>
 
-## LiveProvider
+| Entry | Contains | Why it is separate |
+|---|---|---|
+| `next-live` | Provider, preview, error, hooks, registry, engine | - |
+| `next-live/editor` | `<LiveEditor>` | The only thing needing `prism-react-renderer`, an **optional peer** you must install yourself. A preview-only page pays 16.1 KB instead of 97.2 KB. |
+| `next-live/server` | `precompile`, `validateSnippet(s)` | Imports Sucrase statically, must never reach the client bundle. |
 
-Compiles `code` and provides the result to children.
+## Components
 
-<PropTable rows={[
-  { name: 'code', type: 'string', default: '—', notes: 'The snippet source. Controlled prop.' },
-  { name: 'modules', type: 'ModuleRegistry', default: '{}', notes: 'Specifier → value or loader' },
-  { name: 'props', type: 'Record<string, unknown>', default: '{}', notes: 'Passed to the component by reference' },
-  { name: 'filePath', type: 'string', default: 'LiveCode.tsx', notes: 'Shown in stack traces' },
-  { name: 'debounce', type: 'number', default: '150', notes: 'Ms before recompile after edit' },
-  { name: 'keepLastGood', type: 'boolean', default: 'true', notes: 'Keep last working component on compile failure' },
-  { name: 'onError', type: '(error: Error) => void', notes: 'Compile and runtime errors' },
-  { name: 'onCompileSuccess', type: '(info) => void', notes: 'After successful compile with imports + duration' },
-  { name: 'transform', type: 'TransformFn', notes: 'Replace built-in Sucrase pass (precompiled output)' },
-]} />
+<ApiEntry name="LiveProvider" kind="component" from="next-live" signature="function LiveProvider(props: LiveProviderProps): ReactNode">
+
+Compiles `code` and provides the result to its children. Everything else must be
+inside it. Safe to render from a Server Component; nothing compiles during the
+server pass.
+
+</ApiEntry>
+
+<PropTable
+  rows={[
+    { name: 'code', type: 'string', required: true, notes: 'The snippet. Controlled: change it and the preview follows.' },
+    { name: 'modules', type: 'ModuleRegistry', default: '{}', notes: 'Specifier → value or loader. Merges over the built-ins.' },
+    { name: 'scope', type: 'LiveScope', default: '{}', notes: 'Free variables injected as bare identifiers (react-live style).' },
+    { name: 'props', type: 'Record<string, unknown>', default: '{}', notes: 'Passed to the rendered component by reference.' },
+    { name: 'fallback', type: 'ReactNode', default: 'null', notes: 'Rendered until the first compile finishes. Size it like your content to avoid layout shift.' },
+    { name: 'language', type: 'string', default: "'tsx'", notes: 'Highlighting hint for <LiveEditor>.' },
+    { name: 'onError', type: '(error: Error) => void', notes: 'Called on every compile and runtime error.' },
+    { name: 'onCodeChange', type: '(code: string) => void', notes: 'Called when the code is edited from inside. Not called when the code prop changes from outside, so it cannot echo your own saves back. This is what a control panel needs to persist edits.' },
+    { name: 'onCompileSuccess', type: '(info: CompileSuccessInfo) => void', notes: 'After every successful compile, with compileId, sorted imports, via, and durationMs. Not called on failure or abort.' },
+    { name: 'debounce', type: 'number', default: '150', notes: 'Milliseconds before recompiling after a change.' },
+    { name: 'keepLastGood', type: 'boolean', default: 'true', notes: 'Keep the last working component mounted when a recompile fails.' },
+    { name: 'maxRendersPerSecond', type: 'number', default: '1000', notes: 'Render-loop breaker threshold.' },
+    { name: 'transform', type: 'TransformFn', notes: 'Replace the built-in Sucrase pass, e.g. server-precompiled output.' },
+    { name: 'resolveSubpaths', type: 'boolean', default: 'false', notes: 'Resolve pkg/Sub against a registered pkg by property access.' },
+    { name: 'filePath', type: 'string', default: "'LiveCode.tsx'", notes: 'Name shown in stack traces and DevTools.' },
+    { name: 'production', type: 'boolean', default: 'true', notes: 'false selects react/jsx-dev-runtime for richer component stacks.' },
+    { name: 'jsxRuntime', type: "'automatic' | 'classic'", default: "'automatic'" },
+    { name: 'jsxImportSource', type: 'string', default: "'react'", notes: 'Register <source>/jsx-runtime if you change this.' },
+  ]}
+/>
 
 <LiveDemo source={minimalPreviewDemo} filePath="Hello.tsx" />
 
-## LiveEditor
+Anything in `props` is handed to the rendered component by reference, this is
+how a snippet reads host state it must not be able to import:
 
-Separate entry so preview-only pages stay small (~16 KB vs ~102 KB with editor).
+<LiveDemo
+  source={propsDemo}
+  filePath="Greeting.tsx"
+  props={{ user: { name: 'Ada Lovelace' }, plan: 'Pro' }}
+/>
 
-<PropTable rows={[
-  { name: 'readOnly', type: 'boolean', default: 'false', notes: 'Display source without editing' },
-  { name: 'renderEditor', type: '(props) => ReactNode', notes: 'Replace built-in textarea editor' },
-  { name: 'errorLineStyle', type: 'CSSProperties | null', notes: 'Highlight line from compile error' },
-]} />
+<ApiEntry name="LivePreview" kind="component" from="next-live" signature="function LivePreview(props: LivePreviewProps): ReactNode">
+
+Renders the compiled component inside an error boundary.
+
+</ApiEntry>
+
+<PropTable
+  rows={[
+    { name: 'props', type: 'Record<string, unknown>', notes: "Merged over the provider's props." },
+    { name: 'fallback', type: 'ReactNode', default: "provider's", notes: 'Shown until the first compile finishes.' },
+    { name: 'as', type: 'ElementType', default: "'div'", notes: 'Wrapper element.' },
+    { name: 'className / style', type: '-', notes: 'Applied to the wrapper.' },
+  ]}
+/>
+
+<ApiEntry name="LiveEditor" kind="component" from="next-live/editor" signature="function LiveEditor(props: LiveEditorProps): ReactNode">
+
+A `<textarea>` layered over syntax-highlighted output. No editor engine, so it
+stays small and has no SSR quirks. On its own entry point because it is the only
+thing that pulls in `prism-react-renderer`.
+
+</ApiEntry>
+
+<PropTable
+  rows={[
+    { name: 'renderEditor', type: '(props: LiveEditorRenderProps) => ReactNode', notes: 'Replace the built-in editor entirely, drop in CodeMirror or Monaco.' },
+    { name: 'theme', type: 'PrismTheme', default: 'themes.vsDark', notes: 'From prism-react-renderer.' },
+    { name: 'readOnly', type: 'boolean', default: 'false', notes: 'Display source without editing.' },
+    { name: 'tabSize', type: 'number', default: '2', notes: 'Spaces inserted by the Tab key.' },
+    { name: 'padding', type: 'number', default: '16' },
+    { name: 'errorLineStyle', type: 'CSSProperties | null', default: 'red inset highlight', notes: 'Paint-only highlight on the error line. Pass null to disable.' },
+    { name: 'errorLineClassName', type: 'string', notes: 'Extra class on the error line.' },
+  ]}
+/>
+
+`LiveEditorRenderProps` exposes `code`, `onChange`, `language`, `error`,
+`errorLine`, and `errorColumn`, everything a third-party editor needs:
+
+<CodeBlock
+  title="Swapping in a different editor"
+  code={`<LiveEditor
+  renderEditor={({ code, onChange, language, errorLine }) => (
+    <CodeMirror value={code} onChange={onChange} lang={language} highlightLine={errorLine} />
+  )}
+/>`}
+/>
 
 <LiveDemo source={counterDemo} editable filePath="Counter.tsx" />
 
-## LivePreview & LiveError
+<ApiEntry name="LiveError" kind="component" from="next-live" signature="function LiveError(props: LiveErrorProps): ReactNode">
 
-<PropTable rows={[
-  { name: 'LivePreview.props', type: 'Record<string, unknown>', notes: 'Merged over provider props' },
-  { name: 'LivePreview.fallback', type: 'ReactNode', notes: 'Until first compile finishes' },
-  { name: 'LiveError.children', type: '(error) => ReactNode', notes: 'Custom error rendering' },
-]} />
+Shows the current compile or runtime error; renders nothing when healthy. Both
+phases surface here, so it is a single place to look.
 
-## useLiveRunner
+</ApiEntry>
 
-Headless engine for custom UIs:
+<PropTable
+  rows={[
+    { name: 'children', type: '(error: Error) => ReactNode', default: 'built-in rendering', notes: 'Custom error rendering.' },
+    { name: 'as', type: 'ElementType', default: "'pre'" },
+    { name: 'className / style', type: '-' },
+  ]}
+/>
 
-<CodeBlock code={`const { code, setCode, Component, error, isCompiling, compileId } =
-  useLiveRunner({ code: source, modules });`} />
+<ApiEntry name="LiveErrorBoundary" kind="component" from="next-live" signature="function LiveErrorBoundary(props: LiveErrorBoundaryProps): ReactNode">
 
-## useLiveModule
+Used internally by `<LivePreview>`. Exported for custom UIs that render the
+compiled component themselves.
 
-For snippets that export functions, not components:
+</ApiEntry>
 
-<NonUiDemo />
+<PropTable
+  rows={[
+    { name: 'onError', type: '(error: Error) => void', required: true, notes: 'Called when rendering the snippet throws.' },
+    { name: 'resetKey', type: 'unknown', notes: 'Changing it clears the error. Wire this to compileId.' },
+    { name: 'fallback', type: 'ReactNode', notes: 'Rendered while in the error state.' },
+  ]}
+/>
 
-<PropTable rows={[
-  { name: 'exports', type: 'T | null', notes: 'Module exports after successful run' },
-  { name: 'value', type: 'unknown', notes: 'Shorthand for exports?.default' },
-]} />
+## Hooks
 
-## Registry helpers
-
-| Export | Purpose |
-|---|---|
-| `defineLoader(fn)` | Mark a dynamic import as lazy loader |
-| `defineModule({ default, exports })` | Explicit module record when default is ambiguous |
-| `createRegistry(...groups)` | Merge registry groups |
-| `registryFromGlob(glob, toSpecifier)` | Build loaders from `import.meta.glob` |
-| `precompiledTransform(result)` | Client transform for server-precompiled code |
-
-## Hooks demo
+Snippets share your application's single React instance, so hooks, effects, and
+context all work across the boundary. The timer below is running `useState` and
+`useEffect` from *your* React:
 
 <LiveDemo source={timerDemo} filePath="Timer.tsx" />
 
-<Callout variant="info" title="Full type definitions">
-  See `next-live` TypeScript exports in your editor, or the markdown API reference in the npm package under `docs/06-api-reference.md`.
+<ApiEntry name="useLiveRunner" kind="hook" from="next-live" signature="function useLiveRunner(options: UseLiveRunnerOptions): LiveRunnerState">
+
+The headless engine behind `<LiveProvider>`, for building a completely custom
+UI. Accepts every `LiveProvider` option except `props`, `language`, `onError`,
+and `fallback`.
+
+</ApiEntry>
+
+<CodeBlock
+  code={`const { code, setCode, Component, element, error, isCompiling, compileId } =
+  useLiveRunner({ code: source, modules });`}
+/>
+
+<PropTable
+  label="Field"
+  rows={[
+    { name: 'code', type: 'string', notes: 'Current source.' },
+    { name: 'setCode', type: '(code: string) => void', notes: 'Stable identity.' },
+    { name: 'Component', type: 'ComponentType | null', notes: 'null until the first successful compile, including during SSR.' },
+    { name: 'element', type: 'ReactElement | null', notes: 'Set instead of Component when the snippet produced an element.' },
+    { name: 'error', type: 'Error | null' },
+    { name: 'isCompiling', type: 'boolean', notes: 'Only true after ~200 ms, so fast compiles never flash a spinner.' },
+    { name: 'compileId', type: 'number', notes: 'Increments on every successful compile. Use as a remount key.' },
+  ]}
+/>
+
+<ApiEntry name="useLiveModule" kind="hook" from="next-live" signature="function useLiveModule<T>(options: UseLiveModuleOptions): LiveModuleState<T>">
+
+Runs a snippet and returns its exports, for stored code that is not a component
+- a validator, a transformer, a calculated field. Accepts every `useLiveRunner`
+option except `maxRendersPerSecond` (nothing renders, so there is no render loop
+to break).
+
+</ApiEntry>
+
+<PropTable
+  label="Field"
+  rows={[
+    { name: 'exports', type: 'T | null', notes: 'Everything the snippet exported. null until the first successful run.' },
+    { name: 'value', type: 'unknown', notes: 'Shorthand for exports?.default.' },
+    { name: 'error', type: 'Error | null' },
+    { name: 'isCompiling', type: 'boolean' },
+    { name: 'compileId', type: 'number' },
+  ]}
+/>
+
+<Callout variant="warning" title="The type parameter is a claim, not a check">
+  Writing `useLiveModule<PricingRule>()` does not verify that the snippet
+  actually exports a `PricingRule`. Validate the shape at runtime before
+  trusting it.
 </Callout>
+
+<NonUiDemo />
+
+<ApiEntry name="useLiveContext" kind="hook" from="next-live" signature="function useLiveContext(): LiveContextValue">
+
+Reads the surrounding `<LiveProvider>`, for custom editors, toolbars, or status
+indicators. **Throws if called outside a provider.** Returns every
+`useLiveRunner` field plus `props`, `language`, `fallback`, and
+`reportRuntimeError`.
+
+</ApiEntry>
+
+<CodeBlock
+  title="A compile-status indicator"
+  code={`'use client';
+import { useLiveContext } from 'next-live';
+
+export function CompileStatus() {
+  const { isCompiling, error, compileId } = useLiveContext();
+  if (isCompiling) return <span>Compiling…</span>;
+  if (error) return <span className="text-destructive">Failed</span>;
+  return <span>Compiled #{compileId}</span>;
+}`}
+/>
+
+## Registry helpers
+
+<ApiEntry name="defineLoader" kind="function" from="next-live" signature="function defineLoader(load: ModuleLoader): ModuleLoader">
+
+Marks a function as a lazy loader rather than as the module value itself.
+Without it, a registered component function would be indistinguishable from a
+loader. **This is the default way to register a module**; it keeps your own
+dependencies out of the page bundle.
+
+The loader receives the imported specifier, which is what prefix entries need.
+
+</ApiEntry>
+
+<CodeBlock
+  code={`// Exact match, the specifier can be ignored.
+'@app/store': defineLoader(() => import('@/lib/store')),
+
+// Prefix entry (key ends in '/'), one loader serves the whole subtree.
+'big-lib/': defineLoader((specifier) => import(\`big-lib/\${specifier.slice(8)}\`)),`}
+/>
+
+<ApiEntry name="defineModule" kind="function" from="next-live" signature="function defineModule(shape: { default?: unknown; exports?: Record<string, unknown> }): NormalizedModule">
+
+Builds an explicit module record. A registered object with its own `default` key
+is normally unwrapped; use this when the whole object *is* the default export.
+`default` and `exports.default` address the same slot.
+
+</ApiEntry>
+
+<ApiEntry name="createRegistry" kind="function" from="next-live" signature="function createRegistry(...groups: ModuleRegistry[]): ModuleRegistry">
+
+Merges registry groups, later groups winning. Warns in development when two
+groups define the same key, which is how you catch a silent override.
+
+</ApiEntry>
+
+<ApiEntry name="registryFromGlob" kind="function" from="next-live" signature="function registryFromGlob(glob: GlobResult, toSpecifier: (path: string) => string | null): ModuleRegistry">
+
+Converts `import.meta.glob`'s lazy result into a registry of loaders.
+`toSpecifier` maps a file path to the specifier authors write; return `null` to
+omit a file.
+
+</ApiEntry>
+
+<ApiEntry name="builtinModules" kind="constant" from="next-live" signature="const builtinModules: ModuleRegistry">
+
+The always-registered map: `react`, `react/jsx-runtime`, and
+`react/jsx-dev-runtime`. Your `modules` merge **over** these, so a React shim can
+still be substituted. `react-dom` is deliberately absent, register it
+explicitly if you need it.
+
+</ApiEntry>
+
+## Engine
+
+Lower-level exports, for a custom scheduler or for compiling outside React.
+
+<ApiEntry name="compile" kind="function" from="next-live" signature="function compile(input: CompileInput): Promise<CompileResult>">
+
+Transpile, resolve every import, then evaluate. Returns `{ renderable, via, code,
+imports }`. Throws if the snippet produced nothing renderable.
+
+</ApiEntry>
+
+<ApiEntry name="compileModule" kind="function" from="next-live" signature="function compileModule(input: CompileInput): Promise<CompileModuleResult>">
+
+The same pipeline, returning `{ exports, code, imports }` with no component
+required.
+
+</ApiEntry>
+
+<ApiEntry name="transpile" kind="function" from="next-live" signature="function transpile(source: string, options: TranspileOptions, transform?: TransformFn): Promise<TransformResult>">
+
+Source → CommonJS. No evaluation, no module resolution.
+
+</ApiEntry>
+
+<ApiEntry name="preloadTranspiler" kind="function" from="next-live" signature="function preloadTranspiler(): Promise<void>">
+
+Warms the lazily-fetched Sucrase chunk during idle time, so the first compile
+does not pay for the download. Call it when you know an editor is about to open.
+
+</ApiEntry>
+
+<ApiEntry name="precompiledTransform" kind="function" from="next-live" signature="function precompiledTransform(result: TransformResult): TransformFn">
+
+Wraps a server-precompiled result as a `transform`, so the client never loads
+Sucrase at all. Exported from the **client** entry, importing it from
+`next-live/server` would pull the transpiler into your page.
+
+</ApiEntry>
+
+<ApiEntry name="setTranspiler" kind="function" from="next-live" signature="function setTranspiler(module: unknown): void">
+
+Swaps the transpiler outright. For tests and custom backends.
+
+</ApiEntry>
+
+<ApiEntry name="errorPosition" kind="function" from="next-live" signature="function errorPosition(error: Error | null | undefined): { line: number; column?: number } | null">
+
+Reads `{ line, column? }` off a compile or runtime error, and returns `null`
+when there is no position. This is what a custom editor uses to paint the
+failing line — pass it the `error` from `useLiveRunner` or `useLiveContext`
+directly; a `null` error is handled.
+
+</ApiEntry>
+
+<ApiEntry name="createRenderBudget" kind="function" from="next-live" signature="function createRenderBudget(options?: RenderBudgetOptions): () => void">
+
+The render-loop breaker. A fresh budget is created per compile, so fixing a
+runaway snippet clears a tripped breaker without a page reload.
+
+</ApiEntry>
+
+<ApiEntry name="normalizeModule" kind="function" from="next-live" signature="function normalizeModule(value: ModuleValue): NormalizedModule">
+
+The interop normalisation applied to every registry value: maps an arbitrary
+object, function, or namespace onto `default` plus named exports.
+
+</ApiEntry>
+
+<ApiEntry name="createRequire" kind="function" from="next-live" signature="function createRequire(resolved: ResolvedModules): (specifier: string) => NormalizedModule">
+
+The synchronous `require` shim handed to compiled snippets. It must stay
+synchronous: Sucrase emits `require()` at module top level, which cannot await.
+
+</ApiEntry>
+
+<ApiEntry name="resolveModules" kind="function" from="next-live" signature="function resolveModules(options: ResolveOptions): Promise<ResolvedModules>">
+
+Resolves every specifier a snippet needs *before* evaluation, which is why
+async loaders work at all despite `require()` being synchronous.
+
+</ApiEntry>
+
+## Server entry
+
+<Callout variant="danger" title="Never import this from a Client Component">
+  `next-live/server` imports Sucrase statically. It carries no `'use client'`
+  directive and pulls in no React, so it is safe in Route Handlers and Server
+  Components, and only there.
+</Callout>
+
+<ApiEntry name="precompile" kind="function" from="next-live/server" signature="function precompile(source: string, options?: TranspileOptions): PrecompileResult">
+
+Transpiles to exactly the same CommonJS the browser path produces, so a
+precompiled result and a client-compiled one are interchangeable. Transpile once,
+cache by hash, and the client never downloads the transpiler.
+
+</ApiEntry>
+
+<PropTable
+  label="Field"
+  rows={[
+    { name: 'code', type: 'string', notes: 'The transpiled CommonJS.' },
+    { name: 'hash', type: 'string', notes: 'Stable hash of the source and the options that affect output. Use it as a cache key or ETag.' },
+    { name: 'linePrefixOffset', type: 'number', notes: 'Lines the wrapper added above the snippet; needed to map error lines back.' },
+    { name: 'expression', type: 'boolean', notes: 'Whether the snippet compiled as a bare expression rather than a module.' },
+  ]}
+/>
+
+`PrecompileResult extends TransformResult`, so a result hands straight to
+[`precompiledTransform`](#precompiledtransform).
+
+<ApiEntry name="validateSnippet" kind="function" from="next-live/server" signature="function validateSnippet(source: string, options?: ValidateOptions): ValidationResult">
+
+Statically checks that a snippet compiles and that every import resolves.
+**Never evaluates**, so it is safe to run over untrusted content in CI.
+`modules` accepts a registry object or just its keys.
+
+</ApiEntry>
+
+<CodeBlock
+  code={`const result = validateSnippet(source, { modules: ['@app/store', 'big-lib/'] });
+// { ok, issues: [{ kind, message, specifier?, suggestion?, line?, column? }], imports }`}
+/>
+
+<PropTable
+  label="Option"
+  rows={[
+    { name: 'maxSourceBytes', type: 'number', notes: 'Reject snippets over this UTF-8 byte count before transpile.' },
+    { name: 'forbidNodeBuiltins', type: 'boolean', notes: 'Treat node:* imports as forbidden.' },
+    { name: 'forbidRemoteImports', type: 'boolean', notes: 'Treat https://, http://, and // imports as forbidden.' },
+    { name: 'denySpecifiers', type: 'readonly string[]', notes: 'Deny listed specifiers even when registered. A trailing / denies a subtree.' },
+  ]}
+  caption="All policy flags are opt-in; defaults are unchanged."
+/>
+
+<ApiEntry name="validateSnippets" kind="function" from="next-live/server" signature="function validateSnippets(snippets, options?): { id: string; result: ValidationResult }[]">
+
+Validates many at once and returns **only the failures**, so a CI step can
+assert on an empty array. Each snippet is `{ id, source }`.
+
+</ApiEntry>
+
+## Errors
+
+All extend `LiveError`, exported as `LiveErrorBase` so it does not collide with
+the `<LiveError>` component.
+
+| Class | Raised when |
+|---|---|
+| `LiveCompileError` | Parse/transpile failure, or a CSP blocking `eval`. Carries `line` and `column`. |
+| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped. |
+| `RenderLoopError` | The render-rate breaker tripped. |
+| `ModuleNotFoundError` | An import specifier is not registered. Carries `specifier` and `available`. |
+| `NoComponentError` | The snippet produced nothing renderable. |
+| `TranspilerLoadError` | Sucrase failed to load, usually a chunk-load failure. |
+
+A snippet that throws while rendering is caught by the boundary inside
+`<LivePreview>` and surfaced through `<LiveError>`; the page itself never goes
+down:
+
+<LiveDemo source={runtimeErrorDemo} editable filePath="Broken.tsx" deferUntilVisible />
+
+## Types
+
+`ModuleRegistry`, `ModuleLoader`, `ModuleValue`, `NormalizedModule`, `LiveScope`,
+`LiveRenderable`, `LiveRunnerState`, `LiveContextValue`, `CompileOptions`,
+`CompileResult`, `CompileInput`, `CompileModuleResult`, `CompileSuccessInfo`,
+`TranspileOptions`, `TransformFn`, `TransformResult`, `ExtractionSource`,
+`UseLiveRunnerOptions`, `UseLiveModuleOptions`, `LiveModuleState`,
+`RenderBudgetOptions`, `GlobResult`, `PositionedError`, `PrecompileResult`,
+`ValidationResult`, `ValidationIssue`, `ValidationIssueKind` (`syntax`,
+`unresolved-import`, `source-too-large`, `forbidden-import`), `ValidateOptions`,
+plus a props type for every component, `LiveProviderProps`, `LivePreviewProps`,
+`LiveEditorProps`, `LiveEditorRenderProps`, `LiveErrorProps`,
+`LiveErrorBoundaryProps`.

@@ -11,8 +11,8 @@ type RunnerLinkProps = Omit<ComponentProps<'a'>, 'href'> & { href: string };
  * document request so `proxy.ts` can serve that page its own policy. Everything
  * else gets a normal client-side `<Link>`.
  *
- * Without this, arriving at `/docs` from `/` keeps the landing page's policy —
- * which has no `'unsafe-eval'` — and every live demo silently fails to compile.
+ * Without this, arriving at `/docs` from `/` keeps the landing page's policy -
+ * which has no `'unsafe-eval'`, and every live demo silently fails to compile.
  * See `lib/runner-routes.ts` for why a CSP cannot follow a soft navigation.
  */
 export function RunnerLink({ href, children, ...anchorProps }: RunnerLinkProps) {

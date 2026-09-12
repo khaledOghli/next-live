@@ -2,7 +2,7 @@ import { CompareTable } from '@/components/docs/CompareTable';
 import { CodeBlock } from '@/components/docs/CodeBlock';
 import { Callout } from '@/components/docs/Callout';
 
-Component names are deliberately the same — most of a migration is mechanical. The one real change: **`scope` becomes a module registry**.
+Component names are deliberately the same. Most of a migration is mechanical. The one real change: **`scope` becomes a module registry**.
 
 ## Imports
 
@@ -15,10 +15,10 @@ import { LiveEditor } from 'next-live/editor';`} />
 
 ## scope → modules
 
-<CodeBlock code={`// react-live — globals injected
+<CodeBlock code={`// react-live: globals injected
 <LiveProvider code={code} scope={{ useState, Button, formatDate }} />
 
-// next-live — real imports in the snippet
+// next-live: real imports in the snippet
 <LiveProvider
   code={code}
   modules={{

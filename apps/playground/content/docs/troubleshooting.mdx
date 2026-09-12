@@ -1,68 +1,214 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
 
-Every error below is one you can actually hit, with its real message text.
+Every entry below is an error you can actually hit, filed under its real message
+text, so you can paste what you are seeing straight into search.
+
+## Setup and imports
 
 <Accordion type="single" collapsible className="w-full">
   <AccordionItem value="live-editor">
     <AccordionTrigger>LiveEditor is not exported from next-live</AccordionTrigger>
     <AccordionContent>
-      <CodeBlock code={`import { LiveEditor } from 'next-live/editor';
-npm install prism-react-renderer`} />
-      The editor lives on its own entry so preview-only pages never pay for a syntax highlighter.
+      It lives on its own entry, and needs an optional peer that your package manager does not install for you:
+      <CodeBlock code={`import { LiveEditor } from 'next-live/editor';`} />
+      <CodeBlock code={`npm install prism-react-renderer`} language="bash" variant="install" title="Terminal" />
+      Preview-only pages never import this entry, which is exactly why the highlighter is kept out of the root one.
     </AccordionContent>
   </AccordionItem>
 
   <AccordionItem value="not-registered">
     <AccordionTrigger>Module 'x' is not registered in the next-live scope</AccordionTrigger>
     <AccordionContent>
-      The snippet imported something you did not register. The message lists available modules and suggests the nearest match. Register the specifier in `modules`, or fix a typo. Unused imports are stripped before resolution — they never trigger this.
+      The snippet imported something you did not register. The message lists the available modules and suggests the nearest match, so a typo is usually obvious. Register the specifier in `modules`, or fix the spelling.
+
+      Note that unused imports are stripped before resolution, so they never trigger this.
     </AccordionContent>
   </AccordionItem>
 
   <AccordionItem value="empty-glob">
     <AccordionTrigger>My registry is empty and every import fails</AccordionTrigger>
     <AccordionContent>
-      <CodeBlock code={`import.meta.glob('../modules/*.ts')   // ❌ empty, no warning
+      <CodeBlock code={`import.meta.glob('../modules/*.ts')   // ❌ empty, and no warning
 import.meta.glob('./modules/*.ts')    // ✅`} />
-      Turbopack resolves globs relative to the calling file. Move the glob caller so the pattern points at or below its directory.
+      Turbopack resolves globs relative to the calling file, and a pattern that climbs above that directory silently matches nothing. Move the glob caller so the pattern points at or below its own directory.
     </AccordionContent>
   </AccordionItem>
 
-  <AccordionItem value="csp">
-    <AccordionTrigger>CSP blocks eval</AccordionTrigger>
+  <AccordionItem value="use-client">
+    <AccordionTrigger>You&apos;re importing a component that needs useState</AccordionTrigger>
     <AccordionContent>
-      Add `'unsafe-eval'` to `script-src` for runner routes in `proxy.ts`. A nonce will not help — `new Function` is governed solely by `'unsafe-eval'`. See [Security](/docs/security).
+      Thrown by Next, not by next-live, when a Client Component reaches a Server Component without a surviving `'use client'` directive.
+
+      Most often it is **your** runner file: add `'use client'` to the top of whichever file renders `<LiveProvider>`.
+
+      If it is coming from the published package instead, its build output lost the directive:
+      <CodeBlock code={`head -1 node_modules/next-live/dist/index.js    # → "use client";`} language="bash" />
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+## Compiling and running
+
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="csp">
+    <AccordionTrigger>next-live could not evaluate this snippet: the page&apos;s Content Security Policy blocks eval</AccordionTrigger>
+    <AccordionContent>
+      Add `'unsafe-eval'` to `script-src` for your runner routes in `proxy.ts`. This is expected, next-live compiles at runtime.
+
+      A nonce will **not** help: nonces authorize script *elements*, while `new Function` is governed solely by `'unsafe-eval'`. See [Security](/docs/security).
     </AccordionContent>
   </AccordionItem>
 
   <AccordionItem value="render-loop">
-    <AccordionTrigger>Rendered more than 1000 times in 1000ms</AccordionTrigger>
+    <AccordionTrigger>This component rendered more than 1000 times in 1000ms</AccordionTrigger>
     <AccordionContent>
-      The render-loop breaker tripped. Look for `setState` during render or a `useEffect` without a dependency array. Editing the snippet clears the breaker on the next compile.
+      The render-loop breaker tripped. Look for `setState` during render, or a `useEffect` with no dependency array that sets state on every commit.
+
+      A fresh budget is created per compile, so simply editing the snippet clears the breaker; no page reload needed.
     </AccordionContent>
   </AccordionItem>
 
-  <AccordionItem value="typescript">
-    <AccordionTrigger>My TypeScript errors are not reported</AccordionTrigger>
+  <AccordionItem value="no-component">
+    <AccordionTrigger>The snippet did not produce a component</AccordionTrigger>
     <AccordionContent>
-      Types are stripped, not checked. Use your IDE and CI typechecking on snippet files if you store them as `.tsx` on disk. `validateSnippets` catches syntax and import errors only.
+      Nothing renderable came out. The reliable fix is to make the snippet a module with a default export:
+      <CodeBlock code={`export default function App() {
+  return <div>hello</div>;
+}`} />
+      Bare declarations, bare expressions, and `render(...)` are recovered heuristically for react-live compatibility, but `export default` is the unambiguous form. Prefer it in anything you store.
     </AccordionContent>
   </AccordionItem>
 
+  <AccordionItem value="flashing">
+    <AccordionTrigger>The preview flashes or disappears while typing</AccordionTrigger>
+    <AccordionContent>
+      It should not: a failed recompile keeps the last working component mounted. If you set `keepLastGood={false}`, turn it back on.
+
+      If the preview *remounts and loses state* on every **successful** compile, that is expected. A recompiled component is a new function identity, so React cannot carry state across it.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="slow-first">
+    <AccordionTrigger>The first compile is slow</AccordionTrigger>
+    <AccordionContent>
+      The Sucrase chunk is fetched on first use. Warm it while the page is idle:
+      <CodeBlock code={`import { preloadTranspiler } from 'next-live';
+
+useEffect(() => { preloadTranspiler(); }, []);`} />
+      Or skip the download entirely by precompiling on the server; see [Scaling](/docs/scaling).
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="hung-tab">
+    <AccordionTrigger>A snippet hung the whole tab</AccordionTrigger>
+    <AccordionContent>
+      A synchronous infinite loop, `while (true) {}`, runaway recursion, a catastrophic regex.
+
+      This **cannot** be interrupted. JavaScript offers no way to stop synchronous code running in its own realm, so no timer, `AbortController`, or `Promise.race` will ever fire. The tab has to be closed.
+
+      The render-loop breaker catches the *asynchronous* variety (`setState` loops), which is the common one in practice.
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+<Callout variant="warning" title="This is the limit of containment">
+  An error boundary and a render-rate breaker keep ordinary mistakes from taking
+  down your page, but a snippet runs with your page&apos;s full authority, and a
+  synchronous hang is not recoverable. Snippet authors have to be people you
+  trust. See [Security](/docs/security).
+</Callout>
+
+## React, state, and hydration
+
+<Accordion type="single" collapsible className="w-full">
   <AccordionItem value="hooks">
     <AccordionTrigger>Do React hooks work in snippets?</AccordionTrigger>
     <AccordionContent>
-      Yes. Snippets share your page's single React instance — the same reason a shared Zustand store works. Rules of Hooks apply normally.
+      Yes. `react` is a built-in module, so snippets import the **host's** React instance, `useState`, `useEffect`, `useContext` and the rest behave normally, and the Rules of Hooks apply as usual.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="store-not-shared">
+    <AccordionTrigger>My store state is not shared with the host app</AccordionTrigger>
+    <AccordionContent>
+      The snippet is holding a *different copy* of your store module. Almost always two installed versions:
+      <CodeBlock code={`npm ls zustand      # or whichever library`} language="bash" />
+      More than one version means two modules and two stores. Run `npm dedupe`, or pin a single version with `overrides`. See [Sharing libraries](/docs/sharing-libraries).
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="invalid-hook">
+    <AccordionTrigger>Invalid hook call / more than one copy of React</AccordionTrigger>
+    <AccordionContent>
+      The same root cause as the entry above, applied to React itself. Snippets use **your** React instance, so two Reacts in `node_modules` break hooks outright:
+      <CodeBlock code={`npm ls react`} language="bash" />
     </AccordionContent>
   </AccordionItem>
 
   <AccordionItem value="hydration">
     <AccordionTrigger>Hydration mismatch #418 / #425</AccordionTrigger>
     <AccordionContent>
-      next-live does not compile on the server. If you still see hydration errors, the mismatch is elsewhere — check that `code` is the same on server and first client render, and give `LivePreview` a sized `fallback`.
+      next-live should never cause these: it renders the same `fallback` on the server and on the client's first pass, and compiles only afterwards in an effect.
+
+      If you see one, check whether *your* runner component renders something different between server and client, `Date.now()` or `window.matchMedia`, say, outside of next-live. Also give `<LivePreview>` a sized `fallback` to avoid layout shift.
     </AccordionContent>
   </AccordionItem>
 </Accordion>
 
-Still stuck? Open an issue with the exact error message and a minimal snippet.
+## TypeScript, styling, and precompilation
+
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="typescript">
+    <AccordionTrigger>My TypeScript errors are not reported</AccordionTrigger>
+    <AccordionContent>
+      Types are **stripped, not checked**. Sucrase removes annotations without verifying them, so a type error in a snippet is simply invisible at runtime.
+
+      `validateSnippets` catches syntax and unresolved-import errors only. If you store snippets as `.tsx` files on disk, run your normal `tsc` over them in CI.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="tailwind">
+    <AccordionTrigger>Tailwind classes in my snippet do nothing</AccordionTrigger>
+    <AccordionContent>
+      Tailwind scans your **host** source files at build time. Utility classes that exist only inside stored snippet strings are invisible to that scanner, so no CSS is ever generated for them.
+
+      **Recommended fix:** expose pre-built components through the registry, so their classes are compiled into your host bundle:
+      <CodeBlock title="lib/live-sdk/modules/ui.ts" code={`export { Button, Card } from '@/components/ui';`} />
+      <CodeBlock title="the snippet" code={`import { Button, Card } from '@app/ui';
+
+export default () => <Card><Button>Save</Button></Card>;`} />
+      This is what the [Apps shell demo](/apps) does with shadcn.
+
+      **Alternative:**  add a `@source` directive in your global CSS pointing at a file containing the class names your snippets use, or safelist them in your Tailwind config.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="precompile-stale">
+    <AccordionTrigger>Precompile ignores my edits</AccordionTrigger>
+    <AccordionContent>
+      You passed `precompiledTransform(compiled)` as `transform`, and now editing the snippet no longer updates the preview.
+
+      **Cause:** `precompiledTransform` returns a constant closure. It serves the server-compiled output regardless of what `code` currently says.
+
+      **Fix:** apply the transform only while `code` still matches the source that was precompiled. As soon as the author edits, drop it:
+      <CodeBlock
+        highlight="2,6"
+        code={`const usingPrecompile =
+  precompileEnabled && compiled && code === catalogSource;
+
+<LiveProvider
+  code={code}
+  transform={usingPrecompile ? precompiledTransform(compiled) : undefined}
+/>`}
+      />
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+## Still stuck?
+
+Open an issue with the exact error message and the smallest snippet that
+reproduces it. The message text matters, most of the errors above are thrown by
+next-live itself and name precisely what to change.

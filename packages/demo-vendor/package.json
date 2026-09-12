@@ -1,0 +1,10 @@
+{
+  "name": "@demo/vendor",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./*": "./src/*.js"
+  }
+}

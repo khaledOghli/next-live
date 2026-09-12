@@ -16,7 +16,6 @@ Live TSX/JSX evaluation for the Next.js App Router.
 | **[8. Integration guide](./08-integration-guide.md)** | End-to-end: apps stored in a database, authored in a control panel. |
 | **[9. Snippets that are not components](./09-non-ui-snippets.md)** | Validators, transformers, config, code with no UI. |
 | **[10. Validating stored snippets in CI](./10-validating-in-ci.md)** | Catch an SDK rename breaking stored apps before your users do. |
-| **[11. Migrating from `react-live`](./11-migrating-from-react-live.md)** | `scope` → registry, `noInline` → `render()`, and what behaves differently. |
 
 ## Where to start
 
@@ -49,10 +48,6 @@ highlighter live on a separate entry (`next-live/editor`), and the transpiler is
 a lazily-fetched chunk. Registering modules as loaders keeps your own
 dependencies out of the page too: measured 827 KB → 666 KB.
 [Scaling](./04-scaling.md).
-
-**I am coming from `react-live`.**
-Most of it is mechanical; the one real change is `scope` → module registry.
-[Migration guide](./11-migrating-from-react-live.md).
 
 **Are TypeScript types checked?**
 No. They are stripped, not verified -

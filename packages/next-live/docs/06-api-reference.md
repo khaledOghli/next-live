@@ -68,14 +68,66 @@ stays small and has no SSR quirks.
 |---|---|---|---|
 | `renderEditor` | `(props: LiveEditorRenderProps) => ReactNode` | - | Replace the built-in editor entirely. |
 | `theme` | `PrismTheme` | `themes.vsDark` | From `prism-react-renderer`. |
-| `readOnly` | `boolean` | `false` | |
+| `prism` | `typeof Prism` | built-in | A Prism instance with extra languages registered. |
+| `readOnly` | `boolean` | see below | Defaults to `true` when there is nothing to write edits to. |
 | `tabSize` | `number` | `2` | Spaces inserted by the Tab key. |
 | `padding` | `number` | `16` | |
-| `errorLineStyle` | `CSSProperties \| null` | red inset highlight | Paint-only highlight on the error line from context. Pass `null` to disable. |
+| `errorLineStyle` | `CSSProperties \| null` | red inset highlight | Paint-only highlight on the error line. Pass `null` to disable. |
 | `errorLineClassName` | `string` | - | Extra class on the error line. |
+| `focusRingStyle` | `CSSProperties \| null` | 2px blue outline | Ring painted while the editor holds keyboard focus. |
+| `aria-label` | `string` | `'Live code editor'` | Accessible name. |
+| `code` | `string` | from context | Standalone mode - see below. |
+| `onChange` | `(code: string) => void` | from context | Standalone mode - see below. |
+| `language` | `string` | from context, then `'tsx'` | |
+| `error` | `Error \| null` | from context | Error to underline. |
 | `className` / `style` | | | |
 
 `LiveEditorRenderProps` also exposes `error`, `errorLine`, and `errorColumn` for custom editors.
+
+#### Standalone, without a provider
+
+`<LiveEditor>` normally takes its code from the surrounding `<LiveProvider>`
+and sends edits back to it. Pass `code` and it works on its own, which is how
+you render a highlighted snippet on a page that is not running anything:
+
+```tsx
+import { LiveEditor } from 'next-live/editor';
+
+// Read-only: no onChange, so nothing can be written to.
+<LiveEditor code={source} language="tsx" />
+
+// Editable, driven by your own state.
+<LiveEditor code={code} onChange={setCode} />
+```
+
+With neither a provider nor `code`, the editor throws rather than rendering
+empty.
+
+#### Highlighting other languages
+
+`prism-react-renderer` bundles a small language set. For anything else, hand
+over a Prism instance you have extended:
+
+```tsx
+import { Prism } from 'prism-react-renderer';
+
+(globalThis as typeof globalThis & { Prism?: unknown }).Prism = Prism;
+await import('prismjs/components/prism-rust');
+
+<LiveEditor code={source} language="rust" prism={Prism} />
+```
+
+#### Keyboard access
+
+Tab inserts spaces, because an editor that moves focus on Tab cannot be typed
+into. **Press Escape, then Tab, to move focus out** - the same convention
+CodeMirror and Monaco use. The editor announces this through
+`aria-keyshortcuts` and a visually-hidden description, and paints a focus ring
+while it holds focus, so it satisfies WCAG 2.1.2 (No Keyboard Trap) and 2.4.7
+(Focus Visible).
+
+Any other keystroke re-arms indentation, so Escape only ever releases the very
+next Tab.
 
 Dropping in a different editor:
 

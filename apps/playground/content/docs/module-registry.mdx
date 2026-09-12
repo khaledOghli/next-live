@@ -109,11 +109,11 @@ next-live stops with a message naming `'@app/charts'` and listing what **is** re
 
 Unused imports are stripped during compile (same as TypeScript would). A typo in an import the snippet never calls will not error; it simply disappears.
 
-## react-live `scope` vs `modules`
+## `scope` vs `modules`
 
-If you used react-live before, you may remember passing everything as globals:
+An older pattern injects everything as globals through `scope`:
 
-<CodeBlock title="react-live style" code={`<LiveProvider
+<CodeBlock title="Scope globals" code={`<LiveProvider
   code={code}
   scope={{ useState, Button, formatMoney }}
 />`} />
@@ -146,7 +146,7 @@ export default function App() {
 
 `react` is built in. Everything else you register explicitly. Snippets read like real files.
 
-You can still use `scope` for bare identifiers if you need react-live compatibility. Prefer `modules` for anything new.
+You can still use `scope` for bare identifiers when you need legacy snippets to run unchanged. Prefer `modules` for anything new.
 
 ## Loaders vs values
 

@@ -161,7 +161,7 @@ render(<App prop="x"/>)                           // explicit render call
 ```
 
 `export default` is the supported, unambiguous form. The others are recovered
-heuristically for `react-live` compatibility - prefer `export default` in
+heuristically for legacy snippets - prefer `export default` in
 anything you store.
 
 TypeScript works: types, interfaces, and generics are all stripped. Note they

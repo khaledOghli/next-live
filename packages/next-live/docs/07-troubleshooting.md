@@ -149,7 +149,7 @@ Expected. Sucrase **strips** types without checking them, which is what keeps
 compilation in the single-digit milliseconds. A snippet with a real type error
 compiles cleanly and fails at runtime.
 
-`react-live` makes the same trade-off. If authors need real diagnostics, run
+Most runtime transpilers make the same trade-off. If authors need real diagnostics, run
 `tsc` or the TypeScript language service in a worker on your side and surface the
 results yourself; `next-live` does not do this for you.
 

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { BrandWordmark } from '@/components/brand/BrandWordmark';
 import { getDocGroups } from '@/lib/docs/nav';
 
 export const metadata: Metadata = {
@@ -83,18 +84,8 @@ export default function DocsIndexPage() {
   return (
     <div id="doc-article" className="pb-4">
       <header className="border-b border-border/40 pb-8">
-        <p className="text-sm font-medium text-brand">Documentation</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Run TSX that was never part of your build
-        </h1>
-        <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
-          <code className="rounded bg-code-inline px-1.5 py-0.5 font-mono text-[0.9em] text-foreground">
-            next-live
-          </code>{' '}
-          compiles a string of TSX in the browser and renders it as a real React component, with
-          real <code className="rounded bg-code-inline px-1.5 py-0.5 font-mono text-[0.9em] text-foreground">import</code>{' '}
-          statements resolved against a registry you control.
-        </p>
+        <h1 className="sr-only">next-live documentation</h1>
+        <BrandWordmark priority />
       </header>
 
       {/* Entry points, ordered by what the reader is trying to do. */}

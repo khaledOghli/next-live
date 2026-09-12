@@ -129,11 +129,11 @@ function App() { return <div/> }                  // bare declaration
 <div>hello</div>                                  // bare expression
 () => <div/>                                      // bare expression
 render(<App prop="x"/>)                           // explicit render call`}
-  caption="export default is the unambiguous form. The others are recovered heuristically for react-live compatibility."
+  caption="export default is the unambiguous form. The others are recovered heuristically for legacy snippets."
 />
 
-Prefer `export default` in anything you store; the heuristics exist for
-migration, not as a style to adopt.
+Prefer `export default` in anything you store; the heuristics exist for older
+authoring styles, not as a pattern to adopt.
 
 TypeScript works too: types, interfaces, and generics are all stripped. Note
 that they are **not checked**; see

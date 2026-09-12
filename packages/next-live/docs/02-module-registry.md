@@ -84,9 +84,9 @@ export default function Price() {
 
 **5. Render** - `formatMoney` from your real file is passed to the snippet.
 
-## react-live `scope` vs `modules`
+## `scope` vs `modules`
 
-**react-live** injected globals; snippets could not use `import`:
+The `scope` prop injects globals; snippets cannot use `import`:
 
 ```tsx
 <LiveProvider scope={{ useState, Button, formatMoney }} />
@@ -419,7 +419,7 @@ snippet pasted out of a real file still runs. Applies to `.css`, `.scss`,
 
 ## Free variables: the `scope` prop
 
-For `react-live` compatibility, `scope` injects values as bare identifiers with
+For legacy snippets, `scope` injects values as bare identifiers with
 no import at all:
 
 ```tsx

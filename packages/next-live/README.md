@@ -58,17 +58,7 @@ To let snippets reach your own code, hand it over explicitly:
 />
 ```
 
-## Why not `react-live`?
-
-`react-live` is effectively unmaintained, and its design predates modern tooling.
-
-| | `react-live` | `next-live` |
-|---|---|---|
-| Dependencies | one flat `scope` object of free variables | a **module registry**; snippets use real `import` statements |
-| ES modules | not supported | `import` / `export default` / namespaces / subpaths |
-| App Router | compiles during the server pass, causing hydration errors #418/#425 | never compiles on the server; first client render matches it exactly |
-| Transpiler | bundled into the client chunk | code-split behind a dynamic import, or precompiled on the server |
-| Runaway code | no protection | error boundary plus a render-loop breaker |
+## When to use something else
 
 Sandpack solves a different problem: it boots a virtual filesystem and an iframe
 per instance. `next-live` is for embedded live tools and control panels, where a
@@ -112,7 +102,6 @@ snippet should share your page's React instance and your live objects.
 | [Integration guide](./docs/08-integration-guide.md) | End-to-end walkthrough |
 | [Snippets that are not components](./docs/09-non-ui-snippets.md) | Validators, transformers, config |
 | [Validating stored snippets in CI](./docs/10-validating-in-ci.md) | Catch SDK renames before users do |
-| [Migrating from `react-live`](./docs/11-migrating-from-react-live.md) | `scope` → registry, and what differs |
 
 ## Two things to know up front
 

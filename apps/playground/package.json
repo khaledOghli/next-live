@@ -10,7 +10,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "validate:apps": "node --experimental-strip-types scripts/validate-apps.ts",
-    "validate:apps:test": "node --experimental-strip-types scripts/validate-apps.test.ts"
+    "validate:apps:test": "node --experimental-strip-types scripts/validate-apps.test.ts",
+    "generate:brand": "node scripts/generate-brand-assets.mjs"
   },
   "dependencies": {
     "@demo/vendor": "*",
@@ -42,7 +43,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
+    "to-ico": "^1.1.5",
     "typescript": "^5"
   }
 }

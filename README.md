@@ -34,7 +34,7 @@ The demo apps each prove something specific:
 | Shared store | The host application's own store, imported by a snippet |
 | Lazy heavy module | A large module fetched only when a snippet imports it |
 | Shared instance | Host and snippet holding one module, not two copies |
-| Inline expression | `react-live`-style bare JSX |
+| Inline expression | Bare JSX expression with no export |
 
 `/rsc-check` is a deliberate double control: a Server Component that imports the
 library directly, so the build fails if the published bundle ever loses its

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import * as React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { LiveProvider } from '../src/components/LiveProvider';
 import { LivePreview } from '../src/components/LivePreview';
@@ -476,5 +476,189 @@ describe('LiveEditor error highlight', () => {
     );
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy(), { timeout: 4000 });
+  });
+});
+
+/**
+ * WCAG 2.1.2 (No Keyboard Trap, Level A) and 2.4.7 (Focus Visible, Level AA).
+ *
+ * These guard a real regression: the editor used to swallow Tab with a comment
+ * claiming Escape released it, and no Escape handler existed. A keyboard-only
+ * user who entered the editor could not leave it.
+ */
+describe('LiveEditor keyboard accessibility', () => {
+  const area = (container: HTMLElement) =>
+    container.querySelector('textarea') as HTMLTextAreaElement;
+
+  it('inserts spaces on Tab by default', () => {
+    const onChange = vi.fn();
+    const { container } = render(
+      <LiveEditor code="ab" onChange={onChange} tabSize={2} />,
+    );
+    const el = area(container);
+    el.setSelectionRange(1, 1);
+
+    fireEvent.keyDown(el, { key: 'Tab' });
+
+    expect(onChange).toHaveBeenCalledWith('a  b');
+  });
+
+  it('releases Tab after Escape, so focus can leave', () => {
+    const onChange = vi.fn();
+    const { container } = render(<LiveEditor code="ab" onChange={onChange} />);
+    const el = area(container);
+
+    fireEvent.keyDown(el, { key: 'Escape' });
+    const tab = fireEvent.keyDown(el, { key: 'Tab' });
+
+    // Not swallowed: the browser is free to move focus.
+    expect(tab).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('releases Tab after Escape for Shift+Tab too, so focus can go backwards', () => {
+    const onChange = vi.fn();
+    const { container } = render(<LiveEditor code="ab" onChange={onChange} />);
+    const el = area(container);
+
+    fireEvent.keyDown(el, { key: 'Escape' });
+    // A real browser fires the modifier's own keydown first; it must not
+    // disarm the exit.
+    fireEvent.keyDown(el, { key: 'Shift', shiftKey: true });
+    fireEvent.keyDown(el, { key: 'Tab', shiftKey: true });
+
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('re-arms indentation once typing resumes after Escape', () => {
+    const onChange = vi.fn();
+    const { container } = render(<LiveEditor code="ab" onChange={onChange} />);
+    const el = area(container);
+    el.setSelectionRange(2, 2);
+
+    fireEvent.keyDown(el, { key: 'Escape' });
+    fireEvent.keyDown(el, { key: 'x' });
+    fireEvent.keyDown(el, { key: 'Tab' });
+
+    expect(onChange).toHaveBeenCalledWith('ab  ');
+  });
+
+  it('re-arms indentation after focus leaves and returns', () => {
+    const onChange = vi.fn();
+    const { container } = render(<LiveEditor code="ab" onChange={onChange} />);
+    const el = area(container);
+    el.setSelectionRange(2, 2);
+
+    act(() => el.focus());
+    fireEvent.keyDown(el, { key: 'Escape' });
+    act(() => el.blur());
+    act(() => el.focus());
+    fireEvent.keyDown(el, { key: 'Tab' });
+
+    expect(onChange).toHaveBeenCalledWith('ab  ');
+  });
+
+  it('never swallows Tab when read-only, since there is nothing to indent', () => {
+    const { container } = render(<LiveEditor code="ab" />);
+    expect(fireEvent.keyDown(area(container), { key: 'Tab' })).toBe(true);
+  });
+
+  it('announces the escape hatch, which 2.1.2 requires when it is not obvious', () => {
+    const { container } = render(<LiveEditor code="ab" onChange={() => {}} />);
+    const el = area(container);
+    const hintId = el.getAttribute('aria-describedby');
+
+    expect(el.getAttribute('aria-keyshortcuts')).toBe('Escape');
+    expect(hintId).toBeTruthy();
+    expect(container.querySelector(`#${CSS.escape(hintId as string)}`)?.textContent)
+      .toMatch(/Escape/);
+  });
+
+  it('does not advertise a Tab hint on a read-only editor', () => {
+    const { container } = render(<LiveEditor code="ab" />);
+    expect(area(container).getAttribute('aria-describedby')).toBeNull();
+  });
+
+  it('paints a focus ring on focus and drops it on blur', () => {
+    const { container } = render(<LiveEditor code="ab" onChange={() => {}} />);
+    const el = area(container);
+    const wrapper = container.firstElementChild as HTMLElement;
+
+    expect(wrapper.getAttribute('style') ?? '').not.toContain('outline: 2px');
+    // A real focus(), not fireEvent.focus: the ring is gated on
+    // `:focus-visible`, which only matches an element that genuinely holds
+    // focus. Synthesising the event alone would test nothing.
+    act(() => el.focus());
+    expect(wrapper.getAttribute('style')).toContain('outline: 2px');
+    act(() => el.blur());
+    expect(wrapper.getAttribute('style') ?? '').not.toContain('outline: 2px');
+  });
+
+  it('opts out of the ring with focusRingStyle={null}', () => {
+    const { container } = render(
+      <LiveEditor code="ab" onChange={() => {}} focusRingStyle={null} />,
+    );
+    const el = area(container);
+    act(() => el.focus());
+    expect(
+      (container.firstElementChild as HTMLElement).getAttribute('style') ?? '',
+    ).not.toContain('outline: 2px');
+  });
+});
+
+describe('LiveEditor standalone', () => {
+  it('renders highlighted code with no provider above it', () => {
+    const { container } = render(<LiveEditor code={'const x = 1;'} language="tsx" />);
+
+    expect(container.querySelector('textarea')?.value).toBe('const x = 1;');
+    // Highlighting actually ran, rather than falling back to plain text.
+    expect(container.querySelectorAll('pre[aria-hidden="true"] span').length)
+      .toBeGreaterThan(1);
+  });
+
+  it('is read-only without onChange, and editable with it', () => {
+    const { container: ro } = render(<LiveEditor code="a" />);
+    expect(ro.querySelector('textarea')?.readOnly).toBe(true);
+
+    const onChange = vi.fn();
+    const { container: rw } = render(<LiveEditor code="a" onChange={onChange} />);
+    expect(rw.querySelector('textarea')?.readOnly).toBe(false);
+
+    fireEvent.change(rw.querySelector('textarea') as HTMLTextAreaElement, {
+      target: { value: 'ab' },
+    });
+    expect(onChange).toHaveBeenCalledWith('ab');
+  });
+
+  it('explains itself when given neither a provider nor code', () => {
+    // React logs the thrown error; silence it so the run stays readable.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    expect(() => render(<LiveEditor />)).toThrow(/needs either a surrounding/);
+    spy.mockRestore();
+  });
+
+  it('underlines a caller-supplied error, for hosts compiling elsewhere', () => {
+    // errorPosition reads `line`/`column` off the error, not its stack.
+    const error = Object.assign(new Error('bad'), { line: 2, column: 1 });
+    const { container } = render(
+      <LiveEditor code={'a\nb'} error={error} />,
+    );
+
+    const lines = container.querySelectorAll('pre[aria-hidden="true"] > div');
+    expect(lines[1]?.getAttribute('style')).toContain('179, 38, 30');
+  });
+
+  it('still takes code and edits from the provider when used inside one', async () => {
+    render(
+      <LiveProvider code={COUNTER} debounce={0}>
+        <LiveEditor />
+      </LiveProvider>,
+    );
+
+    await waitFor(() =>
+      expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toContain(
+        'useState',
+      ),
+    );
   });
 });

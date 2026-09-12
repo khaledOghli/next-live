@@ -11,7 +11,6 @@ const pages: Record<string, () => Promise<{ default: ComponentType }>> = {
   integration: () => import('@/content/docs/integration.mdx'),
   'non-ui-snippets': () => import('@/content/docs/non-ui-snippets.mdx'),
   'validating-ci': () => import('@/content/docs/validating-ci.mdx'),
-  migrating: () => import('@/content/docs/migrating.mdx'),
 };
 
 export async function loadDocPage(slug: string): Promise<ComponentType | null> {

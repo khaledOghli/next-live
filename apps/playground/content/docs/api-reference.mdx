@@ -43,7 +43,7 @@ server pass.
   rows={[
     { name: 'code', type: 'string', required: true, notes: 'The snippet. Controlled: change it and the preview follows.' },
     { name: 'modules', type: 'ModuleRegistry', default: '{}', notes: 'Specifier → value or loader. Merges over the built-ins.' },
-    { name: 'scope', type: 'LiveScope', default: '{}', notes: 'Free variables injected as bare identifiers (react-live style).' },
+    { name: 'scope', type: 'LiveScope', default: '{}', notes: 'Free variables injected as bare identifiers without import.' },
     { name: 'props', type: 'Record<string, unknown>', default: '{}', notes: 'Passed to the rendered component by reference.' },
     { name: 'fallback', type: 'ReactNode', default: 'null', notes: 'Rendered until the first compile finishes. Size it like your content to avoid layout shift.' },
     { name: 'language', type: 'string', default: "'tsx'", notes: 'Highlighting hint for <LiveEditor>.' },
@@ -100,13 +100,47 @@ thing that pulls in `prism-react-renderer`.
   rows={[
     { name: 'renderEditor', type: '(props: LiveEditorRenderProps) => ReactNode', notes: 'Replace the built-in editor entirely, drop in CodeMirror or Monaco.' },
     { name: 'theme', type: 'PrismTheme', default: 'themes.vsDark', notes: 'From prism-react-renderer.' },
-    { name: 'readOnly', type: 'boolean', default: 'false', notes: 'Display source without editing.' },
+    { name: 'prism', type: 'typeof Prism', default: 'built-in', notes: 'A Prism instance with extra languages registered, for anything outside the built-in set.' },
+    { name: 'readOnly', type: 'boolean', default: 'inferred', notes: 'Display source without editing. Defaults to true when there is nothing to write edits to.' },
     { name: 'tabSize', type: 'number', default: '2', notes: 'Spaces inserted by the Tab key.' },
     { name: 'padding', type: 'number', default: '16' },
     { name: 'errorLineStyle', type: 'CSSProperties | null', default: 'red inset highlight', notes: 'Paint-only highlight on the error line. Pass null to disable.' },
     { name: 'errorLineClassName', type: 'string', notes: 'Extra class on the error line.' },
+    { name: 'focusRingStyle', type: 'CSSProperties | null', default: '2px blue outline', notes: 'Ring painted while the editor holds keyboard focus. Pass null only if you paint your own.' },
+    { name: 'aria-label', type: 'string', default: "'Live code editor'", notes: 'Accessible name.' },
+    { name: 'code', type: 'string', default: 'from context', notes: 'Standalone mode, see below.' },
+    { name: 'onChange', type: '(code: string) => void', default: 'from context', notes: 'Standalone mode, see below.' },
+    { name: 'language', type: 'string', default: "from context, then 'tsx'" },
+    { name: 'error', type: 'Error | null', default: 'from context', notes: 'Error to underline.' },
   ]}
 />
+
+### Standalone, without a provider
+
+`<LiveEditor>` normally takes its code from the surrounding `<LiveProvider>` and
+sends edits back to it. Pass `code` and it works on its own, which is how a page
+shows a highlighted snippet it is not running:
+
+<CodeBlock
+  title="A highlighted snippet with no provider"
+  code={`// Read-only: no onChange, so there is nowhere to write an edit.
+<LiveEditor code={source} language="tsx" />
+
+// Editable, driven by your own state.
+<LiveEditor code={code} onChange={setCode} />`}
+/>
+
+With neither a provider nor `code`, the editor throws rather than rendering
+empty.
+
+<Callout variant="info" title="Keyboard access">
+Tab inserts spaces, because an editor that moves focus on Tab cannot be typed
+into. **Press Escape, then Tab, to move focus out**, the same convention
+CodeMirror and Monaco use. The editor announces this through `aria-keyshortcuts`
+and a visually-hidden description, and paints a focus ring while focused, so it
+satisfies WCAG 2.1.2 (No Keyboard Trap) and 2.4.7 (Focus Visible). Any other
+keystroke re-arms indentation, so Escape only ever releases the very next Tab.
+</Callout>
 
 `LiveEditorRenderProps` exposes `code`, `onChange`, `language`, `error`,
 `errorLine`, and `errorColumn`, everything a third-party editor needs:

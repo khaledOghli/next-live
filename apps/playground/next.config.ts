@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
 const withMDX = createMDX({
   options: {
     remarkPlugins: ['remark-gfm'],
+    // Gives every heading a stable id at build time, so in-page anchors and
+    // deep links work in the served HTML. Without it the table of contents had
+    // to invent ids by mutating the DOM after hydration, which meant a link to
+    // `#some-heading` resolved to nothing until JavaScript ran.
+    rehypePlugins: ['rehype-slug'],
   },
 });
 

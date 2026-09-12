@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -17,8 +17,19 @@ const built = existsSync(join(dist, 'index.js'));
 describe.skipIf(!built)('build output', () => {
   const read = (file: string) => readFileSync(join(dist, file), 'utf8');
 
-  const CLIENT_ENTRIES = ['index.js', 'index.cjs', 'editor.js', 'editor.cjs'];
   const SERVER_ENTRIES = ['server.js', 'server.cjs'];
+
+  /**
+   * Derived, never hardcoded.
+   *
+   * A fixed list of entry filenames is exactly how the shared chunk slipped
+   * through: adding a second client entry made tsup split `createContext` into
+   * `chunk-*.js`, which the list did not know about, leaving a client-only
+   * module with no directive on it.
+   */
+  const clientFiles = readdirSync(dist).filter(
+    (file) => /\.(js|cjs)$/.test(file) && !SERVER_ENTRIES.includes(file),
+  );
 
   /**
    * Next.js requires library authors to preserve this themselves - bundlers
@@ -27,8 +38,13 @@ describe.skipIf(!built)('build output', () => {
    * Component. Verified once by deliberately removing it and watching the
    * playground build fail.
    */
-  it.each(CLIENT_ENTRIES)('keeps the "use client" directive in %s', (file) => {
-    expect(read(file).split('\n')[0]).toMatch(/^["']use client["'];?$/);
+  it('stamps every client-graph file, shared chunks included', () => {
+    const missing = clientFiles.filter(
+      (file) => !/^["']use client["'];?$/.test(read(file).split('\n')[0] ?? ''),
+    );
+    expect(missing).toEqual([]);
+    // Guard against the filter silently matching nothing.
+    expect(clientFiles.length).toBeGreaterThanOrEqual(4);
   });
 
   it.each(SERVER_ENTRIES)('does not put "use client" in %s', (file) => {

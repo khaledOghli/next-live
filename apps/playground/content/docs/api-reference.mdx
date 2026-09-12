@@ -1,0 +1,86 @@
+import { LiveDemo } from '@/components/docs/LiveDemo';
+import { PropTable } from '@/components/docs/PropTable';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { NonUiDemo } from '@/components/docs/NonUiDemo';
+import { counterDemo, minimalPreviewDemo, timerDemo } from '@/lib/docs/demos';
+
+Three entry points — import only what you use:
+
+<CodeBlock code={`import { LiveProvider, LivePreview, defineLoader } from 'next-live';
+import { LiveEditor } from 'next-live/editor';   // optional peer: prism-react-renderer
+import { precompile, validateSnippets } from 'next-live/server'; // server only`} />
+
+## LiveProvider
+
+Compiles `code` and provides the result to children.
+
+<PropTable rows={[
+  { name: 'code', type: 'string', default: '—', notes: 'The snippet source. Controlled prop.' },
+  { name: 'modules', type: 'ModuleRegistry', default: '{}', notes: 'Specifier → value or loader' },
+  { name: 'props', type: 'Record<string, unknown>', default: '{}', notes: 'Passed to the component by reference' },
+  { name: 'filePath', type: 'string', default: 'LiveCode.tsx', notes: 'Shown in stack traces' },
+  { name: 'debounce', type: 'number', default: '150', notes: 'Ms before recompile after edit' },
+  { name: 'keepLastGood', type: 'boolean', default: 'true', notes: 'Keep last working component on compile failure' },
+  { name: 'onError', type: '(error: Error) => void', notes: 'Compile and runtime errors' },
+  { name: 'onCompileSuccess', type: '(info) => void', notes: 'After successful compile with imports + duration' },
+  { name: 'transform', type: 'TransformFn', notes: 'Replace built-in Sucrase pass (precompiled output)' },
+]} />
+
+<LiveDemo source={minimalPreviewDemo} filePath="Hello.tsx" />
+
+## LiveEditor
+
+Separate entry so preview-only pages stay small (~16 KB vs ~102 KB with editor).
+
+<PropTable rows={[
+  { name: 'readOnly', type: 'boolean', default: 'false', notes: 'Display source without editing' },
+  { name: 'renderEditor', type: '(props) => ReactNode', notes: 'Replace built-in textarea editor' },
+  { name: 'errorLineStyle', type: 'CSSProperties | null', notes: 'Highlight line from compile error' },
+]} />
+
+<LiveDemo source={counterDemo} editable filePath="Counter.tsx" />
+
+## LivePreview & LiveError
+
+<PropTable rows={[
+  { name: 'LivePreview.props', type: 'Record<string, unknown>', notes: 'Merged over provider props' },
+  { name: 'LivePreview.fallback', type: 'ReactNode', notes: 'Until first compile finishes' },
+  { name: 'LiveError.children', type: '(error) => ReactNode', notes: 'Custom error rendering' },
+]} />
+
+## useLiveRunner
+
+Headless engine for custom UIs:
+
+<CodeBlock code={`const { code, setCode, Component, error, isCompiling, compileId } =
+  useLiveRunner({ code: source, modules });`} />
+
+## useLiveModule
+
+For snippets that export functions, not components:
+
+<NonUiDemo />
+
+<PropTable rows={[
+  { name: 'exports', type: 'T | null', notes: 'Module exports after successful run' },
+  { name: 'value', type: 'unknown', notes: 'Shorthand for exports?.default' },
+]} />
+
+## Registry helpers
+
+| Export | Purpose |
+|---|---|
+| `defineLoader(fn)` | Mark a dynamic import as lazy loader |
+| `defineModule({ default, exports })` | Explicit module record when default is ambiguous |
+| `createRegistry(...groups)` | Merge registry groups |
+| `registryFromGlob(glob, toSpecifier)` | Build loaders from `import.meta.glob` |
+| `precompiledTransform(result)` | Client transform for server-precompiled code |
+
+## Hooks demo
+
+<LiveDemo source={timerDemo} filePath="Timer.tsx" />
+
+<Callout variant="info" title="Full type definitions">
+  See `next-live` TypeScript exports in your editor, or the markdown API reference in the npm package under `docs/06-api-reference.md`.
+</Callout>

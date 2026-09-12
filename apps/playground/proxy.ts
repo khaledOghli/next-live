@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { isRunnerRoute } from '@/lib/runner-routes';
 
 /**
  * Content Security Policy, with `'unsafe-eval'` scoped to the routes that
@@ -10,19 +11,22 @@ import { NextResponse, type NextRequest } from 'next/server';
  * means the rest of the app keeps a clean policy, and a reviewer can see the
  * exception is contained rather than blanket.
  *
+ * A CSP is attached to a document, and a client-side navigation fetches no new
+ * document - so a soft navigation from a non-runner page would carry the wrong
+ * policy into a runner route. `<RunnerLink>` forces a real page load across
+ * that boundary; both it and this file read `RUNNER_ROUTES` from
+ * `lib/runner-routes.ts` so they cannot disagree.
+ *
  * Worth knowing about `'unsafe-eval'`: it only permits string-to-code APIs
  * (`eval`, `Function`, `setTimeout("…")`). It does **not** allow loading
  * external scripts, so `script-src 'self' 'unsafe-eval'` still blocks
  * attacker-hosted script.
  */
 
-/** Routes that evaluate snippets, and therefore need `'unsafe-eval'`. */
-const RUNNER_ROUTES = ['/playground', '/apps'];
-
 function buildCsp(pathname: string, isDev: boolean): string {
   // React uses eval in development to reconstruct server error stacks, so dev
   // needs the directive everywhere regardless of route.
-  const needsEval = isDev || RUNNER_ROUTES.some((route) => pathname.startsWith(route));
+  const needsEval = isDev || isRunnerRoute(pathname);
 
   const scriptSrc = ["'self'", "'unsafe-inline'", needsEval ? "'unsafe-eval'" : null]
     .filter(Boolean)

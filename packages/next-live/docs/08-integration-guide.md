@@ -320,7 +320,7 @@ as `code` diverges from the catalog version.
 | **`/playground`** | Developer lab - editor, precompile toggle, localStorage save, and pedagogical panels. Source from `/api/apps/[id]`. |
 
 Both share the same composed lazy registry (`lib/live-sdk`), scoped CSP
-(`RUNNER_ROUTES = ['/playground', '/apps']`), and CI validation
+(`RUNNER_ROUTES = ['/playground', '/apps', '/docs']`), and CI validation
 (`npm run validate:apps`).
 
 ```bash

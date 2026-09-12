@@ -216,9 +216,18 @@ and Server Components.
 
 ### `precompile(source, options?)`
 
-Transpiles to the same CommonJS the browser path produces. Returns
-`{ code, hash, linePrefixOffset, expression }`, where `hash` is a stable cache
-key or ETag.
+Transpiles to the same CommonJS the browser path produces. Returns a
+`PrecompileResult`:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `code` | `string` | The transpiled CommonJS. |
+| `hash` | `string` | Stable hash of the source and the options that affect output. Use it as a cache key or ETag. |
+| `linePrefixOffset` | `number` | Lines the wrapper added above the snippet; needed to map error lines back. |
+| `expression` | `boolean` | Whether the snippet was compiled as a bare expression rather than a module. |
+
+`PrecompileResult extends TransformResult`, so a result can be handed straight
+to [`precompiledTransform`](#engine).
 
 ### `validateSnippet(source, options?)`
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { siteUrl } from "@/lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Without metadataBase, Next cannot resolve the relative canonical and
+  // OpenGraph URLs the docs pages declare.
+  metadataBase: new URL(siteUrl),
   title: "next-live",
   description: "Live TSX evaluation for the Next.js App Router.",
 };

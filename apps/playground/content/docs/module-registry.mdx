@@ -1,0 +1,83 @@
+import Link from 'next/link';
+import { LiveDemo } from '@/components/docs/LiveDemo';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { uiImportDemo, formatDemo } from '@/lib/docs/demos';
+
+This is the core concept. Everything else follows from it.
+
+## There is no npm in the browser
+
+Your page bundle contains only what **you** imported when it was built. A snippet saying `import _ from 'lodash'` cannot conjure lodash into existence — you hand it over via the `modules` prop:
+
+<CodeBlock code={`<LiveProvider
+  code={source}
+  modules={{
+    '@app/store': defineLoader(() => import('@/lib/store')),
+  }}
+/>`} />
+
+If the specifier is not registered, the snippet fails with a clear error naming it.
+
+This replaces react-live's flat `scope` object, where every helper had to be injected as a global and `import` was impossible.
+
+## The key is just a string
+
+A registry key does not have to be a real package name. Pick names that read like a deliberate SDK:
+
+<CodeBlock code={`modules={{
+  '@app/store':   /* … */,
+  '@/store':      /* … */,
+  'my-utils':     /* … */,
+}}`} />
+
+## Loaders vs values
+
+**Loader (default):** code-split, fetched only when a snippet imports it.
+
+<CodeBlock code={`'@app/store': defineLoader(() => import('@/lib/store'))`} />
+
+**Value:** simpler, but always in your page bundle.
+
+<CodeBlock code={`import * as store from '@/lib/store';
+modules={{ '@app/store': store }}`} />
+
+Use loaders. A registry of 300 loaders costs nothing at runtime — only specifiers that appear in the compiled snippet are resolved.
+
+## Live demo: @app/ui
+
+This snippet imports shadcn components through the registry. Tailwind classes are compiled by the **host**, not inside the snippet.
+
+<LiveDemo source={uiImportDemo} filePath="UiDemo.tsx" />
+
+## Live demo: @app/format
+
+<CodeBlock code={`'@app/format': defineLoader(() => import('@/lib/format'))`} />
+
+<LiveDemo source={formatDemo} filePath="FormatDemo.tsx" />
+
+## Always available
+
+Registered for you with no configuration:
+
+- `react`
+- `react/jsx-runtime`
+- `react/jsx-dev-runtime`
+
+## Every import form works
+
+| Snippet writes | Gets |
+|---|---|
+| `import ui from '@app/ui'` | default export, or the module itself |
+| `import { Button } from '@app/ui'` | named export |
+| `import * as ui from '@app/ui'` | namespace |
+| `import '@app/ui'` | side effects only |
+
+<Callout variant="info" title="Styling and Tailwind">
+  Snippets cannot run their own Tailwind build. Classes work when they are compiled by your host app, or when snippets import your registered UI components. See [Troubleshooting](/docs/troubleshooting) for safelist guidance.
+</Callout>
+
+## Next
+
+- [Sharing libraries](/docs/sharing-libraries) — one React instance, one store
+- [Scaling](/docs/scaling) — keep the bundle small with many modules

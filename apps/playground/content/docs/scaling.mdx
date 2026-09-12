@@ -1,0 +1,73 @@
+import Link from 'next/link';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+
+For hundreds of snippets and a large SDK, success is mostly about **how you register**, not how much you register.
+
+## Register loaders, not values
+
+<CodeBlock code={`// ❌ always in the page bundle
+import * as charts from 'my-charts';
+modules={{ 'my-charts': charts }}
+
+// ✅ code-split, fetched when a snippet imports it
+modules={{ 'my-charts': defineLoader(() => import('my-charts')) }}`} />
+
+Measured on the playground with a 192 KB vendor module:
+
+| Registration | Initial page JS |
+|---|---|
+| by value | 827 KB |
+| as loader | **666 KB** |
+
+**A registry of 300 loaders costs nothing.** Only specifiers that appear in the compiled snippet are resolved.
+
+## What next-live itself costs
+
+| Page imports | Entry chunk |
+|---|---|
+| `LiveProvider` + `LivePreview` + `LiveError` | **~16 KB** |
+| above + `LiveEditor` from `next-live/editor` | ~102 KB |
+
+Sucrase is fetched on first compile, or skipped entirely with [server precompilation](#precompile-on-the-server).
+
+## Design an SDK surface
+
+Expose a handful of stable namespaces — not a mirror of your entire codebase:
+
+| Specifier | Contains |
+|---|---|
+| `@app/store` | Application state |
+| `@app/ui` | Buttons, cards, layout |
+| `@app/format` | Dates, currency |
+| `@app/data` | Fetch helpers scoped to the user |
+
+One directory, thin re-exports. Implementations stay free to move.
+
+## Generate entries from the filesystem
+
+<CodeBlock code={`import { registryFromGlob } from 'next-live';
+
+export const generatedModules = registryFromGlob(
+  import.meta.glob('./modules/*.ts'),
+  (path) => '@app/' + path.match(/modules\\/(\\w+)\\.ts$/)?.[1],
+);`} />
+
+<Callout variant="warning" title="The directory rule">
+  `import.meta.glob` must point at or below the calling file's directory. A `../` pattern silently matches nothing under Turbopack.
+</Callout>
+
+## Precompile on the server
+
+When many users open the same snippet, compile once on the server and ship the result:
+
+<CodeBlock code={`import { precompile } from 'next-live/server';
+
+const result = precompile(source, { filePath: 'app.tsx' });
+// Pass result.code to the client via transform={precompiledTransform}`} />
+
+See the precompile tab in the [Playground](/playground).
+
+## Next
+
+[Security](/docs/security) — scope `'unsafe-eval'` to runner routes only.

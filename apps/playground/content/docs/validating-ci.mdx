@@ -1,0 +1,45 @@
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+
+## The problem
+
+Snippets live in a database. When you rename an export in your SDK, stored apps break silently — tests pass, users hit errors days later.
+
+## The fix
+
+`validateSnippets` transpiles every stored snippet and checks imports against your registry. **It never evaluates** — safe to run in CI with no DOM.
+
+<CodeBlock title="scripts/validate-apps.ts" code={`import { validateSnippets } from 'next-live/server';
+import { getAllApps } from '../lib/db';
+import { LIVE_MODULE_KEYS } from '../lib/live-sdk/module-keys';
+
+const apps = await getAllApps();
+const failures = validateSnippets(apps, { modules: [...LIVE_MODULE_KEYS] });
+
+if (failures.length > 0) {
+  for (const { id, result } of failures) {
+    for (const issue of result.issues) {
+      console.error(\`  \${id}: \${issue.message}\`);
+    }
+  }
+  process.exit(1);
+}
+
+console.log(\`✓ all \${apps.length} stored apps validate\`);`} />
+
+Example output when someone renames a module:
+
+<CodeBlock code={`✗ 1 of 6 stored apps are broken:
+
+  store: Module '@app/store' is not registered. Did you mean '@app/cart'?`} language="text" />
+
+## CI wiring
+
+<CodeBlock title=".github/workflows/ci.yml" code={`- run: npm run validate:apps
+  working-directory: apps/playground`} />
+
+This repo runs `validate:apps` against the shell catalogue and playground apps.
+
+<Callout variant="info" title="What CI catches vs misses">
+  Catches: syntax errors, unresolved imports, forbidden specifiers, source too large. Does not catch: runtime throws, logic bugs, type errors.
+</Callout>

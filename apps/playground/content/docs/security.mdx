@@ -1,0 +1,77 @@
+import Link from 'next/link';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { AccessDiagram } from '@/components/docs/AccessDiagram';
+
+Read this before you deploy. The first rule is the one that matters.
+
+## The model in one paragraph
+
+next-live runs code with `new Function` on your page. That code has the page's full authority — cookies, storage, DOM, and your APIs as the signed-in user.
+
+**Safe when snippet authors are people you trust. Unsafe when they are not.**
+
+## Who can write vs who can view
+
+<AccessDiagram />
+
+| Role | Can do | Your control |
+|---|---|---|
+| **Snippet author** (admin, internal dev) | Save TSX that runs on your origin | Strict auth on the **write** API; audit trail; version history |
+| **Visitor** | View the compiled preview | Cannot inject code unless they also control the write path |
+| **Attacker with URL param access** | Run arbitrary JS on your site | **Block this** — never pass user-controlled strings to `code` |
+
+<Callout variant="danger" title="Whoever can save a snippet can run JavaScript on your site">
+  Treat a row in your snippets table like a production deploy. That endpoint deserves your strictest authorization check.
+</Callout>
+
+## Rule 1: Feed the evaluator only from your API
+
+<CodeBlock code={`// ✅ from your authenticated API
+const { source } = await fetch(\`/api/apps/\${id}\`).then((r) => r.json());
+
+// ❌ never
+const source = new URLSearchParams(location.search).get('code');`} />
+
+If an attacker controls what reaches `code`, no CSP setting prevents execution — that is by design.
+
+## Rule 2: Scope unsafe-eval to runner routes
+
+`new Function` requires `'unsafe-eval'` in `script-src`. It does not have to apply to your whole app:
+
+<CodeBlock title="proxy.ts" code={`const RUNNER_ROUTES = ['/apps', '/playground', '/docs'];
+
+const needsEval =
+  isDev || RUNNER_ROUTES.some((r) => pathname.startsWith(r));
+
+const csp = [
+  "default-src 'self'",
+  \`script-src 'self' 'unsafe-inline'\${needsEval ? " 'unsafe-eval'" : ''}\`,
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+].join('; ');`} />
+
+Working copy: `apps/playground/proxy.ts`. Visit `/rsc-check` — not a runner route — to see CSP blocking eval.
+
+<Callout variant="info" title="unsafe-eval is narrower than it sounds">
+  It gates string-to-code APIs only (`eval`, `Function`). It does **not** allow loading external scripts.
+</Callout>
+
+## What is contained — and what is not
+
+**Contained:** runtime errors, render loops. `<LiveErrorBoundary>` keeps a broken snippet from crashing the host. A render-rate breaker stops runaway `setState`.
+
+**Not contained:** full page authority. A synchronous `while (true)` hangs the tab. `window`, `fetch`, and the DOM are always available — the module registry limits convenience, not capability.
+
+## If authors stop being trusted
+
+Same-realm evaluation is for cooperative authors, not a security boundary. Public marketplaces or cross-tenant code need an iframe on a **separate origin** — a different product with different trade-offs (no live props by reference).
+
+## Checklist before production
+
+- [ ] Snippet source only from authenticated write API
+- [ ] Audit log + version history on stored snippets
+- [ ] `'unsafe-eval'` scoped to runner routes in `proxy.ts`
+- [ ] Strict `connect-src` — snippets cannot exfiltrate to arbitrary hosts
+- [ ] `validateSnippets` in CI — [Validating in CI](/docs/validating-ci)

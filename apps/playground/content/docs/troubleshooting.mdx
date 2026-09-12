@@ -1,0 +1,68 @@
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+
+Every error below is one you can actually hit, with its real message text.
+
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="live-editor">
+    <AccordionTrigger>LiveEditor is not exported from next-live</AccordionTrigger>
+    <AccordionContent>
+      <CodeBlock code={`import { LiveEditor } from 'next-live/editor';
+npm install prism-react-renderer`} />
+      The editor lives on its own entry so preview-only pages never pay for a syntax highlighter.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="not-registered">
+    <AccordionTrigger>Module 'x' is not registered in the next-live scope</AccordionTrigger>
+    <AccordionContent>
+      The snippet imported something you did not register. The message lists available modules and suggests the nearest match. Register the specifier in `modules`, or fix a typo. Unused imports are stripped before resolution — they never trigger this.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="empty-glob">
+    <AccordionTrigger>My registry is empty and every import fails</AccordionTrigger>
+    <AccordionContent>
+      <CodeBlock code={`import.meta.glob('../modules/*.ts')   // ❌ empty, no warning
+import.meta.glob('./modules/*.ts')    // ✅`} />
+      Turbopack resolves globs relative to the calling file. Move the glob caller so the pattern points at or below its directory.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="csp">
+    <AccordionTrigger>CSP blocks eval</AccordionTrigger>
+    <AccordionContent>
+      Add `'unsafe-eval'` to `script-src` for runner routes in `proxy.ts`. A nonce will not help — `new Function` is governed solely by `'unsafe-eval'`. See [Security](/docs/security).
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="render-loop">
+    <AccordionTrigger>Rendered more than 1000 times in 1000ms</AccordionTrigger>
+    <AccordionContent>
+      The render-loop breaker tripped. Look for `setState` during render or a `useEffect` without a dependency array. Editing the snippet clears the breaker on the next compile.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="typescript">
+    <AccordionTrigger>My TypeScript errors are not reported</AccordionTrigger>
+    <AccordionContent>
+      Types are stripped, not checked. Use your IDE and CI typechecking on snippet files if you store them as `.tsx` on disk. `validateSnippets` catches syntax and import errors only.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="hooks">
+    <AccordionTrigger>Do React hooks work in snippets?</AccordionTrigger>
+    <AccordionContent>
+      Yes. Snippets share your page's single React instance — the same reason a shared Zustand store works. Rules of Hooks apply normally.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="hydration">
+    <AccordionTrigger>Hydration mismatch #418 / #425</AccordionTrigger>
+    <AccordionContent>
+      next-live does not compile on the server. If you still see hydration errors, the mismatch is elsewhere — check that `code` is the same on server and first client render, and give `LivePreview` a sized `fallback`.
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+Still stuck? Open an issue with the exact error message and a minimal snippet.

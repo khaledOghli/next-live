@@ -95,6 +95,43 @@ you can see what the failure looks like.
 
 > CSP moved to `proxy.ts` in Next 16 - `middleware.ts` was renamed.
 
+### The catch: a CSP does not follow a client-side navigation
+
+Route-scoped CSP and client-side routing do not compose, and the failure is
+quiet.
+
+A policy is attached to a **document**. A Next `<Link>` navigation fetches no
+new document, so the policy from wherever the visitor first landed stays in
+force for the rest of the session. Land on `/` — no `'unsafe-eval'` — click a
+`<Link>` to `/apps`, and every snippet fails to compile, even though `/apps`
+would have been served the right policy had it been loaded directly.
+
+It works in development, because React needs `'unsafe-eval'` there anyway and
+the dev branch grants it everywhere. It works if you reload directly onto a
+runner route. It breaks on the path most visitors actually take.
+
+Cross that boundary with a real page load:
+
+```tsx
+// A link into a runner route must not be a client-side navigation.
+<a href="/apps">Open the app</a>       // ✅ new document, correct policy
+<Link href="/apps">Open the app</Link> // ❌ keeps the previous page's policy
+```
+
+The playground wraps this in a `RunnerLink` component that reads the same
+`RUNNER_ROUTES` list the proxy uses, so the two cannot drift — see
+`apps/playground/components/RunnerLink.tsx` and `lib/runner-routes.ts`.
+
+The cost is one full page load when entering the runner section. The
+alternative is granting `'unsafe-eval'` application-wide, which is the thing
+this whole section exists to avoid.
+
+One consequence worth planning for: every page a visitor can reach *from* a
+runner route by soft navigation also needs the runner policy, or it needs its
+own hard link back. Keeping the runner section contiguous — one prefix, as the
+playground does with `/docs` — is simpler than scattering eval-enabled pages
+through the app.
+
 ## 4. Keep the rest of the policy strict
 
 `'unsafe-eval'` sounds worse than it is. It gates **only** string-to-code APIs

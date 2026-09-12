@@ -11,11 +11,24 @@ import { validateSnippet, validateSnippets } from 'next-live/server';
 import { apps } from '../lib/apps.ts';
 import { shellApps } from '../lib/shell-apps.ts';
 import { storeScriptSource } from '../lib/store-script.ts';
+import * as docsDemos from '../lib/docs/demos.ts';
 import { LIVE_MODULE_KEYS } from '../lib/live-sdk/module-keys.ts';
+
+/**
+ * The documentation's own live demos, held to the same standard as stored apps.
+ *
+ * They import `@app/*` exactly as a real snippet does, so an SDK rename breaks
+ * them too — on the site that teaches the library, which is the worst place to
+ * find out late.
+ */
+const demoSnippets = Object.entries(docsDemos)
+  .filter(([, source]) => typeof source === 'string')
+  .map(([id, source]) => ({ id: `docs/${id}`, source: source as string }));
 
 const failures = [
   ...validateSnippets(apps, { modules: [...LIVE_MODULE_KEYS] }),
   ...validateSnippets(shellApps, { modules: [...LIVE_MODULE_KEYS] }),
+  ...validateSnippets(demoSnippets, { modules: [...LIVE_MODULE_KEYS] }),
 ];
 
 const scriptResult = validateSnippet(storeScriptSource, { modules: [...LIVE_MODULE_KEYS] });
@@ -25,7 +38,8 @@ if (!scriptResult.ok) {
 
 if (failures.length === 0) {
   console.log(
-    `✓ all ${apps.length} lab apps, ${shellApps.length} shell apps, and the store API script validate against the current SDK`,
+    `✓ all ${apps.length} lab apps, ${shellApps.length} shell apps, ` +
+      `${demoSnippets.length} docs demos, and the store API script validate against the current SDK`,
   );
   process.exit(0);
 }

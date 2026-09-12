@@ -1,0 +1,45 @@
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { NonUiDemo } from '@/components/docs/NonUiDemo';
+import { Callout } from '@/components/docs/Callout';
+
+Not everything worth storing as editable code renders UI. Control panels accumulate validators, pricing rules, config builders — plain modules with no JSX.
+
+## compile vs compileModule
+
+<CodeBlock code={`compile(...)        // insists on a component
+compileModule(...)  // returns whatever the snippet exported`} />
+
+## useLiveModule
+
+<NonUiDemo />
+
+Example snippet (no default export required):
+
+<CodeBlock code={`import { getCartCount, removeLastItem } from '@app/store';
+
+export function run() {
+  removeLastItem();
+  return getCartCount();
+}`} />
+
+Client usage:
+
+<CodeBlock code={`const { exports, error, isCompiling } = useLiveModule({ code: source, modules });
+
+const run = exports?.run;
+run?.(); // call exported function`} />
+
+<Callout variant="warning" title="Same trust model">
+  Non-UI snippets still evaluate in the current realm with full page authority. Only run code from authors you trust.
+</Callout>
+
+## Typing exports
+
+Pass a type parameter — it is a claim, not a runtime check:
+
+<CodeBlock code={`interface PricingRule {
+  validate: (n: number) => boolean;
+  total: (n: number) => number;
+}
+
+const { exports } = useLiveModule<PricingRule>({ code: source });`} />

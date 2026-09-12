@@ -5,7 +5,13 @@
 By the end of this page you will have a page that takes a string of TSX and
 renders it as a live React component.
 
-**Requirements:** React 19+, Next.js 16+ (App Router), Node 20.9+.
+**Requirements:** React 19+ and Node 20.9+.
+
+Next.js is **not** required — the library imports only `react`,
+`react/jsx-runtime`, `prism-react-renderer` and `sucrase`, and Next is not even
+a peer dependency. This guide is written against the Next 16 App Router because
+that is what it is tuned for (SSR safety, the CSP notes), but everything works
+in Vite, Remix, or anywhere React runs.
 
 ## Step 1: Install
 

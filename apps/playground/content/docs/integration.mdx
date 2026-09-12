@@ -1,0 +1,100 @@
+import Link from 'next/link';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { Steps } from '@/components/docs/Steps';
+
+An end-to-end walkthrough: staff author apps in a control panel, source lives in a database, users open them in the browser.
+
+## Architecture
+
+<CodeBlock code={`Control panel  ──writes──▶  database  ──serves──▶  /api/apps/[id]
+                                                      │
+                                                      ▼
+                                            /apps/[id]  ──▶  <LiveProvider>
+                                                                  │
+                                                     compiles in the browser
+                                                                  ▼
+                                                         the running app`} />
+
+<Steps steps={[
+  {
+    title: 'Decide your SDK surface first',
+    children: (
+      <>
+        <p>Pick stable namespaces before writing code — they become a public contract with authors.</p>
+        <CodeBlock code={`@app/store   — application state
+@app/ui      — buttons, cards, layout
+@app/format  — dates, currency
+@app/data    — fetch helpers`} />
+      </>
+    ),
+  },
+  {
+    title: 'Build the registry',
+    children: (
+      <>
+        <p>Thin re-exports in <code>lib/live-sdk/modules/</code>, composed in <code>index.ts</code>.</p>
+        <CodeBlock code={`export const liveModules = createRegistry(
+  vendorModules,
+  storeModules,
+);`} />
+      </>
+    ),
+  },
+  {
+    title: 'Store snippets as strings',
+    children: (
+      <>
+        <p>A snippet is TSX source text — not a file path. You can author <code>.tsx</code> files in your repo and read them server-side, but <code>LiveProvider</code> always receives a string.</p>
+        <CodeBlock code={`// database row
+{ id: 'dashboard-widget', source: 'import … export default …' }`} />
+      </>
+    ),
+  },
+  {
+    title: 'Serve from an authenticated API',
+    children: (
+      <>
+        <CodeBlock code={`export async function GET(req, { params }) {
+  const app = await db.apps.find(params.id);
+  if (!app) return Response.json({ error: 'not found' }, { status: 404 });
+  return Response.json({ id: app.id, source: app.source });
+}`} />
+        <p>Authorize the write path strictly. Whoever can POST a snippet can run JS on your site.</p>
+      </>
+    ),
+  },
+  {
+    title: 'Render with LiveProvider',
+    children: (
+      <>
+        <CodeBlock code={`'use client';
+
+export function AppRunner({ source }) {
+  return (
+    <LiveProvider code={source} modules={liveModules} props={{ user }}>
+      <LivePreview fallback={<Skeleton />} />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+      </>
+    ),
+  },
+  {
+    title: 'Add CSP and CI validation',
+    children: (
+      <>
+        <p>Scope <code>unsafe-eval</code> to runner routes. Run <code>validateSnippets</code> in CI. See <Link href="/docs/security">Security</Link> and <Link href="/docs/validating-ci">Validating in CI</Link>.</p>
+      </>
+    ),
+  },
+]} />
+
+## See it running
+
+The [Apps shell demo](/apps) in this repo implements this pattern: sidebar tabs, API-fetched snippets, shadcn via `@app/ui`, shared store via `@app/store`.
+
+<Callout variant="info" title="Code is always a string">
+  Whether it comes from a database, an API, or a template literal — <code>code={'{source}'}</code> is the only input next-live accepts.
+</Callout>

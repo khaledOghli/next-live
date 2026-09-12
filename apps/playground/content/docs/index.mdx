@@ -1,0 +1,47 @@
+import Link from 'next/link';
+import { InstallCommand } from '@/components/docs/InstallCommand';
+import { LiveDemo } from '@/components/docs/LiveDemo';
+import { Callout } from '@/components/docs/Callout';
+import { counterDemo } from '@/lib/docs/demos';
+
+# Live TSX for the Next.js App Router
+
+next-live takes a **string of TSX**, compiles it in the browser, and renders it as a real React component — with real `import` statements, your module registry, and no hydration mismatches.
+
+**Requirements:** React 19+, Node 20.9+. Next.js 16+ is where it was designed and tested; the library works anywhere React runs.
+
+## Install
+
+<InstallCommand />
+
+## Try it now
+
+Edit the snippet below. The preview updates as you type.
+
+<LiveDemo source={counterDemo} editable filePath="Counter.tsx" />
+
+## What you get
+
+| Feature | What it means for you |
+|---|---|
+| Real ESM | Snippets use `import` / `export default`, not a global scope bag |
+| Module registry | You decide exactly what `@app/store`, `@app/ui`, etc. resolve to |
+| Live props | Pass a store or user object by reference — mutations show up in your app |
+| SSR-safe | No compile on the server; first client render matches exactly |
+| Contained failures | Error boundary + render-loop breaker keep one bad snippet from crashing the page |
+| Non-UI snippets | `useLiveModule` runs validators, transformers, config — not just components |
+| CI validation | `validateSnippets` catches SDK renames before users hit broken apps |
+| Small bundle | Preview-only pages pay ~16 KB; editor and transpiler are split out |
+
+## Guides
+
+Start with [Getting started](/docs/getting-started), then [Module registry](/docs/module-registry) — that is the core concept everything else builds on.
+
+<Callout variant="warning" title="Read before you deploy">
+  Snippets run with your page's full authority. They are safe when **authors are people you trust**. See [Security](/docs/security) for who can write code, who can only view it, and the CSP you need.
+</Callout>
+
+## Live demos in this repo
+
+- **[Apps shell](/apps)** — production-shaped UI: sidebar tabs, API-fetched snippets, shadcn via `@app/ui`
+- **[Playground](/playground)** — developer lab with editor, precompile, and experiments

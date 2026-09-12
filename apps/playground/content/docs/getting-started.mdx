@@ -1,0 +1,148 @@
+import Link from 'next/link';
+import { InstallCommand } from '@/components/docs/InstallCommand';
+import { LiveDemo } from '@/components/docs/LiveDemo';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { counterDemo } from '@/lib/docs/demos';
+
+By the end of this page you will have a page that takes a string of TSX and renders it as a live React component.
+
+## Step 1: Install
+
+<InstallCommand />
+
+## Step 2: Create the runner
+
+`next-live` compiles in the browser, so the component that uses it must be a Client Component.
+
+<CodeBlock title="app/apps/Runner.tsx" code={`'use client';
+
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
+
+export function Runner({ source }: { source: string }) {
+  return (
+    <LiveProvider code={source}>
+      <LiveEditor />
+      <LivePreview />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+
+That is already a working playground — `react` is registered for you, so snippets can use hooks immediately.
+
+## Step 3: Your first preview
+
+Try the counter below. This is the same snippet you would pass as `code={source}`:
+
+<LiveDemo source={counterDemo} editable filePath="Counter.tsx" />
+
+Render it from a Server Component page:
+
+<CodeBlock title="app/apps/page.tsx" code={`import { Runner } from './Runner';
+
+const EXAMPLE = \`import { useState } from 'react';
+
+export default function App() {
+  const [n, setN] = useState(0);
+  return <button onClick={() => setN(n + 1)}>clicked {n} times</button>;
+}\`;
+
+export default function AppsPage() {
+  return <Runner source={EXAMPLE} />;
+}`} />
+
+<Callout variant="info" title="You do not need next/dynamic with ssr: false">
+  next-live never compiles during the server pass. The first client render matches the server exactly — no hydration mismatch.
+</Callout>
+
+## Step 4: Give snippets access to your app
+
+By default a snippet can only import `react`. Pass a `modules` registry for your own code:
+
+<CodeBlock code={`'use client';
+
+import { LiveProvider, LivePreview, LiveError, defineLoader } from 'next-live';
+
+export function Runner({ source, user }) {
+  return (
+    <LiveProvider
+      code={source}
+      modules={{
+        '@app/store': defineLoader(() => import('@/lib/store')),
+        '@app/ui': defineLoader(() => import('@/components/ui')),
+      }}
+      props={{ user }}
+    >
+      <LivePreview />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+
+Snippet authors then write ordinary code:
+
+<CodeBlock code={`import { useCart } from '@app/store';
+import { Button } from '@app/ui';
+
+export default function App({ user }) {
+  const cart = useCart();
+  return <Button>{user.name}: {cart.length} items</Button>;
+}`} />
+
+Read [Module registry](/docs/module-registry) next — it is the core concept.
+
+## What each piece does
+
+| Component | Purpose |
+|---|---|
+| `<LiveProvider>` | Compiles `code` and provides the result. Everything else must be inside it. |
+| `<LiveEditor>` | Textarea with syntax highlighting. Optional — omit for read-only runners. |
+| `<LivePreview>` | Renders the compiled component inside an error boundary. |
+| `<LiveError>` | Shows compile or runtime errors; renders nothing when healthy. |
+
+You can skip the components and use [`useLiveRunner`](/docs/api-reference) for a fully custom UI.
+
+## Loading snippets from your API
+
+The real use case is code stored elsewhere. `code` is controlled — change it and the preview follows:
+
+<CodeBlock code={`'use client';
+
+import { useEffect, useState } from 'react';
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+
+export function RemoteApp({ id }) {
+  const [source, setSource] = useState(null);
+
+  useEffect(() => {
+    fetch(\`/api/apps/\${id}\`)
+      .then((r) => r.json())
+      .then((data) => setSource(data.source));
+  }, [id]);
+
+  if (!source) return <p>Loading…</p>;
+
+  return (
+    <LiveProvider code={source}>
+      <LivePreview />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+
+<Callout variant="danger" title="Only fetch from your own authenticated API">
+  Never load snippet source from a URL query param, hash fragment, or localStorage. See [Security](/docs/security).
+</Callout>
+
+## Before you deploy
+
+Read [Security](/docs/security). It covers the CSP and the one rule that actually protects you.
+
+## Next steps
+
+- [Module registry](/docs/module-registry)
+- [Sharing libraries](/docs/sharing-libraries)
+- [Integration guide](/docs/integration)
+- [Apps shell demo](/apps)

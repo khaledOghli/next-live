@@ -1,0 +1,38 @@
+name: CodeQL
+
+# Static analysis for the library and the playground. A public repo is a public
+# attack surface, and this package evaluates code by design, so the class of bug
+# CodeQL finds (injection, unsafe dynamic access, prototype pollution) is exactly
+# the class that matters here.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Weekly, so newly published queries run against unchanged code.
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write # upload results to the Security tab
+      actions: read
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'

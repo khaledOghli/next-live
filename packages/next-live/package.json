@@ -1,0 +1,85 @@
+{
+  "name": "next-live",
+  "version": "0.1.0",
+  "description": "Live TSX/JSX evaluation for the Next.js App Router \u2014 real ESM imports, a module registry instead of a global scope, and zero hydration mismatches.",
+  "keywords": [
+    "react",
+    "next",
+    "nextjs",
+    "app-router",
+    "live",
+    "react-live",
+    "playground",
+    "sucrase",
+    "jsx",
+    "tsx",
+    "editor",
+    "eval"
+  ],
+  "license": "MIT",
+  "author": "Khaled Oghli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khaledoghli/next-live.git",
+    "directory": "packages/next-live"
+  },
+  "homepage": "https://github.com/khaledoghli/next-live#readme",
+  "bugs": {
+    "url": "https://github.com/khaledoghli/next-live/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "docs"
+  ],
+  "scripts": {
+    "build": "tsup && node scripts/add-use-client.mjs",
+    "dev": "tsup --watch --onSuccess \"node scripts/add-use-client.mjs\"",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "prism-react-renderer": "^2.4.1",
+    "sucrase": "^3.35.1"
+  },
+  "peerDependencies": {
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/react": "^16.3.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "jsdom": "^30.0.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=20.9"
+  }
+}

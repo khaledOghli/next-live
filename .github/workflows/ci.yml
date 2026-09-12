@@ -11,8 +11,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 20.9 is the floor Next 16 requires; 22 is the current LTS.
-        node: ['20.9', '22']
+        # The published package's own floor is `engines.node` (>=20.9), but the
+        # dev toolchain needs more: Vitest 5's rolldown imports `styleText` from
+        # node:util, which landed in Node 20.12. So CI starts at the current
+        # 20.x LTS rather than at the package floor.
+        node: ['20.19', '22']
 
     steps:
       - uses: actions/checkout@v4
@@ -24,20 +27,22 @@ jobs:
 
       - run: npm ci
 
-      # The build must run before the tests: test/build.test.ts asserts the
-      # shape of dist/, and skips itself when dist/ is absent. Without this
-      # step those assertions would silently not run.
       - run: npm run build -w next-live
 
+      # Must precede typecheck: `next build` generates the route types the
+      # playground relies on (LayoutProps and friends live in .next/types), so
+      # typechecking first fails with "Cannot find name 'LayoutProps'".
+      # It also catches Next-level regressions the unit tests cannot see, such
+      # as the 'use client' directive failing to survive into a consumer build.
+      - run: npm run build -w playground
+
+      # Runs after the library build so test/build.test.ts asserts the published
+      # shape instead of skipping itself.
       - run: npm test -w next-live
 
       - run: npm run typecheck
 
       - run: npm run lint
-
-      # Catches a Next-level regression the unit tests cannot see, such as the
-      # 'use client' directive failing to survive into a real consumer build.
-      - run: npm run build -w playground
 
       # Every stored snippet must still compile against the current SDK
       # surface. Without this, renaming a module breaks stored apps silently.

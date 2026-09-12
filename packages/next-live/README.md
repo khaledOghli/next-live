@@ -100,7 +100,7 @@ snippet should share your page's React instance and your live objects.
 **[→ Full documentation](./docs/README.md)**
 
 | | |
-|---|---|
+| --- | --- |
 | [Getting started](./docs/01-getting-started.md) | Install and first working preview |
 | [The module registry](./docs/02-module-registry.md) | How `import` resolves, the core concept |
 | [Sharing libraries with your app](./docs/03-sharing-your-app-libraries.md) | One instance, not two copies |
@@ -139,4 +139,4 @@ Found a security issue? Do not open an issue, follow
 
 ## License
 
-[MIT](https://github.com/khaledOghli/next-live/blob/main/LICENSE) (c) Khaled Oghli
+[MIT](https://github.com/khaledOghli/next-live/blob/main/LICENSE) (c) KhaledOghli

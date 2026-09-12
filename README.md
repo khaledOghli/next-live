@@ -1,5 +1,9 @@
 # next-live
 
+[![npm version](https://img.shields.io/npm/v/next-live.svg?color=0b7285)](https://www.npmjs.com/package/next-live)
+[![CI](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml/badge.svg)](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 Live TSX/JSX evaluation for the Next.js App Router, real ESM `import`
 statements, a module registry instead of a global scope bag, and no hydration
 mismatches.
@@ -50,6 +54,17 @@ npm run typecheck   # typecheck every workspace
 npm run lint        # lint the playground
 ```
 
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, the checks CI runs, and the
+conventions this repo follows. Participation is governed by the
+[Code of Conduct](CODE_OF_CONDUCT.md).
+
+- **Bugs and feature requests:** [open an issue](https://github.com/khaledOghli/next-live/issues/new/choose)
+- **Questions:** [Discussions](https://github.com/khaledOghli/next-live/discussions)
+- **Vulnerabilities:** [SECURITY.md](SECURITY.md), never a public issue
+- **Releases:** maintainers, see [docs/RELEASING.md](docs/RELEASING.md)
+
 ## License
 
-MIT
+[MIT](LICENSE) (c) Khaled Oghli

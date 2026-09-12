@@ -1,0 +1,36 @@
+name: Feature request
+description: Propose a change to the public API or behavior.
+labels: ['enhancement']
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do that next-live makes hard or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed API
+      description: Sketch what you would want to write. Concrete code beats prose.
+      render: tsx
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you tried
+      description: |
+        Existing escape hatches you reached for first, `precompiledTransform`, a
+        custom editor via `LiveEditorRenderProps`, `useLiveModule`, a registry
+        entry, and why they did not fit.
+
+  - type: checkboxes
+    id: breaking
+    attributes:
+      label: Scope
+      options:
+        - label: This would be a breaking change to the current public API.

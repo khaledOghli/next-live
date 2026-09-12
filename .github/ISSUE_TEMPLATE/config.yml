@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or usage help
+    url: https://github.com/khaledOghli/next-live/discussions
+    about: Ask in Discussions, issues are for bugs and feature requests.
+  - name: Documentation
+    url: https://github.com/khaledOghli/next-live/blob/main/packages/next-live/docs/README.md
+    about: Getting started, the module registry, security, and the API reference.
+  - name: Report a vulnerability
+    url: https://github.com/khaledOghli/next-live/security/advisories/new
+    about: Report security issues privately, never in a public issue.

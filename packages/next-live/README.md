@@ -1,5 +1,11 @@
 # next-live
 
+[![npm version](https://img.shields.io/npm/v/next-live.svg?color=0b7285)](https://www.npmjs.com/package/next-live)
+[![CI](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml/badge.svg)](https://github.com/khaledOghli/next-live/actions/workflows/ci.yml)
+[![npm downloads](https://img.shields.io/npm/dm/next-live.svg?color=0b7285)](https://www.npmjs.com/package/next-live)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/next-live?label=minzip)](https://bundlephobia.com/package/next-live)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/khaledOghli/next-live/blob/main/LICENSE)
+
 Live TSX/JSX evaluation for the **Next.js App Router**, real ESM `import`
 statements, a module registry instead of a global scope bag, and no hydration
 mismatches.
@@ -123,6 +129,15 @@ React 19+ and Node 20.9+.
 CRA, Remix, or anywhere React runs. The name reflects where it was designed and
 what it is tuned for: App Router SSR safety, and docs written against Next 16.
 
+## Contributing
+
+Bug reports, feature requests and pull requests are welcome. Start with
+[CONTRIBUTING.md](https://github.com/khaledOghli/next-live/blob/main/CONTRIBUTING.md),
+and see the [changelog](./CHANGELOG.md) for what has changed.
+
+Found a security issue? Do not open an issue, follow
+[SECURITY.md](https://github.com/khaledOghli/next-live/blob/main/SECURITY.md).
+
 ## License
 
-MIT
+[MIT](https://github.com/khaledOghli/next-live/blob/main/LICENSE) (c) Khaled Oghli

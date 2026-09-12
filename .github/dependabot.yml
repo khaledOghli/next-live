@@ -1,0 +1,44 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: '/'
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(deps)'
+      prefix-development: 'chore(deps-dev)'
+    groups:
+      # One PR for the React/Next surface, these move together and a partial
+      # bump is more likely to break the playground than either one alone.
+      react-next:
+        patterns:
+          - 'react'
+          - 'react-dom'
+          - '@types/react'
+          - '@types/react-dom'
+          - 'next'
+          - 'eslint-config-next'
+      dev-tooling:
+        dependency-type: development
+        patterns:
+          - 'tsup'
+          - 'vitest'
+          - 'typescript'
+          - 'jsdom'
+          - '@testing-library/*'
+    ignore:
+      # Peer range is `>=19`, so a consumer picks the version. Bumping the
+      # devDependency here only changes what CI tests against.
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'react-dom'
+        update-types: ['version-update:semver-major']
+
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: 'chore(ci)'

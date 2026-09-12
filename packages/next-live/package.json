@@ -20,15 +20,16 @@
   "author": "Khaled Oghli",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/khaledoghli/next-live.git",
+    "url": "git+https://github.com/khaledOghli/next-live.git",
     "directory": "packages/next-live"
   },
-  "homepage": "https://github.com/khaledoghli/next-live#readme",
+  "homepage": "https://github.com/khaledOghli/next-live#readme",
   "bugs": {
-    "url": "https://github.com/khaledoghli/next-live/issues"
+    "url": "https://github.com/khaledOghli/next-live/issues"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
   },
   "sideEffects": false,
   "type": "module",

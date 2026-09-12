@@ -1,0 +1,84 @@
+name: Bug report
+description: Something in next-live does not behave the way the docs say it should.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: next-live **evaluates code by design**. If your report is
+        about a snippet doing something dangerous, read
+        [SECURITY.md](https://github.com/khaledOghli/next-live/blob/main/SECURITY.md)
+        first, and report privately rather than here.
+
+  - type: input
+    id: version
+    attributes:
+      label: next-live version
+      placeholder: 0.1.0
+    validations:
+      required: true
+
+  - type: input
+    id: next-version
+    attributes:
+      label: Next.js version
+      placeholder: 16.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: node-version
+    attributes:
+      label: Node version
+      placeholder: 22.11.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: entry
+    attributes:
+      label: Which entry point?
+      multiple: true
+      options:
+        - next-live
+        - next-live/editor
+        - next-live/server
+        - Not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction
+      description: |
+        The snippet source, the registry you passed to `<LiveProvider>`, and the
+        component that renders it. A link to a minimal repo is even better.
+      render: tsx
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Error output
+      description: The full compile or runtime error, including the reported line and column.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I confirmed this happens with the latest release.
+          required: true
+        - label: I checked [the troubleshooting guide](https://github.com/khaledOghli/next-live/blob/main/packages/next-live/docs/07-troubleshooting.md).
+          required: true

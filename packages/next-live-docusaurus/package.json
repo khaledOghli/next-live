@@ -48,11 +48,15 @@
     "next-live": "^1",
     "prism-react-renderer": ">=2",
     "react": ">=19",
-    "react-dom": ">=19"
+    "react-dom": "^19.3.0"
   },
   "peerDependenciesMeta": {
-    "@docusaurus/core": { "optional": true },
-    "@docusaurus/theme-common": { "optional": true }
+    "@docusaurus/core": {
+      "optional": true
+    },
+    "@docusaurus/theme-common": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@docusaurus/module-type-aliases": "^3.7.0",
@@ -61,7 +65,7 @@
     "@types/node": "^22",
     "next-live": "*",
     "publint": "^0.3.12",
-    "react": "^19.2.8",
+    "react": "^19.3.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"

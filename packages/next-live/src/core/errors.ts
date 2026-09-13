@@ -1,8 +1,19 @@
+export type LiveErrorCode =
+  | 'COMPILE'
+  | 'RUNTIME'
+  | 'MODULE_NOT_FOUND'
+  | 'NO_COMPONENT'
+  | 'RENDER_LOOP'
+  | 'TRANSPILER_LOAD';
+
 /** Base class for every error next-live raises. */
 export class LiveError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
+  readonly code: LiveErrorCode;
+
+  constructor(message: string, options?: { cause?: unknown; code?: LiveErrorCode }) {
     super(message);
     this.name = new.target.name;
+    this.code = options?.code ?? 'RUNTIME';
     if (options?.cause !== undefined) this.cause = options.cause;
     // Restores the prototype chain when compiled down to ES5 by a consumer.
     Object.setPrototypeOf(this, new.target.prototype);
@@ -11,42 +22,64 @@ export class LiveError extends Error {
 
 /** The snippet could not be parsed or transpiled. */
 export class LiveCompileError extends LiveError {
+  declare readonly code: 'COMPILE';
   readonly line: number | undefined;
   readonly column: number | undefined;
 
   constructor(message: string, position?: { line?: number; column?: number }, cause?: unknown) {
-    super(message, { cause });
+    super(message, { cause, code: 'COMPILE' });
     this.line = position?.line;
     this.column = position?.column;
   }
 }
 
 /** The snippet threw while being evaluated or rendered. */
-export class LiveRuntimeError extends LiveError {}
+export class LiveRuntimeError extends LiveError {
+  constructor(message: string, options?: { cause?: unknown; code?: 'RUNTIME' }) {
+    super(message, { cause: options?.cause, code: options?.code ?? 'RUNTIME' });
+  }
+}
 
 /** A render loop was detected and stopped. */
-export class RenderLoopError extends LiveRuntimeError {}
+export class RenderLoopError extends LiveRuntimeError {
+  declare readonly code: 'RENDER_LOOP';
+
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, options);
+    Object.defineProperty(this, 'code', { value: 'RENDER_LOOP' });
+  }
+}
 
 /** `import` referenced a specifier that is not in the registry. */
 export class ModuleNotFoundError extends LiveError {
+  declare readonly code: 'MODULE_NOT_FOUND';
+
   constructor(
     readonly specifier: string,
     readonly available: readonly string[],
   ) {
-    super(buildModuleNotFoundMessage(specifier, available));
+    super(buildModuleNotFoundMessage(specifier, available), { code: 'MODULE_NOT_FOUND' });
   }
 }
 
 /** The snippet compiled and ran but produced nothing renderable. */
-export class NoComponentError extends LiveError {}
+export class NoComponentError extends LiveError {
+  declare readonly code: 'NO_COMPONENT';
+
+  constructor(message: string, options?: { cause?: unknown }) {
+    super(message, { ...options, code: 'NO_COMPONENT' });
+  }
+}
 
 /** Sucrase could not be loaded (usually a chunk-load failure). */
 export class TranspilerLoadError extends LiveError {
+  declare readonly code: 'TRANSPILER_LOAD';
+
   constructor(cause: unknown) {
     super(
       'next-live could not load its transpiler (sucrase). This is usually a ' +
         'network or code-splitting failure - check that the chunk is reachable.',
-      { cause },
+      { cause, code: 'TRANSPILER_LOAD' },
     );
   }
 }
@@ -72,7 +105,6 @@ function buildModuleNotFoundMessage(specifier: string, available: readonly strin
     lines.push('', 'No modules are registered.');
   }
 
-  // Bare specifiers are overwhelmingly the "I expected npm to work" case.
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
     lines.push(
       '',
@@ -94,7 +126,6 @@ export function nearestSpecifier(
 ): string | undefined {
   const lower = specifier.toLowerCase();
 
-  // A pure casing slip is always the intended match.
   const caseMatch = available.find((key) => key.toLowerCase() === lower);
   if (caseMatch) return caseMatch;
 
@@ -103,7 +134,6 @@ export function nearestSpecifier(
   let bestDistance = threshold + 1;
 
   for (const key of available) {
-    // Length alone can rule a candidate out before doing any real work.
     if (Math.abs(key.length - specifier.length) > threshold) continue;
     const distance = editDistance(lower, key.toLowerCase(), bestDistance);
     if (distance < bestDistance) {
@@ -115,10 +145,6 @@ export function nearestSpecifier(
   return bestDistance <= threshold ? best : undefined;
 }
 
-/**
- * Levenshtein distance, abandoning the walk as soon as every cell in a row
- * exceeds `limit` - the common case is "nothing is close", and that exits fast.
- */
 function editDistance(a: string, b: string, limit: number): number {
   if (a === b) return 0;
   let previous = new Array<number>(b.length + 1);

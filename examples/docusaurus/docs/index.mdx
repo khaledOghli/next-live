@@ -1,0 +1,102 @@
+---
+slug: /
+title: Docusaurus integration
+hide_title: true
+---
+
+import DemoHero from '@site/src/components/DemoHero';
+import DemoSection from '@site/src/components/DemoSection';
+import StaticFenceSection from '@site/src/components/StaticFenceSection';
+
+<DemoHero />
+
+<DemoSection
+  title="Registered components"
+  description={
+    <>
+      Snippets use real <code>import</code> statements. Register your UI kit in{' '}
+      <code>live-modules.ts</code>. Snippets pull from{' '}
+      <code>@next-live-docusaurus/modules</code>.
+    </>
+  }
+>
+
+```tsx live
+import { Button, Badge, Card } from '@next-live-docusaurus/modules';
+
+export default function Demo() {
+  return (
+    <Card title="Module registry">
+      <p className="nl-muted">
+        Hello from Docusaurus. Edit this snippet and the preview updates instantly.
+      </p>
+      <div className="nl-row">
+        <Button>Primary</Button>
+        <Button variant="secondary">Secondary</Button>
+        <Badge>Registered</Badge>
+      </div>
+    </Card>
+  );
+}
+```
+
+</DemoSection>
+
+<DemoSection
+  title="Hooks and line numbers"
+  description={
+    <>
+      Fence metadata like <code>title=&quot;Counter&quot;</code> and{' '}
+      <code>showLineNumbers</code> forward to the editor, same as Docusaurus static blocks.
+    </>
+  }
+>
+
+```tsx live title="Counter" showLineNumbers
+import { useState } from 'react';
+import { Button } from '@next-live-docusaurus/modules';
+
+export default function Counter() {
+  const [n, setN] = useState(0);
+  return (
+    <Button onClick={() => setN((v) => v + 1)}>
+      Count: {n}
+    </Button>
+  );
+}
+```
+
+</DemoSection>
+
+<DemoSection
+  title="Minimal live fence"
+  description="Any TSX fence with a live metastring becomes editable. No registry import required."
+>
+
+```tsx live
+export default function Live() {
+  return <p className="nl-lead">Live preview</p>;
+}
+```
+
+</DemoSection>
+
+<StaticFenceSection />
+
+```tsx title="a live demo"
+export default function Static() {
+  return <p>Not live</p>;
+}
+```
+
+```tsx title='a live demo'
+export default function Static() {
+  return <p>Not live</p>;
+}
+```
+
+```tsx title="delivery.tsx"
+export default function Static() {
+  return <p>Not live</p>;
+}
+```

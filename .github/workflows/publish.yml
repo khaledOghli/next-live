@@ -1,5 +1,3 @@
-name: Publish to npm
-
 # Push to `main` with a bumped version in packages/next-live/package.json and
 # this publishes it, tags it, and opens the GitHub Release.
 #
@@ -8,6 +6,8 @@ name: Publish to npm
 # red on every docs commit and every merged Dependabot PR. `check` asks the
 # registry what is already out there and skips silently when nothing is new,
 # which makes the ordinary push a no-op and the release push a release.
+name: Publish to npm
+
 on:
   push:
     branches: [main]
@@ -21,8 +21,8 @@ on:
 permissions:
   contents: read
 
+# Never let two publishes race for the same version.
 concurrency:
-  # Never let two publishes race for the same version.
   group: publish-npm
   cancel-in-progress: false
 
@@ -30,36 +30,44 @@ jobs:
   check:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.check.outputs.version }}
-      publish: ${{ steps.check.outputs.publish }}
+      publish_next_live: ${{ steps.versions.outputs.publish_next_live }}
+      publish_docusaurus: ${{ steps.versions.outputs.publish_docusaurus }}
+      version_next_live: ${{ steps.versions.outputs.version_next_live }}
+      version_docusaurus: ${{ steps.versions.outputs.version_docusaurus }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Is this version already on npm?
-        id: check
+      - name: Check package versions on npm
+        id: versions
         run: |
-          version="$(node -p "require('./packages/next-live/package.json').version")"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+          nl_version="$(node -p "require('./packages/next-live/package.json').version")"
+          doc_version="$(node -p "require('./packages/next-live-docusaurus/package.json').version")"
+          echo "version_next_live=$nl_version" >> "$GITHUB_OUTPUT"
+          echo "version_docusaurus=$doc_version" >> "$GITHUB_OUTPUT"
 
-          # `npm view` exits non-zero both when the version is missing and when
-          # the package does not exist yet (the very first publish), so the
-          # output is what decides, not the exit code.
-          if [ -n "$(npm view "next-live@$version" version 2>/dev/null || true)" ]; then
-            echo "publish=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::next-live@$version is already published, nothing to do."
+          if [ -n "$(npm view "next-live@$nl_version" version 2>/dev/null || true)" ]; then
+            echo "publish_next_live=false" >> "$GITHUB_OUTPUT"
           else
-            echo "publish=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::next-live@$version is new, publishing."
+            echo "publish_next_live=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$(npm view "next-live-docusaurus@$doc_version" version 2>/dev/null || true)" ]; then
+            echo "publish_docusaurus=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish_docusaurus=true" >> "$GITHUB_OUTPUT"
           fi
 
   publish:
     needs: check
-    if: needs.check.outputs.publish == 'true' || github.event_name == 'workflow_dispatch'
+    if: >-
+      needs.check.outputs.publish_next_live == 'true' ||
+      needs.check.outputs.publish_docusaurus == 'true' ||
+      (github.event_name == 'workflow_dispatch' && inputs.dry-run == true)
     runs-on: ubuntu-latest
     environment: npm-publish
     permissions:
-      contents: write # push the tag, create the Release
-      id-token: write # npm provenance attestation
+      contents: write
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -68,57 +76,120 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # 22, not 20: the jsdom suite needs `markAsUncloneable`, which landed
-          # in Node 22. The package itself supports 20.9+, and the CI workflow's
-          # engines-floor job is what proves it.
           node-version: '22'
           cache: npm
           registry-url: https://registry.npmjs.org
 
       - run: npm ci
 
-      - name: Require a changelog entry
+      - name: Require next-live changelog entry
+        if: needs.check.outputs.publish_next_live == 'true'
         run: |
-          version="${{ needs.check.outputs.version }}"
+          version="${{ needs.check.outputs.version_next_live }}"
           if ! grep -q "^## \[$version\]" packages/next-live/CHANGELOG.md; then
-            echo "::error::no '## [$version]' section in packages/next-live/CHANGELOG.md"
+            echo "::error::Missing changelog section ## [$version] in packages/next-live/CHANGELOG.md"
             exit 1
           fi
 
-      # The same order CI uses, and the order matters:
-      # the library first, then the consumer build that proves the 'use client'
-      # directive survived, then the suite that asserts the dist/ shape.
+      - name: Require next-live-docusaurus changelog entry
+        if: needs.check.outputs.publish_docusaurus == 'true'
+        run: |
+          version="${{ needs.check.outputs.version_docusaurus }}"
+          if ! grep -q "^## \[$version\]" packages/next-live-docusaurus/CHANGELOG.md; then
+            echo "::error::Missing changelog section ## [$version] in packages/next-live-docusaurus/CHANGELOG.md"
+            exit 1
+          fi
+
       - run: npm run build -w next-live
+      - run: npm run build -w next-live-docusaurus
       - run: npm run build -w playground
       - run: npm test -w next-live
+      - run: npm run check:package -w next-live
+      - run: npm run check:package -w next-live-docusaurus
       - run: npm run typecheck
       - run: npm run lint
 
       - name: Show what would ship
-        run: npm pack --dry-run -w next-live
+        run: |
+          npm pack --dry-run -w next-live
+          npm pack --dry-run -w next-live-docusaurus
 
-      - name: Publish
-        if: inputs.dry-run != true
+      - name: Verify next-live not yet on npm
+        if: needs.check.outputs.publish_next_live == 'true' && inputs.dry-run != true
+        run: |
+          version="${{ needs.check.outputs.version_next_live }}"
+          if [ -n "$(npm view "next-live@$version" version 2>/dev/null || true)" ]; then
+            echo "::error::next-live@$version is already published"
+            exit 1
+          fi
+
+      - name: Publish next-live
+        if: needs.check.outputs.publish_next_live == 'true' && inputs.dry-run != true
         run: npm publish -w next-live --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Tag and release
-        if: inputs.dry-run != true
+      - name: Verify next-live-docusaurus not yet on npm
+        if: needs.check.outputs.publish_docusaurus == 'true' && inputs.dry-run != true
+        run: |
+          version="${{ needs.check.outputs.version_docusaurus }}"
+          if [ -n "$(npm view "next-live-docusaurus@$version" version 2>/dev/null || true)" ]; then
+            echo "::error::next-live-docusaurus@$version is already published"
+            exit 1
+          fi
+
+      - name: Publish next-live-docusaurus
+        if: needs.check.outputs.publish_docusaurus == 'true' && inputs.dry-run != true
+        run: npm publish -w next-live-docusaurus --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Tag and release next-live
+        if: needs.check.outputs.publish_next_live == 'true' && inputs.dry-run != true
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.check.outputs.version }}
+          VERSION: ${{ needs.check.outputs.version_next_live }}
         run: |
           git config user.name  'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
           git tag -a "v$VERSION" -m "v$VERSION"
           git push origin "v$VERSION"
-
           gh release create "v$VERSION" \
             --title "v$VERSION" \
-            --notes "See [the changelog](https://github.com/${{ github.repository }}/blob/main/packages/next-live/CHANGELOG.md) for what changed.
+            --notes "$(cat <<EOF
+          ## Install
 
           \`\`\`bash
           npm install next-live@$VERSION
-          \`\`\`" \
+          \`\`\`
+
+          See [the changelog](https://github.com/${{ github.repository }}/blob/main/packages/next-live/CHANGELOG.md).
+          EOF
+          )" \
+            --verify-tag
+
+      - name: Tag and release next-live-docusaurus
+        if: needs.check.outputs.publish_docusaurus == 'true' && inputs.dry-run != true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.check.outputs.version_docusaurus }}
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git tag -a "next-live-docusaurus@v$VERSION" -m "next-live-docusaurus@v$VERSION"
+          git push origin "next-live-docusaurus@v$VERSION"
+          gh release create "next-live-docusaurus@v$VERSION" \
+            --title "next-live-docusaurus@v$VERSION" \
+            --notes "$(cat <<EOF
+          ## Install
+
+          \`\`\`bash
+          npm install next-live-docusaurus@$VERSION
+          \`\`\`
+
+          Requires \`next-live@^1\` and a Docusaurus 3.7+ site with \`@docusaurus/core\` and \`@docusaurus/theme-common\` installed.
+
+          See [the changelog](https://github.com/${{ github.repository }}/blob/main/packages/next-live-docusaurus/CHANGELOG.md).
+          EOF
+          )" \
             --verify-tag

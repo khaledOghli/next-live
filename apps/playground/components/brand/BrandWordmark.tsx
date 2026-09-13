@@ -7,7 +7,7 @@ interface BrandWordmarkProps {
   compact?: boolean;
 }
 
-/** Wordmark — WebP primary, PNG fallback. */
+/** Wordmark: WebP primary, PNG fallback. */
 export function BrandWordmark({ className, priority = false, compact = false }: BrandWordmarkProps) {
   return (
     <picture className={cn('block', className)}>

@@ -36,6 +36,7 @@ inside it.
 | `fallback` | `ReactNode` | `null` | Rendered until the first compile finishes. |
 | `language` | `string` | `'tsx'` | Highlighting hint for `<LiveEditor>`. |
 | `onError` | `(error: Error) => void` | - | Called on every compile and runtime error. |
+| `formatError` | `(error, position?) => string` | - | Customises `<LiveError>` text. When set, `<LiveError>` does not add a `Line X:Y -` prefix. |
 | `onCodeChange` | `(code: string) => void` | - | Called when the code is edited from inside. Not called when the `code` prop changes from outside, so it cannot echo your own saves back. |
 | `onCompileSuccess` | `(info: CompileSuccessInfo) => void` | - | Called after every successful compile with `compileId`, sorted `imports`, optional `via`, and `durationMs`. Not called on failure or abort. |
 | `debounce` | `number` | `150` | Milliseconds before recompiling after a change. |
@@ -80,6 +81,15 @@ stays small and has no SSR quirks.
 | `onChange` | `(code: string) => void` | from context | Standalone mode - see below. |
 | `language` | `string` | from context, then `'tsx'` | |
 | `error` | `Error \| null` | from context | Error to underline. |
+| `autoIndent` | `boolean` | `true` | Enter preserves leading whitespace. Only when no modifier keys are held. |
+| `highlightLines` | `string \| number \| number[]` | - | 1-based lines to highlight. |
+| `lineNumbers` | `boolean` | `false` | Line-number gutter. Does not combine cleanly with `wrap`. |
+| `wrap` | `boolean` | `false` | Soft-wrap long lines. |
+| `diagnostics` | `EditorDiagnostic[]` | - | Inline markers and a status list below the editor. |
+| `format` | `FormatFn` | - | Async formatter (`next-live/prettier`). Shift+Alt+F when set. |
+| `formatOnBlur` | `boolean` | `false` | Run `format` when the editor blurs. |
+| `announceErrors` | `boolean` | `false` | Screen-reader live region for provider errors. Off by default for 0.1.0 parity. |
+| `onSelectionChange` | `(sel) => void` | - | Selection change callback. |
 | `className` / `style` | | | |
 
 `LiveEditorRenderProps` also exposes `error`, `errorLine`, and `errorColumn` for custom editors.
@@ -245,6 +255,17 @@ for the directory constraint.
 
 The always-registered map: `react`, `react/jsx-runtime`, `react/jsx-dev-runtime`.
 
+## Experimental APIs
+
+These exports are marked `@experimental` in source. They may change in minor
+releases without a major bump. Prefer the stable engine surface below for
+production integrations.
+
+| Export | Purpose |
+|---|---|
+| `setTranspiler(module)` | Swap the transpiler implementation. Intended for tests and custom backends. |
+| `createRenderBudget(options)` | Configure the render-loop breaker used during evaluation. |
+
 ## Engine
 
 | Export | Purpose |
@@ -315,8 +336,8 @@ All extend `LiveError` (exported as `LiveErrorBase` to avoid colliding with the
 | Class | Raised when |
 |---|---|
 | `LiveCompileError` | Parse/transpile failure, or CSP blocking `eval`. Carries `line` and `column`. |
-| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped. |
-| `RenderLoopError` | The render-rate breaker tripped. |
+| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped. `RenderLoopError` extends this. |
+| `RenderLoopError` | The render-rate breaker tripped. `instanceof LiveRuntimeError` is true. |
 | `ModuleNotFoundError` | An import specifier is not registered. Carries `specifier` and `available`. |
 | `NoComponentError` | The snippet produced nothing renderable. |
 | `TranspilerLoadError` | Sucrase failed to load (usually a chunk-load failure). |

@@ -1,0 +1,21 @@
+{
+  "name": "next-live-docusaurus-example",
+  "private": true,
+  "scripts": {
+    "install:packs": "npm i ./.packs/*.tgz --no-save",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve --port 3456",
+    "test:smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@docusaurus/core": "^3.7.0",
+    "@docusaurus/preset-classic": "^3.7.0",
+    "@mdx-js/react": "^3.1.0",
+    "prism-react-renderer": "^2.4.1",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  }
+}

@@ -323,6 +323,17 @@ explicitly if you need it.
 
 </ApiEntry>
 
+## Experimental APIs
+
+These exports are marked `@experimental` in source. They may change in minor
+releases without a major bump. Prefer the stable engine surface below for
+production integrations.
+
+| Export | Purpose |
+|---|---|
+| `setTranspiler(module)` | Swap the transpiler implementation. Intended for tests and custom backends. |
+| `createRenderBudget(options)` | Configure the render-loop breaker used during evaluation. |
+
 ## Engine
 
 Lower-level exports, for a custom scheduler or for compiling outside React.
@@ -372,7 +383,7 @@ Swaps the transpiler outright. For tests and custom backends.
 
 Reads `{ line, column? }` off a compile or runtime error, and returns `null`
 when there is no position. This is what a custom editor uses to paint the
-failing line — pass it the `error` from `useLiveRunner` or `useLiveContext`
+failing line. Pass it the `error` from `useLiveRunner` or `useLiveContext`
 directly; a `null` error is handled.
 
 </ApiEntry>

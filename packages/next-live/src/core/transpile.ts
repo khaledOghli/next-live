@@ -32,7 +32,10 @@ export function preloadTranspiler(): void {
   });
 }
 
-/** Replaces the loaded transpiler. Intended for tests and custom backends. */
+/**
+ * Replaces the loaded transpiler. Intended for tests and custom backends.
+ * @experimental Not covered by semver. May change in minor releases.
+ */
 export function setTranspiler(module: SucraseModule | null): void {
   transpilerPromise = module === null ? null : Promise.resolve(module);
 }

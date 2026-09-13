@@ -1,0 +1,69 @@
+{
+  "name": "next-live-docusaurus",
+  "version": "1.0.0",
+  "description": "Docusaurus plugin for live TSX/JSX blocks powered by next-live",
+  "license": "MIT",
+  "author": "Khaled Oghli",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khaledOghli/next-live.git",
+    "directory": "packages/next-live-docusaurus"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants.d.ts",
+      "import": "./dist/constants.js",
+      "default": "./dist/constants.js"
+    }
+  },
+  "files": [
+    "dist",
+    "lib",
+    "src/theme"
+  ],
+  "scripts": {
+    "build": "tsup && cp src/theme/live-block.css lib/theme/live-block.css",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "check:package": "npm run build && publint"
+  },
+  "engines": {
+    "node": ">=20.9"
+  },
+  "peerDependencies": {
+    "@docusaurus/core": "^3.7.0",
+    "@docusaurus/theme-common": "^3.7.0",
+    "next-live": "^1",
+    "prism-react-renderer": ">=2",
+    "react": ">=19",
+    "react-dom": ">=19"
+  },
+  "peerDependenciesMeta": {
+    "@docusaurus/core": { "optional": true },
+    "@docusaurus/theme-common": { "optional": true }
+  },
+  "devDependencies": {
+    "@docusaurus/module-type-aliases": "^3.7.0",
+    "@docusaurus/theme-common": "^3.7.0",
+    "@docusaurus/types": "^3.7.0",
+    "@types/node": "^22",
+    "next-live": "*",
+    "publint": "^0.3.12",
+    "react": "^19.2.8",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}

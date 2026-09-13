@@ -43,9 +43,19 @@ async function pasteText(el: HTMLTextAreaElement, text: string): Promise<void> {
 
   const start = el.selectionStart ?? 0;
   const end = el.selectionEnd ?? start;
+  const dt = new DataTransfer();
+  dt.setData('text/plain', text);
+  el.dispatchEvent(
+    new ClipboardEvent('paste', {
+      bubbles: true,
+      cancelable: true,
+      clipboardData: dt,
+    }),
+  );
   const next = el.value.slice(0, start) + text + el.value.slice(end);
   const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
-  valueSetter?.call(el, next);
+  if (!valueSetter) throw new Error('textarea value setter not found');
+  valueSetter.call(el, next);
   const caret = start + text.length;
   el.setSelectionRange(caret, caret);
   el.dispatchEvent(

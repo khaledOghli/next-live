@@ -187,6 +187,20 @@ if (!result.ok) {
 CI then catches the other direction - apps that were fine when saved and broke
 when the SDK changed underneath them.
 
+## Manual browser checks before release
+
+Automated browser tests cover undo, indent, and format in Chromium, Firefox, and
+WebKit. Paste is verified in Chromium; run these manually before tagging a
+release:
+
+- **Firefox #375:** In the playground editor, select all (Ctrl+A / Cmd+A) then
+  paste. Pasted text must replace the entire snippet, not append.
+- **#409:** Paste the same multi-line chunk five times with the caret at the
+  end. No duplication or cursor jump.
+
+Also smoke-check: toggle `renderEditor`, fixed-height editor scroll, Docusaurus
+static + live fences side by side.
+
 ---
 
 [← Non-UI snippets](./09-non-ui-snippets.md) · [Docs index](./README.md)

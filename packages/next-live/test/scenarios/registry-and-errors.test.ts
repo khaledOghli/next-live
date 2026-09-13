@@ -12,10 +12,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { compile, compileModule } from '../../src/core/compile';
 import {
   LiveCompileError,
+  LiveError as LiveErrorBase,
   LiveRuntimeError,
   ModuleNotFoundError,
   NoComponentError,
   RenderLoopError,
+  TranspilerLoadError,
 } from '../../src/core/errors';
 import { createRegistry, registryFromGlob } from '../../src/core/registry';
 import { defineLoader, defineModule } from '../../src/core/resolver';
@@ -255,6 +257,57 @@ describe('scenario: the error contract a host can rely on', () => {
     ]) {
       expect(typeof Ctor).toBe('function');
       expect(Ctor.prototype).toBeInstanceOf(Error);
+    }
+  });
+
+  it('every error class exposes a stable code', async () => {
+    const compileErr = await compile({
+      code: `export default function A() {\n  const x = ;\n}`,
+    }).catch((e: LiveCompileError) => e);
+    expect(compileErr.code).toBe('COMPILE');
+
+    const runtimeErr = await compile({
+      code: `throw new Error('x');\nexport default () => <b/>;`,
+    }).catch((e: LiveRuntimeError) => e);
+    expect(runtimeErr.code).toBe('RUNTIME');
+
+    const modErr = await compile({
+      code: `import x from '@app/nope';\nexport default () => <b>{x}</b>;`,
+    }).catch((e: ModuleNotFoundError) => e);
+    expect(modErr.code).toBe('MODULE_NOT_FOUND');
+
+    const noCompErr = await compile({
+      code: `export const helper = 1;`,
+    }).catch((e: NoComponentError) => e);
+    expect(noCompErr.code).toBe('NO_COMPONENT');
+
+    expect(new TranspilerLoadError(new Error('load')).code).toBe('TRANSPILER_LOAD');
+    expect(new RenderLoopError('loop').code).toBe('RENDER_LOOP');
+  });
+
+  it('RenderLoopError instanceof LiveRuntimeError and LiveError', () => {
+    const err = new RenderLoopError('loop');
+    expect(err).toBeInstanceOf(RenderLoopError);
+    expect(err).toBeInstanceOf(LiveRuntimeError);
+    expect(err).toBeInstanceOf(LiveErrorBase);
+  });
+
+  it('LiveErrorBase keeps 0.1.0-style constructor options', () => {
+    const cause = new Error('inner');
+    const err = new LiveErrorBase('x', { cause });
+    expect(err.cause).toBe(cause);
+    expect(err.code).toBe('RUNTIME');
+  });
+
+  it('code literal narrows LiveCompileError fields', async () => {
+    const err = await compile({
+      code: `export default function A() {\n  const x = ;\n}`,
+    }).catch((e: unknown) => e);
+
+    if (err instanceof LiveCompileError && err.code === 'COMPILE') {
+      expect(typeof err.line).toBe('number');
+    } else {
+      throw new Error('expected LiveCompileError');
     }
   });
 });

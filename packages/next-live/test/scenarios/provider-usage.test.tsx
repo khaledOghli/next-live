@@ -20,6 +20,7 @@ import { useLiveContext } from '../../src/hooks/useLiveContext';
 afterEach(cleanup);
 
 const OK = `export default function App() { return <b data-testid="out">ok</b>; }`;
+// Valid JSX body ("oops") but missing the closing `}` so compile fails.
 const BROKEN = `export default function App() { return <b data-testid="out">oops</b>;`;
 
 /** Waits for the first compile to land, which never happens during render. */
@@ -301,6 +302,58 @@ describe('scenario: provider-level compile options reach the engine', () => {
       </LiveProvider>,
     );
     await settled('hi');
+  });
+});
+
+describe('scenario: react-live #413 bad useEffect cleanup', () => {
+  const BAD = `export default function App() {
+  React.useEffect(() => []);
+  return <i data-testid="ok" />;
+}`;
+
+  it('contains cleanup error without crashing the host tree', async () => {
+    const onError = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    try {
+    const { rerender, unmount } = render(
+      <div>
+        <p data-testid="host">host</p>
+        <LiveProvider code={BAD} onError={onError}>
+          <LivePreview />
+          <LiveError />
+        </LiveProvider>
+      </div>,
+    );
+
+    await waitFor(() => expect(screen.getByTestId('ok')).toBeTruthy(), { timeout: 4000 });
+
+    rerender(
+      <div>
+        <p data-testid="host">host</p>
+        <LiveProvider code={`${BAD}\n// edited`} onError={onError}>
+          <LivePreview />
+          <LiveError />
+        </LiveProvider>
+      </div>,
+    );
+
+    await waitFor(
+      () => {
+        expect(onError.mock.calls.length).toBeGreaterThan(0);
+      },
+      { timeout: 4000 },
+    );
+
+    expect(screen.getByTestId('host')).toBeTruthy();
+    const errors = onError.mock.calls.map(([err]) => String(err));
+    expect(
+      errors.some((msg) => /destroy is not a function|cleanup function/i.test(msg)),
+    ).toBe(true);
+    unmount();
+    } finally {
+      consoleError.mockRestore();
+    }
   });
 });
 

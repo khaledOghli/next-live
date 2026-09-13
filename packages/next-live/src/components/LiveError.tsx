@@ -29,6 +29,13 @@ export function LiveError(props: LiveErrorProps): ReactNode {
       ? `Line ${position.line}${position.column !== undefined ? `:${position.column}` : ''} - `
       : '';
 
+  const message = live.formatError
+    ? live.formatError(live.error, {
+        line: position?.line,
+        column: position?.column,
+      })
+    : `${location}${live.error.message}`;
+
   return (
     <Wrapper
       className={className}
@@ -47,8 +54,7 @@ export function LiveError(props: LiveErrorProps): ReactNode {
         ...style,
       }}
     >
-      {location}
-      {live.error.message}
+      {message}
     </Wrapper>
   );
 }

@@ -19,6 +19,8 @@ export interface RenderBudgetOptions {
  *
  * The throw happens during render so the nearest error boundary catches it and
  * the host application stays alive.
+ *
+ * @experimental Not covered by semver. May change in minor releases.
  */
 export function createRenderBudget(options: RenderBudgetOptions = {}): () => void {
   // Chosen from measurement, not taste. A real runaway loop was observed at

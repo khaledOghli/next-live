@@ -139,6 +139,26 @@ describe('scenario: syntax errors point at the right place', () => {
   });
 });
 
+describe('scenario: react-live #413 bad React.useEffect snippet', () => {
+  const BAD = `() => {
+  React.useEffect(()=>[])
+}`;
+
+  it('compiles without throwing', async () => {
+    const result = await compile({ code: BAD });
+    expect(result.via).toBe('export default');
+  });
+
+  it('SSR-renders without throwing (effects do not run on the server)', async () => {
+    const result = await compile({ code: BAD });
+    const html =
+      result.renderable.kind === 'component'
+        ? renderToStaticMarkup(React.createElement(result.renderable.component))
+        : renderToStaticMarkup(result.renderable.element);
+    expect(html).toBe('');
+  });
+});
+
 describe('scenario: a snippet that throws at runtime', () => {
   it('surfaces the throw rather than swallowing it', async () => {
     await expect(

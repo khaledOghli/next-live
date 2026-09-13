@@ -1,0 +1,116 @@
+import { InstallCommand } from '@/components/docs/InstallCommand';
+import { LiveDemo } from '@/components/docs/LiveDemo';
+import { DocusaurusButtonDemo } from '@/components/docs/DocusaurusButtonDemo';
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { FenceExample } from '@/components/docs/FenceExample';
+import {
+  docusaurusButtonDemo,
+  docusaurusCounterDemo,
+  docusaurusCounterFenceDemo,
+  docusaurusStaticFenceDemo,
+} from '@/lib/docs/docusaurus-demos';
+
+# Docusaurus integration
+
+[Docusaurus](https://docusaurus.io/) is a docs-site framework (MDX pages, sidebar, search). If you write library docs with it instead of Next.js, use **`next-live-docusaurus`** to turn ` ```tsx live ` fences into editable previews. Same engine as this playground, wired through Docusaurus's CodeBlock theme.
+
+## Try it here
+
+These run with next-live directly (not inside Docusaurus). Edit the source and watch the preview update. That is what your readers get after you add the plugin.
+
+**Registered component:** same import path Docusaurus sites use:
+
+<DocusaurusButtonDemo />
+
+**Hooks + counter:** no registry import needed:
+
+<LiveDemo source={docusaurusCounterDemo} editable filePath="Counter.tsx" />
+
+<Callout variant="info" title="Playground vs Docusaurus">
+  This page proves the snippets work. The plugin adds the `live` metastring, SSR-safe
+  `<BrowserOnly>` fallback, title/line-number forwarding, and lazy loading so static
+  fences never pull next-live into the server bundle.
+</Callout>
+
+## Install
+
+Requires React 19 and Docusaurus 3.7+ with `@docusaurus/core` and `@docusaurus/theme-common` installed in your site.
+
+<InstallCommand packages={['next-live', 'next-live-docusaurus', 'prism-react-renderer']} />
+
+## Configure the plugin
+
+<CodeBlock title="docusaurus.config.js" code={`import nextLivePlugin from 'next-live-docusaurus';
+
+export default {
+  plugins: [
+    [
+      nextLivePlugin,
+      { modules: './src/live-modules.ts' },
+    ],
+  ],
+};`} />
+
+`src/live-modules.ts` exports components your snippets may import as `@next-live-docusaurus/modules`:
+
+<CodeBlock title="src/live-modules.ts" code={`import * as React from 'react';
+
+export const Button = ({ children }) =>
+  React.createElement('button', { type: 'button' }, children);`} />
+
+## Mark a fence as live
+
+Add the `live` token to the code fence metastring:
+
+<FenceExample
+  fence="live"
+  code={docusaurusButtonDemo}
+  title="Demo.tsx"
+  caption="Close the fence with three backticks on their own line."
+/>
+
+Optional title and line numbers (forwarded from Docusaurus metadata):
+
+<FenceExample
+  fence='live title="Counter" showLineNumbers'
+  code={docusaurusCounterFenceDemo}
+  title="Counter"
+  showLineNumbers
+/>
+
+## Static fences stay static
+
+The word `live` inside a **quoted title** must not activate live mode:
+
+<FenceExample
+  fence='title="a live demo"'
+  code={docusaurusStaticFenceDemo}
+  title="a live demo"
+  caption="No live token. Stays a plain static code block."
+/>
+
+The plugin parses metastrings the same way Docusaurus's built-in live-codeblock theme does.
+
+## Run the monorepo example locally
+
+From the repo root (after building both packages):
+
+<CodeBlock code={`npm run build -w next-live
+npm run build -w next-live-docusaurus
+mkdir -p examples/docusaurus/.packs
+npm pack -w next-live --pack-destination examples/docusaurus/.packs
+npm pack -w next-live-docusaurus --pack-destination examples/docusaurus/.packs
+cd examples/docusaurus
+npm ci
+npm run install:packs
+npm run build
+npm run serve`} />
+
+Open **http://localhost:3456** for one page with live blocks, line numbers, and static title guards.
+
+Automated check (Playwright):
+
+<CodeBlock code={`npm run test:smoke`} />
+
+The demo doc uses `slug: /`, so production output is `build/index.html`.

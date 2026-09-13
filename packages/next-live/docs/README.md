@@ -16,6 +16,8 @@ Live TSX/JSX evaluation for React, SSR-safe and tuned for the Next.js App Router
 | **[8. Integration guide](./08-integration-guide.md)** | End-to-end: apps stored in a database, authored in a control panel. |
 | **[9. Snippets that are not components](./09-non-ui-snippets.md)** | Validators, transformers, config, code with no UI. |
 | **[10. Validating stored snippets in CI](./10-validating-in-ci.md)** | Catch an SDK rename breaking stored apps before your users do. |
+| **[11. Docusaurus integration](./11-docusaurus.md)** | Live fences in MDX via `next-live-docusaurus`. |
+| **[12. Migrating from react-live](./12-migrating-from-react-live.md)** | Issue-by-issue parity and prop mapping. |
 
 ## Where to start
 

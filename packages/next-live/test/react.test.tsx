@@ -582,16 +582,16 @@ describe('LiveEditor keyboard accessibility', () => {
   it('paints a focus ring on focus and drops it on blur', () => {
     const { container } = render(<LiveEditor code="ab" onChange={() => {}} />);
     const el = area(container);
-    const wrapper = container.firstElementChild as HTMLElement;
+    const grid = container.firstElementChild as HTMLElement;
 
-    expect(wrapper.getAttribute('style') ?? '').not.toContain('outline: 2px');
+    expect(grid.getAttribute('style') ?? '').not.toContain('outline: 2px');
     // A real focus(), not fireEvent.focus: the ring is gated on
     // `:focus-visible`, which only matches an element that genuinely holds
     // focus. Synthesising the event alone would test nothing.
     act(() => el.focus());
-    expect(wrapper.getAttribute('style')).toContain('outline: 2px');
+    expect(grid.getAttribute('style')).toContain('outline: 2px');
     act(() => el.blur());
-    expect(wrapper.getAttribute('style') ?? '').not.toContain('outline: 2px');
+    expect(grid.getAttribute('style') ?? '').not.toContain('outline: 2px');
   });
 
   it('opts out of the ring with focusRingStyle={null}', () => {
@@ -603,6 +603,66 @@ describe('LiveEditor keyboard accessibility', () => {
     expect(
       (container.firstElementChild as HTMLElement).getAttribute('style') ?? '',
     ).not.toContain('outline: 2px');
+  });
+
+  it('does not violate hooks order when toggling renderEditor', () => {
+    const custom = vi.fn((props: LiveEditorRenderProps) => (
+      <textarea aria-label="custom" value={props.code} readOnly />
+    ));
+    const { rerender } = render(
+      <LiveEditor code="ab" onChange={() => {}} renderEditor={custom} announceErrors />,
+    );
+    expect(custom).toHaveBeenCalled();
+    expect(() => {
+      rerender(<LiveEditor code="ab" onChange={() => {}} announceErrors />);
+    }).not.toThrow();
+  });
+
+  it('applies style height on the grid root that wraps the textarea', () => {
+    const { container } = render(
+      <LiveEditor code="x" onChange={() => {}} style={{ height: 120 }} />,
+    );
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.style.height).toBe('120px');
+    expect(root.querySelector('textarea')).toBeTruthy();
+  });
+});
+
+describe('LiveEditor characterization', () => {
+  it('renders the expected DOM shape', () => {
+    const { container } = render(<LiveEditor code="const x = 1;" language="tsx" />);
+    expect(container.firstElementChild?.tagName).toBe('DIV');
+    expect(container.querySelector('pre[aria-hidden="true"]')).toBeTruthy();
+    expect(container.querySelector('textarea')).toBeTruthy();
+  });
+
+  it('uses the same style keys on both layers', () => {
+    const { container } = render(<LiveEditor code="x" onChange={() => {}} />);
+    const pre = container.querySelector('pre[aria-hidden="true"]') as HTMLElement;
+    const textarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    const preKeys = (pre.getAttribute('style') ?? '')
+      .split(';')
+      .map((s) => s.split(':')[0]?.trim())
+      .filter(Boolean)
+      .sort();
+    const taKeys = (textarea.getAttribute('style') ?? '')
+      .split(';')
+      .map((s) => s.split(':')[0]?.trim())
+      .filter(Boolean)
+      .sort();
+    for (const key of ['font-family', 'font-size', 'line-height', 'white-space']) {
+      expect(preKeys).toContain(key);
+      expect(taKeys).toContain(key);
+    }
+  });
+
+  it('types and tabs produce the same onChange values as before', () => {
+    const onChange = vi.fn();
+    const { container } = render(<LiveEditor code="ab" onChange={onChange} tabSize={2} />);
+    const el = container.querySelector('textarea') as HTMLTextAreaElement;
+    el.setSelectionRange(1, 1);
+    fireEvent.keyDown(el, { key: 'Tab' });
+    expect(onChange).toHaveBeenCalledWith('a  b');
   });
 });
 

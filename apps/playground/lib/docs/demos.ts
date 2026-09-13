@@ -45,11 +45,11 @@ export default function UiDemo() {
           }}
         >
           {clicks === 0
-            ? 'Click the button — shadcn Button + Badge from @app/ui (counter updates here).'
+            ? 'Click the button: shadcn Button + Badge from @app/ui (counter updates here).'
             : 'Clicked ' +
               clicks +
               (clicks === 1 ? ' time' : ' times') +
-              ' — real Button from @app/ui'}
+              ', a real Button from @app/ui'}
         </p>
       </CardContent>
     </Card>

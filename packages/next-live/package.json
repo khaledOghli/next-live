@@ -85,30 +85,30 @@
     "sucrase": "^3.35.1"
   },
   "peerDependencies": {
-    "react": ">=19",
-    "react-dom": ">=19",
+    "prettier": ">=3",
     "prism-react-renderer": ">=2",
-    "prettier": ">=3"
+    "react": ">=19",
+    "react-dom": ">=19"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",
-    "eslint": "^9.39.1",
-    "eslint-plugin-react-hooks": "^5.2.0",
-    "typescript-eslint": "^8.46.4",
     "@testing-library/react": "^16.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/browser": "^5.0.0",
     "@vitest/browser-playwright": "^5.0.0",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^5.2.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.51.0",
     "prettier": "^3.5.3",
-    "publint": "^0.3.12",
     "prism-react-renderer": "^2.4.1",
+    "publint": "^0.3.12",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
+    "typescript-eslint": "^8.46.4",
     "vitest": "^5.0.0"
   },
   "engines": {

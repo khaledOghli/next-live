@@ -35,7 +35,7 @@ jobs:
       version_next_live: ${{ steps.versions.outputs.version_next_live }}
       version_docusaurus: ${{ steps.versions.outputs.version_docusaurus }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check package versions on npm
         id: versions
@@ -70,7 +70,7 @@ jobs:
       id-token: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

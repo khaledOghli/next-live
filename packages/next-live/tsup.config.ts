@@ -10,13 +10,13 @@ const shared = {
   clean: false,
   treeshake: true,
   target: 'es2022',
-  external: ['react', 'react-dom'],
+  external: ['react', 'react-dom', 'prettier', 'prettier/standalone', 'prettier/plugins/babel', 'prettier/plugins/estree', 'prettier/plugins/typescript'],
 };
 
 export default defineConfig([
   {
     ...shared,
-    entry: { index: 'src/index.ts', editor: 'src/editor.ts' },
+    entry: { index: 'src/index.ts', editor: 'src/editor.ts', prettier: 'src/prettier.ts' },
     // Pin the shared chunk's filename instead of content-hashing it.
     //
     // The two client entries share `LiveContext`, so tsup splits it into a

@@ -58,6 +58,7 @@ export {
   NoComponentError,
   TranspilerLoadError,
 } from './core/errors';
+export type { LiveErrorCode } from './core/errors';
 
 export { errorPosition } from './core/positions';
 export type { PositionedError } from './core/positions';
@@ -67,6 +68,8 @@ export type {
   CompileResult,
   CompileSuccessInfo,
   ExtractionSource,
+  FormatErrorFn,
+  FormatErrorPosition,
   LiveContextValue,
   LiveRenderable,
   LiveRunnerState,

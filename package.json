@@ -16,7 +16,7 @@
     "build": "npm run build -w next-live",
     "dev": "npm run dev -w playground",
     "dev:lib": "npm run dev -w next-live",
-    "lint": "npm run lint -w playground",
+    "lint": "npm run lint --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "npm test --workspaces --if-present"
   },

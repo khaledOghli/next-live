@@ -6,5 +6,6 @@ export default defineConfig({
     // a `@vitest-environment jsdom` docblock, so the fast ones stay fast.
     environment: 'node',
     include: ['test/**/*.test.ts', 'test/**/*.test.tsx'],
+    exclude: ['test/browser/**'],
   },
 });

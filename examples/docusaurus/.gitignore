@@ -1,0 +1,4 @@
+.packs
+node_modules
+.docusaurus
+build

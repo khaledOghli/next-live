@@ -35,7 +35,9 @@ jobs:
 
       # After the library build, so test/build.test.ts asserts the published
       # shape instead of skipping itself.
-      - run: npm test -w next-live
+      - run: npm test --workspaces --if-present
+
+      - run: npm run check:package -w next-live
 
       - run: npm run typecheck
 
@@ -45,6 +47,47 @@ jobs:
       # surface. Without this, renaming a module breaks stored apps silently.
       - run: npm run validate:apps -w playground
       - run: npm run validate:apps:test -w playground
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w next-live
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - run: npm run test:browser -w next-live
+
+  docusaurus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build -w next-live
+      - run: npm run build -w next-live-docusaurus
+      - run: npm run check:package -w next-live-docusaurus
+      - run: mkdir -p examples/docusaurus/.packs
+      - run: npm pack -w next-live --pack-destination examples/docusaurus/.packs && npm pack -w next-live-docusaurus --pack-destination examples/docusaurus/.packs
+      - run: npm run install:packs
+        working-directory: examples/docusaurus
+      - run: npm run build
+        working-directory: examples/docusaurus
+      - run: test -f build/index.html
+        working-directory: examples/docusaurus
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:smoke
+        working-directory: examples/docusaurus
 
   # Exercises the lower end of the supported Node range.
   #

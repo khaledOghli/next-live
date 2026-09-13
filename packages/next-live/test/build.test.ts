@@ -83,13 +83,19 @@ describe.skipIf(!built)('build output', () => {
     expect(read('editor.js')).toMatch(/prism-react-renderer/);
   });
 
+  it('keeps prettier out of the root and editor entries', () => {
+    expect(read('index.js')).not.toMatch(/prettier/);
+    expect(read('editor.js')).not.toMatch(/prettier/);
+    expect(read('prettier.js')).toMatch(/createPrettierFormatter/);
+  });
+
   it('leaves react external rather than bundling a second copy', () => {
     // Bundling React would break hooks in evaluated snippets, which rely on
     // sharing the host's instance.
     expect(read('index.js')).toMatch(/from ["']react["']/);
   });
 
-  it.each(['index', 'editor', 'server'])('ships type declarations for %s', (entry) => {
+  it.each(['index', 'editor', 'server', 'prettier'])('ships type declarations for %s', (entry) => {
     expect(existsSync(join(dist, `${entry}.d.ts`))).toBe(true);
     expect(existsSync(join(dist, `${entry}.d.cts`))).toBe(true);
   });
@@ -106,8 +112,10 @@ describe.skipIf(!built)('build output', () => {
   describe('size budget', () => {
     const BUDGET_KB: Record<string, number> = {
       'index.js': 45,
-      'editor.js': 12,
+      // Measured ~21.2 KB after announceErrors + wrapper layout; 22 KB leaves headroom.
+      'editor.js': 22,
       'server.js': 10,
+      'prettier.js': 3,
     };
 
     it.each(Object.entries(BUDGET_KB))('%s stays under %i KB', (file, limitKb) => {

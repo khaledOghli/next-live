@@ -1,0 +1,99 @@
+/* Matches playground LiveDemo. Works in light and dark via --next-live-* tokens. */
+.next-live-block {
+  --nl-border: var(--next-live-border, var(--ifm-color-emphasis-300));
+  --nl-card: var(--next-live-card, var(--ifm-background-color));
+  --nl-background: var(--next-live-background, var(--ifm-background-color));
+  --nl-muted-fg: var(--next-live-muted-foreground, var(--ifm-color-emphasis-700));
+  --nl-radius: var(--next-live-radius, 0.75rem);
+  --nl-radius-inner: var(--next-live-radius-inner, 0.5rem);
+  --nl-destructive: var(--next-live-destructive, var(--ifm-color-danger));
+  --nl-shadow: var(--next-live-shadow, 0 1px 2px rgb(0 0 0 / 6%));
+
+  width: 100%;
+  margin: 1.25rem 0 0;
+  border: 1px solid var(--nl-border);
+  border-radius: var(--nl-radius);
+  background: var(--nl-card);
+  box-shadow: var(--nl-shadow);
+  overflow: hidden;
+}
+
+.next-live-block__filename {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border-bottom: 1px solid var(--nl-border);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--nl-muted-fg);
+  background: color-mix(in srgb, var(--nl-border) 12%, var(--nl-card));
+}
+
+.next-live-block__body {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1rem;
+}
+
+@media (min-width: 768px) {
+  .next-live-block__body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+.next-live-block__pane {
+  display: grid;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.next-live-block__pane-label {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--nl-muted-fg);
+}
+
+.next-live-block__preview {
+  min-height: 10rem;
+  padding: 1.25rem;
+  border: 1px solid var(--nl-border);
+  border-radius: var(--nl-radius-inner);
+  background: var(--nl-background);
+}
+
+.next-live-block__preview-inner {
+  width: 100%;
+}
+
+.next-live-block__editor-pane {
+  border-top: 1px solid var(--nl-border);
+  padding-top: 0.75rem;
+}
+
+@media (min-width: 768px) {
+  .next-live-block__editor-pane {
+    border-top: none;
+    border-left: 1px solid var(--nl-border);
+    padding-top: 0;
+    padding-left: 0.75rem;
+  }
+}
+
+.next-live-block__editor .next-live-editor-root {
+  min-height: 10rem;
+  overflow: hidden;
+  border: 1px solid var(--nl-border) !important;
+  border-radius: var(--nl-radius-inner) !important;
+}
+
+.next-live-block__error {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--nl-destructive);
+}

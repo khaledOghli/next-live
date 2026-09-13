@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { LiveContext } from '../context/LiveContext';
 import { useLiveRunner } from '../hooks/useLiveRunner';
-import type { UseLiveRunnerOptions } from '../core/types';
+import type { FormatErrorFn, UseLiveRunnerOptions } from '../core/types';
 
 export interface LiveProviderProps extends Omit<UseLiveRunnerOptions, 'code'> {
   /**
@@ -18,6 +18,8 @@ export interface LiveProviderProps extends Omit<UseLiveRunnerOptions, 'code'> {
   language?: string;
   /** Notified on every compile and runtime error. */
   onError?: (error: Error) => void;
+  /** Customises the message shown in `<LiveError>` and the editor live region. */
+  formatError?: FormatErrorFn;
   /** Rendered by `<LivePreview>` until the first compile finishes. */
   fallback?: ReactNode;
   children?: ReactNode;
@@ -39,6 +41,7 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
     props: componentProps,
     language = 'tsx',
     onError,
+    formatError,
     fallback = null,
     children,
     ...runnerOptions
@@ -63,6 +66,8 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
   const compileIdRef = useRef(runner.compileId);
   compileIdRef.current = runner.compileId;
   const mountedRef = useRef(true);
+  const formatErrorRef = useRef(formatError);
+  formatErrorRef.current = formatError;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -98,7 +103,21 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
     if (compileError) onError?.(compileError);
   }, [compileError, onError]);
 
+  const stableFormatError = useCallback<FormatErrorFn>((error, position) => {
+    const fn = formatErrorRef.current;
+    if (!fn) return error.message;
+    try {
+      return fn(error, position);
+    } catch (cause) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[next-live] formatError threw:', cause);
+      }
+      return error.message;
+    }
+  }, []);
+
   const forwardedProps = componentProps ?? EMPTY_PROPS;
+  const hasFormatError = formatError !== undefined;
 
   const value = useMemo(
     () => ({
@@ -107,9 +126,19 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
       props: forwardedProps,
       language,
       fallback,
+      formatError: hasFormatError ? stableFormatError : undefined,
       reportRuntimeError,
     }),
-    [runner, activeRuntimeError, forwardedProps, language, fallback, reportRuntimeError],
+    [
+      runner,
+      activeRuntimeError,
+      forwardedProps,
+      language,
+      fallback,
+      hasFormatError,
+      stableFormatError,
+      reportRuntimeError,
+    ],
   );
 
   return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>;

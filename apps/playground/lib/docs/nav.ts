@@ -20,12 +20,21 @@ const items: Record<string, DocNavItem> = {
   integration: { slug: 'integration', title: 'Integration guide', description: 'Database to live runner' },
   'non-ui-snippets': { slug: 'non-ui-snippets', title: 'Non-UI snippets', description: 'Validators and scripts' },
   'validating-ci': { slug: 'validating-ci', title: 'Validating in CI', description: 'Catch breaks before users do' },
+  docusaurus: { slug: 'docusaurus', title: 'Docusaurus', description: 'Live blocks in MDX docs' },
+  'migrating-from-react-live': {
+    slug: 'migrating-from-react-live',
+    title: 'Migrating from react-live',
+    description: 'Issue parity and prop mapping',
+  },
 };
 
 export const docNavGroups: DocNavGroup[] = [
   { title: 'Start here', slugs: ['getting-started', 'module-registry', 'sharing-libraries'] },
   { title: 'Production', slugs: ['scaling', 'security', 'integration', 'validating-ci'] },
-  { title: 'Reference', slugs: ['api-reference', 'troubleshooting', 'non-ui-snippets'] },
+  {
+    title: 'Reference',
+    slugs: ['api-reference', 'troubleshooting', 'non-ui-snippets', 'docusaurus', 'migrating-from-react-live'],
+  },
 ];
 
 /** Flat list in nav order, used for pager and sitemap. */

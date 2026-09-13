@@ -17,7 +17,7 @@ export interface LiveErrorBoundaryProps {
 interface State {
   error: Error | null;
   resetKey: unknown;
-  /** True after resetKey changes — allows one render attempt before falling back again. */
+  /** True after resetKey changes. Allows one render attempt before falling back again. */
   recovering: boolean;
 }
 
@@ -45,7 +45,7 @@ export class LiveErrorBoundary extends Component<LiveErrorBoundaryProps, State> 
     props: LiveErrorBoundaryProps,
     state: State,
   ): Partial<State> | null {
-    // New code compiled — try one render. Only clear a prior error when
+    // New code compiled: try one render. Only clear a prior error when
     // recovering succeeds; a still-broken snippet keeps the fallback.
     if (props.resetKey !== state.resetKey) {
       return { resetKey: props.resetKey, recovering: true };
@@ -63,7 +63,7 @@ export class LiveErrorBoundary extends Component<LiveErrorBoundaryProps, State> 
 
   override componentDidUpdate(_prevProps: LiveErrorBoundaryProps, prevState: State): void {
     if (prevState.recovering && this.state.recovering && this.state.error !== null) {
-      // Recovery render succeeded — drop the stale error from the previous compile.
+      // Recovery render succeeded. Drop the stale error from the previous compile.
       this.setState({ error: null, recovering: false });
     }
   }

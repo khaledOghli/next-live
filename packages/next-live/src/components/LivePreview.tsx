@@ -47,13 +47,8 @@ export function LivePreview(props: LivePreviewProps): ReactNode {
   return (
     <Wrapper className={className} style={style}>
       <LiveErrorBoundary
-        // Remounting on each successful compile is deliberate: a recompiled
-        // component is a new function identity, so its state cannot be carried
-        // over, and a stale tree would be worse than a clean one.
         resetKey={live.compileId}
         onError={live.reportRuntimeError}
-        // Nothing, rather than the placeholder: a crashed snippet is not
-        // "still loading", and <LiveError> is what explains what happened.
         fallback={null}
       >
         {content}

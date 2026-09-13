@@ -163,6 +163,14 @@ export interface LiveRunnerState {
   compileId: number;
 }
 
+export interface FormatErrorPosition {
+  line?: number;
+  column?: number;
+}
+
+/** Customises error text for `<LiveError>` and the editor live region. */
+export type FormatErrorFn = (error: Error, position?: FormatErrorPosition) => string;
+
 export interface LiveContextValue extends LiveRunnerState {
   /** Props forwarded into the rendered component. */
   props: Record<string, unknown>;
@@ -170,4 +178,5 @@ export interface LiveContextValue extends LiveRunnerState {
   /** Called by the error boundary when rendering the snippet throws. */
   reportRuntimeError: (error: Error) => void;
   fallback: ReactNode;
+  formatError?: FormatErrorFn;
 }

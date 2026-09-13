@@ -11,7 +11,10 @@ import { userEvent } from 'vitest/browser';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LiveEditor, type LiveEditorHandle } from '../../src/components/LiveEditor';
 
-afterEach(cleanup);
+afterEach(() => {
+  vi.restoreAllMocks();
+  cleanup();
+});
 
 function textarea(root: HTMLElement): HTMLTextAreaElement {
   const el = root.querySelector('textarea');
@@ -38,8 +41,8 @@ async function pasteText(el: HTMLTextAreaElement, text: string): Promise<void> {
     }
   }
 
-  const start = el.selectionStart;
-  const end = el.selectionEnd;
+  const start = el.selectionStart ?? 0;
+  const end = el.selectionEnd ?? start;
   const next = el.value.slice(0, start) + text + el.value.slice(end);
   const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
   valueSetter?.call(el, next);
@@ -105,6 +108,26 @@ describe('LiveEditor in a real browser', () => {
 
     await vi.waitFor(() => expect(el.value).toBe('new'));
   },
+  );
+
+  it.skipIf(!isChromium(), 'clipboard fallback only applies to Chromium paste automation')(
+    'falls back when clipboard write is denied',
+    async () => {
+      const writeText = vi
+        .spyOn(navigator.clipboard, 'writeText')
+        .mockRejectedValue(new DOMException('Write permission denied.', 'NotAllowedError'));
+      const { container } = render(<StatefulEditor initial="ab" />);
+      const el = textarea(container);
+
+      await userEvent.click(el);
+      el.setSelectionRange(1, 1);
+      await pasteText(el, 'XYZ');
+
+      await vi.waitFor(() => expect(el.value).toBe('aXYZb'));
+      expect(el.selectionStart).toBe(4);
+      expect(el.selectionEnd).toBe(4);
+      expect(writeText).toHaveBeenCalledWith('XYZ');
+    },
   );
 
   it('tab then undo restores prior content', async () => {

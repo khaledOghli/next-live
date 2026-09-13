@@ -14,7 +14,7 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - name: Check the title is a Conventional Commit
+      - name: Check the PR title format
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
@@ -22,7 +22,7 @@ jobs:
           semver='[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?'
           release="^Release [A-Za-z0-9._-]+ $semver( and [A-Za-z0-9._-]+ $semver)*$"
           if ! printf '%s' "$TITLE" | grep -Eq "$conventional|$release"; then
-            echo "::error::PR title is not a Conventional Commit: $TITLE"
+            echo "::error::PR title does not match an accepted format: $TITLE"
             echo "Expected e.g. 'fix(next-live): stop the editor losing focus on recompile'"
             echo "Or a release title like 'Release next-live 1.0.0 and next-live-docusaurus 1.0.0'"
             echo "Types: feat fix docs style refactor perf test build ci chore revert"

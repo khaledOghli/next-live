@@ -29,19 +29,29 @@ function isChromium(): boolean {
 
 async function pasteText(el: HTMLTextAreaElement, text: string): Promise<void> {
   if (isChromium()) {
-    await navigator.clipboard.writeText(text);
-    await userEvent.keyboard(`{${modKey()}>}v{/${modKey()}}`);
-    return;
+    try {
+      await navigator.clipboard.writeText(text);
+      await userEvent.keyboard(`{${modKey()}>}v{/${modKey()}}`);
+      return;
+    } catch (error) {
+      if (!(error instanceof DOMException) || error.name !== 'NotAllowedError') throw error;
+    }
   }
 
-  const dt = new DataTransfer();
-  dt.setData('text/plain', text);
-  const event = new ClipboardEvent('paste', {
-    bubbles: true,
-    cancelable: true,
-    clipboardData: dt,
-  });
-  el.dispatchEvent(event);
+  const start = el.selectionStart;
+  const end = el.selectionEnd;
+  const next = el.value.slice(0, start) + text + el.value.slice(end);
+  const valueSetter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+  valueSetter?.call(el, next);
+  const caret = start + text.length;
+  el.setSelectionRange(caret, caret);
+  el.dispatchEvent(
+    new InputEvent('input', {
+      bubbles: true,
+      data: text,
+      inputType: 'insertFromPaste',
+    }),
+  );
 }
 
 function StatefulEditor(

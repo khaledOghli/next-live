@@ -39,6 +39,9 @@ export const metadata: Metadata = {
     card: "summary",
     images: ["/brand/nextlive-icon.png"],
   },
+  verification: {
+    google: "DkPAkPQRDkaf367XSW7JOO0kjfwgdnoCHyqNQj2LpgE",
+  },
   // Favicon, icon, and apple-icon are file-based in app/ (Next.js metadata API).
 };
 

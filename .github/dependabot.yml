@@ -35,6 +35,11 @@ updates:
         update-types: ['version-update:semver-major']
       - dependency-name: 'react-dom'
         update-types: ['version-update:semver-major']
+      # Current transitive constraints resolve this package to 6.0.2; the
+      # advisory fix (>=7.0.5) isn't reachable until upstream webpack plugins
+      # move to a 7.x-compatible range.
+      - dependency-name: 'serialize-javascript'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: github-actions
     directory: '/'

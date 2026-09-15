@@ -179,7 +179,7 @@ export default function SharedInstance() {
   {
     id: 'inline',
     name: 'Inline expression',
-    description: 'No imports, no export - just an expression, like react-live.',
+    description: 'No imports, no export - just a bare JSX expression.',
     source: `<div style={{ padding: 16, borderRadius: 8, background: '#0ea5e920' }}>
   A bare JSX expression is a valid snippet.
 </div>

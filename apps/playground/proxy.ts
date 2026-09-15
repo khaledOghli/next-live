@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { isRunnerRoute } from '@/lib/runner-routes';
+import { isRunnerRoute, isSandboxRoute } from '@/lib/runner-routes';
 
 /**
  * Content Security Policy, with `'unsafe-eval'` scoped to the routes that
@@ -23,6 +23,13 @@ import { isRunnerRoute } from '@/lib/runner-routes';
  * attacker-hosted script.
  */
 
+/**
+ * Local host names the sandbox demo may use in development. Serving the host
+ * page from `localhost` and the sandbox from `127.0.0.1` makes them different
+ * sites, which is how to see a frozen snippet freeze only its frame.
+ */
+const DEV_SANDBOX_HOSTS = 'http://localhost:3000 http://127.0.0.1:3000';
+
 function buildCsp(pathname: string, isDev: boolean): string {
   // React uses eval in development to reconstruct server error stacks, so dev
   // needs the directive everywhere regardless of route.
@@ -43,6 +50,8 @@ function buildCsp(pathname: string, isDev: boolean): string {
     // whatever the page can, but it cannot send it anywhere you did not allow.
     // Widen this deliberately, per host, if snippets must call third-party APIs.
     `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
+    // Pages may frame the sandbox page (see buildSandboxCsp) and nothing else.
+    `frame-src 'self'${isDev ? ` ${DEV_SANDBOX_HOSTS}` : ''}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -54,15 +63,42 @@ function buildCsp(pathname: string, isDev: boolean): string {
   ].join('; ');
 }
 
+/**
+ * The policy for the page inside the sandbox iframe.
+ *
+ * This page runs code written by strangers, so it gets the strictest policy on
+ * the site, with the one exception it cannot work without: `'unsafe-eval'`.
+ */
+function buildSandboxCsp(isDev: boolean): string {
+  return [
+    // Keeps the page isolated with an opaque origin even when it is opened
+    // directly, or framed by something that left off the sandbox attribute.
+    'sandbox allow-scripts',
+    "default-src 'self'",
+    // The sandbox compiles snippets, so it is the page that needs eval.
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' blob: data:",
+    "font-src 'self' data:",
+    // No network for snippets. Development keeps the dev server's socket.
+    `connect-src ${isDev ? "'self' ws: wss:" : "'none'"}`,
+    "object-src 'none'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    // Only this site may embed the sandbox.
+    `frame-ancestors 'self'${isDev ? ` ${DEV_SANDBOX_HOSTS}` : ''}`,
+  ].join('; ');
+}
+
 export function proxy(request: NextRequest) {
   const isDev = process.env.NODE_ENV !== 'production';
   const response = NextResponse.next();
+  const { pathname } = request.nextUrl;
 
   response.headers.set(
     'Content-Security-Policy',
-    buildCsp(request.nextUrl.pathname, isDev),
+    isSandboxRoute(pathname) ? buildSandboxCsp(isDev) : buildCsp(pathname, isDev),
   );
-
   return response;
 }
 

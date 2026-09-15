@@ -2,7 +2,7 @@
 
 import { useCallback } from 'react';
 import { compile } from '../core/compile';
-import type { CompileInput } from '../core/compile';
+import type { CompileFilesInput, CompileInput } from '../core/compile';
 import type { CompileResult } from '../core/types';
 import { createRenderBudget } from '../core/guards';
 import { useCompileTask } from './useCompileTask';
@@ -23,7 +23,7 @@ export function useLiveRunner(options: UseLiveRunnerOptions): LiveRunnerState {
   const { maxRendersPerSecond = 1000, ...taskOptions } = options;
 
   const run = useCallback(
-    (input: CompileInput): Promise<CompileResult> =>
+    (input: CompileInput | CompileFilesInput): Promise<CompileResult> =>
       // A fresh budget per compile, so fixing a snippet clears a tripped
       // breaker without the user having to reload the page.
       compile({ ...input, onRender: createRenderBudget({ maxRenders: maxRendersPerSecond }) }),
@@ -41,5 +41,8 @@ export function useLiveRunner(options: UseLiveRunnerOptions): LiveRunnerState {
     error: task.error,
     isCompiling: task.isCompiling,
     compileId: task.compileId,
+    // Spread only for multi-file snippets, so a single snippet's state keeps
+    // exactly the keys it had in 1.0.
+    ...(task.project ?? {}),
   };
 }

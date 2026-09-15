@@ -64,7 +64,10 @@ When many users open the same snippet, compile once on the server and ship the r
 <CodeBlock code={`import { precompile } from 'next-live/server';
 
 const result = precompile(source, { filePath: 'app.tsx' });
-// Pass result.code to the client via transform={precompiledTransform}`} />
+// Send result to the client, then:
+// <LiveProvider code={source} transform={precompiledTransform(result)} />`} />
+
+`precompiledTransform` comes from the client entry, `next-live`. For multi-file snippets, use `precompileFiles` and pass `result.files` instead; see [Multi-file snippets](/docs/multi-file#on-the-server).
 
 See the precompile tab in the [Playground](/playground).
 

@@ -4,7 +4,20 @@ export type LiveErrorCode =
   | 'MODULE_NOT_FOUND'
   | 'NO_COMPONENT'
   | 'RENDER_LOOP'
-  | 'TRANSPILER_LOAD';
+  | 'TRANSPILER_LOAD'
+  | 'SANDBOX';
+
+/**
+ * Defines an optional own property only when it has a value.
+ *
+ * Errors from 1.0 had no `file` or `importer` key at all, and hosts compare
+ * them with `toEqual` and `Object.keys`. Assigning `undefined` would add the
+ * key and change that shape for every existing single-snippet error.
+ */
+function defineIfPresent(target: object, key: string, value: unknown): void {
+  if (value === undefined) return;
+  Object.defineProperty(target, key, { value, enumerable: true, configurable: true });
+}
 
 /** Base class for every error next-live raises. */
 export class LiveError extends Error {
@@ -25,11 +38,18 @@ export class LiveCompileError extends LiveError {
   declare readonly code: 'COMPILE';
   readonly line: number | undefined;
   readonly column: number | undefined;
+  /** The project file that failed. Present only for multi-file snippets. */
+  declare readonly file?: string;
 
-  constructor(message: string, position?: { line?: number; column?: number }, cause?: unknown) {
+  constructor(
+    message: string,
+    position?: { line?: number; column?: number; file?: string },
+    cause?: unknown,
+  ) {
     super(message, { cause, code: 'COMPILE' });
     this.line = position?.line;
     this.column = position?.column;
+    defineIfPresent(this, 'file', position?.file);
   }
 }
 
@@ -53,12 +73,18 @@ export class RenderLoopError extends LiveRuntimeError {
 /** `import` referenced a specifier that is not in the registry. */
 export class ModuleNotFoundError extends LiveError {
   declare readonly code: 'MODULE_NOT_FOUND';
+  /** The project file whose import failed. Present only for multi-file snippets. */
+  declare readonly importer?: string;
 
   constructor(
     readonly specifier: string,
     readonly available: readonly string[],
+    importer?: string,
   ) {
-    super(buildModuleNotFoundMessage(specifier, available), { code: 'MODULE_NOT_FOUND' });
+    super(buildModuleNotFoundMessage(specifier, available, importer), {
+      code: 'MODULE_NOT_FOUND',
+    });
+    defineIfPresent(this, 'importer', importer);
   }
 }
 
@@ -84,10 +110,39 @@ export class TranspilerLoadError extends LiveError {
   }
 }
 
+export type LiveSandboxErrorReason =
+  | 'handshake-timeout'
+  | 'load-failed'
+  | 'unresponsive'
+  | 'protocol-mismatch'
+  | 'origin-rejected'
+  | 'same-origin-refused'
+  | 'props-not-cloneable'
+  | 'restart-limit'
+  | 'invalid-config';
+
+/** The sandbox iframe could not be reached, trusted, or kept alive. */
+export class LiveSandboxError extends LiveError {
+  declare readonly code: 'SANDBOX';
+  readonly reason: LiveSandboxErrorReason;
+
+  constructor(reason: LiveSandboxErrorReason, message: string, options?: { cause?: unknown }) {
+    super(message, { cause: options?.cause, code: 'SANDBOX' });
+    this.reason = reason;
+  }
+}
+
 const MAX_LISTED = 12;
 
-function buildModuleNotFoundMessage(specifier: string, available: readonly string[]): string {
-  const lines = [`Module '${specifier}' is not registered in the next-live scope.`];
+function buildModuleNotFoundMessage(
+  specifier: string,
+  available: readonly string[],
+  importer?: string,
+): string {
+  const lines = [
+    `Module '${specifier}' is not registered in the next-live scope` +
+      (importer !== undefined ? ` (imported from '${importer}').` : '.'),
+  ];
 
   const suggestion = nearestSpecifier(specifier, available);
   if (suggestion) lines.push('', `Did you mean '${suggestion}'?`);

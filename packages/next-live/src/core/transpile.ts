@@ -1,4 +1,5 @@
 import { LiveCompileError, TranspilerLoadError } from './errors';
+import { normalizeProjectPath } from './project';
 import type { TransformResult, TranspileOptions } from './types';
 
 type SucraseModule = typeof import('sucrase');
@@ -50,7 +51,7 @@ export const defaultTranspileOptions: Required<TranspileOptions> = {
 /** Top-level `import`/`export`, ignoring matches that are not line-initial. */
 const MODULE_SYNTAX_RE = /^[ \t]*(?:export\b|import\s*[({'"*]|import\s+[A-Za-z_$])/m;
 
-/** A call to the injected `render()` helper (react-live's "noInline" style). */
+/** A call to the injected `render()` helper (inline snippet style). */
 const RENDER_CALL_RE = /(^|[^.\w$])render\s*\(/m;
 
 /**
@@ -107,14 +108,22 @@ export function sucraseOptions(options: Required<TranspileOptions>) {
  * Applies the transpile pass, wrapping a bare expression so it becomes a valid
  * module body. Shared by the async browser path and the sync server path.
  */
+/**
+ * `'auto'` allows the bare-expression wrap; `'module'` never applies it. Files
+ * other than a project's entry are always modules: `<div/>` alone in
+ * `Button.tsx` is a mistake to report, not a default export to invent.
+ */
+export type TranspileMode = 'auto' | 'module';
+
 export function runTranspile(
   transformFn: (input: string, opts: ReturnType<typeof sucraseOptions>) => { code: string },
   source: string,
   options: Required<TranspileOptions>,
+  mode: TranspileMode = 'auto',
 ): TransformResult {
   const opts = sucraseOptions(options);
 
-  if (!isModuleSource(source) && !isBlankSource(source)) {
+  if (mode === 'auto' && !isModuleSource(source) && !isBlankSource(source)) {
     // The newlines matter: they shift the user's code down exactly one line,
     // which `linePrefixOffset` corrects, whereas inlining would destroy line
     // mapping for the whole snippet.
@@ -150,15 +159,18 @@ export async function transpile(
   source: string,
   options: TranspileOptions = {},
   transform?: import('./types').TransformFn,
+  mode: TranspileMode = 'auto',
 ): Promise<TransformResult> {
   const resolved = { ...defaultTranspileOptions, ...options };
 
+  // A custom transform decides for itself; it receives `filePath`, which is
+  // enough to tell a project's entry from the rest.
   if (transform) return transform(source, resolved);
 
   const { transform: sucraseTransform } = await loadTranspiler();
 
   try {
-    return runTranspile(sucraseTransform, source, resolved);
+    return runTranspile(sucraseTransform, source, resolved, mode);
   } catch (cause) {
     throw toCompileError(cause);
   }
@@ -229,6 +241,34 @@ export function scanTopLevelDeclarations(code: string): string[] {
  * would pull Sucrase statically into the page bundle, which is the exact cost
  * precompiling exists to avoid.
  */
-export function precompiledTransform(result: TransformResult): () => TransformResult {
-  return () => result;
+export function precompiledTransform(result: TransformResult): () => TransformResult;
+/**
+ * The multi-file form: one result per project file, as `precompileFiles`
+ * returns them, looked up by the `filePath` each file is compiled under.
+ */
+export function precompiledTransform(
+  results: Readonly<Record<string, TransformResult>>,
+): import('./types').TransformFn;
+export function precompiledTransform(
+  input: TransformResult | Readonly<Record<string, TransformResult>>,
+): import('./types').TransformFn {
+  if (typeof (input as TransformResult).code === 'string') {
+    const result = input as TransformResult;
+    return () => result;
+  }
+
+  const results = input as Readonly<Record<string, TransformResult>>;
+  return (_source, options) => {
+    const target = normalizeProjectPath(options.filePath);
+    const hit =
+      results[options.filePath] ??
+      Object.entries(results).find(([key]) => normalizeProjectPath(key) === target)?.[1];
+    if (!hit) {
+      throw new LiveCompileError(
+        `No precompiled output for '${options.filePath}'. Precompile every project file, e.g. with precompileFiles().`,
+        { file: options.filePath },
+      );
+    }
+    return hit;
+  };
 }

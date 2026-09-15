@@ -20,8 +20,10 @@ import { transform } from 'sucrase';
 import { LiveCompileError } from './core/errors';
 import { nearestSpecifier } from './core/errors';
 import { BUILTIN_SPECIFIERS } from './core/builtin-specifiers';
+import { normalizeFiles, relativeSpecifier, resolveEntry, resolveProjectSpecifier } from './core/project';
 import { isIgnoredSpecifier, matchRegistryKey, scanRequires } from './core/resolver';
 import { defaultTranspileOptions, runTranspile } from './core/transpile';
+import type { TranspileMode } from './core/transpile';
 import type { ModuleRegistry, TranspileOptions } from './core/types';
 
 export type ValidationIssueKind =
@@ -84,6 +86,23 @@ export function validateSnippet(
   source: string,
   options: ValidateOptions = {},
 ): ValidationResult {
+  return validateSource(source, options);
+}
+
+/** How a project file differs from a standalone snippet during validation. */
+interface ProjectContext {
+  mode: TranspileMode;
+  /** True when a specifier resolves to another file of the same project. */
+  isProjectFile: (specifier: string) => boolean;
+  /** Extra "did you mean" candidates: the other files, as this file would import them. */
+  suggestions: readonly string[];
+}
+
+function validateSource(
+  source: string,
+  options: ValidateOptions,
+  project?: ProjectContext,
+): ValidationResult {
   const {
     modules,
     maxSourceBytes,
@@ -117,7 +136,7 @@ export function validateSnippet(
 
   let code: string;
   try {
-    code = runTranspile(transform, source, resolved).code;
+    code = runTranspile(transform, source, resolved, project?.mode ?? 'auto').code;
   } catch (cause) {
     return { ok: false, issues: [syntaxIssue(cause)], imports: [] };
   }
@@ -137,9 +156,10 @@ export function validateSnippet(
     }
 
     if (isIgnoredSpecifier(specifier)) continue;
+    if (project?.isProjectFile(specifier)) continue;
     if (matchRegistryKey(specifier, registryKeys)) continue;
 
-    const suggestion = nearestSpecifier(specifier, registryKeys);
+    const suggestion = nearestSpecifier(specifier, [...registryKeys, ...(project?.suggestions ?? [])]);
     issues.push({
       kind: 'unresolved-import',
       specifier,
@@ -216,6 +236,84 @@ export function validateSnippets<T extends { id: string; source: string }>(
     if (!result.ok) failures.push({ id: snippet.id, result });
   }
   return failures;
+}
+
+export interface ValidateFilesOptions extends ValidateOptions {
+  /** The file whose exports are rendered. Default: the first key. */
+  entry?: string;
+}
+
+export interface FileValidationIssue extends ValidationIssue {
+  /** The key of the file the issue was found in. */
+  file: string;
+}
+
+export interface FilesValidationResult {
+  ok: boolean;
+  /** Every issue in every file, each naming its file. */
+  issues: FileValidationIssue[];
+  /** Every specifier the registry must supply, across all files, sorted. */
+  imports: string[];
+  /** The full result for each file, keyed exactly as the `files` you passed in. */
+  files: Record<string, ValidationResult>;
+}
+
+/**
+ * Validates a multi-file snippet: every file compiles, and every import
+ * resolves either to another file of the project or to the registry.
+ *
+ * ```ts
+ * const result = validateFiles(
+ *   { 'App.tsx': app, 'components/Button.tsx': button },
+ *   { modules: Object.keys(liveModules) },
+ * );
+ * for (const issue of result.issues) console.error(`${issue.file}: ${issue.message}`);
+ * ```
+ *
+ * Unlike the browser, which only compiles files the entry actually imports,
+ * this checks all of them: CI should catch a broken file before someone
+ * imports it.
+ *
+ * Throws a `LiveCompileError` when the record itself is invalid (two keys for
+ * the same path, a path above the root, an unknown `entry`), since that is a
+ * bug in the calling code rather than in a snippet.
+ */
+export function validateFiles(
+  files: Readonly<Record<string, string>>,
+  options: ValidateFilesOptions = {},
+): FilesValidationResult {
+  const { entry: entryName, ...snippetOptions } = options;
+  const project = normalizeFiles(files);
+  const entry = resolveEntry(project, entryName);
+
+  const results: Record<string, ValidationResult> = {};
+  const issues: FileValidationIssue[] = [];
+  const external = new Set<string>();
+
+  for (const [path, file] of project) {
+    const isProjectFile = (specifier: string) =>
+      resolveProjectSpecifier(path, specifier, project) !== undefined;
+
+    const result = validateSource(
+      file.source,
+      { ...snippetOptions, filePath: file.key },
+      {
+        mode: path === entry ? 'auto' : 'module',
+        isProjectFile,
+        suggestions: [...project.keys()]
+          .filter((other) => other !== path)
+          .map((other) => relativeSpecifier(path, other)),
+      },
+    );
+
+    results[file.key] = result;
+    for (const issue of result.issues) issues.push({ ...issue, file: file.key });
+    for (const specifier of result.imports) {
+      if (!isProjectFile(specifier)) external.add(specifier);
+    }
+  }
+
+  return { ok: issues.length === 0, issues, imports: [...external].sort(), files: results };
 }
 
 function syntaxIssue(cause: unknown): ValidationIssue {

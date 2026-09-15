@@ -21,19 +21,18 @@ const items: Record<string, DocNavItem> = {
   'non-ui-snippets': { slug: 'non-ui-snippets', title: 'Non-UI snippets', description: 'Validators and scripts' },
   'validating-ci': { slug: 'validating-ci', title: 'Validating in CI', description: 'Catch breaks before users do' },
   docusaurus: { slug: 'docusaurus', title: 'Docusaurus', description: 'Live blocks in MDX docs' },
-  'migrating-from-react-live': {
-    slug: 'migrating-from-react-live',
-    title: 'Migrating from react-live',
-    description: 'Issue parity and prop mapping',
-  },
+  console: { slug: 'console', title: 'Console output', description: 'Show what snippets log' },
+  'multi-file': { slug: 'multi-file', title: 'Multi-file snippets', description: 'Files that import each other' },
+  sandbox: { slug: 'sandbox', title: 'Sandbox mode', description: 'Run code you do not trust' },
 };
 
 export const docNavGroups: DocNavGroup[] = [
   { title: 'Start here', slugs: ['getting-started', 'module-registry', 'sharing-libraries'] },
+  { title: 'Features', slugs: ['console', 'multi-file', 'sandbox'] },
   { title: 'Production', slugs: ['scaling', 'security', 'integration', 'validating-ci'] },
   {
     title: 'Reference',
-    slugs: ['api-reference', 'troubleshooting', 'non-ui-snippets', 'docusaurus', 'migrating-from-react-live'],
+    slugs: ['api-reference', 'troubleshooting', 'non-ui-snippets', 'docusaurus'],
   },
 ];
 

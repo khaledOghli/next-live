@@ -275,6 +275,70 @@ The render-loop breaker catches the *asynchronous* variety (`setState` loops),
 which is the common one in practice. See
 [Security](./05-security.md#what-is-contained-and-what-is-not).
 
+If snippets can come from people you do not trust, run them in
+[sandbox mode](./15-sandbox.md). With the sandbox on a separate site, a frozen
+snippet only freezes its own frame, and next-live replaces it.
+
+## `console.log` output does not show up in `<LiveConsole>`
+
+Check these, in order:
+
+- **The panel is inside the provider.** `<LiveConsole>` reads the nearest
+  `<LiveProvider>`. Outside one it stays empty and warns in development.
+- **The snippet calls `console` directly.** `window.console.log(...)` and
+  `globalThis.console.log(...)` go around capture on purpose. Write
+  `console.log(...)`.
+- **The call is made by the snippet.** Logs from modules you registered are your
+  code's output, not the snippet's, and are not captured.
+- **The level is not filtered out.** `<LiveConsole levels={['error']}>` hides
+  everything else.
+
+See [Showing console output](./13-console.md#what-is-captured-and-what-is-not).
+
+## The preview remounted once when the console panel appeared
+
+Expected. The snippet has to run again so its `console` can be swapped for the
+capturing one. To avoid it, mount `<LiveConsole>` together with the provider and
+hide it with CSS until it is needed. Closing the panel never causes another
+remount.
+
+## `Module './Button' is not registered ... (imported from 'App.tsx')`
+
+```
+Module './components/Buton' is not registered in the next-live scope (imported from 'App.tsx').
+
+Did you mean './components/Button'?
+```
+
+A multi-file snippet imported a file that is not in `files`. The message names the
+file that made the import and suggests the closest file path. Check:
+
+- the spelling of the path;
+- the folder: `./` is the importing file's folder, `../` is its parent;
+- that the file really is a key in `files`.
+
+Bare names like `Button` go to the module registry. A file always needs `./`,
+`../` or `/`. See
+[Multi-file snippets](./14-multi-file.md#how-imports-are-resolved).
+
+## Undo jumps into another file
+
+A single `<LiveEditor>` that switches between files shares one browser undo
+history. Give it a `key`, so each file gets its own editor:
+
+```tsx
+const { activeFile } = useLiveContext();
+
+<LiveEditor key={activeFile} />
+```
+
+## Sandbox mode: the preview stays empty
+
+Look at `<LiveError>` first. Sandbox problems are reported there, with a checklist.
+The usual causes are a wrong `src`, the page's origin missing from the sandbox
+page's `allowedOrigins`, or a `frame-ancestors` header that does not list your
+page. See [Sandbox mode: troubleshooting](./15-sandbox.md#troubleshooting).
+
 ## Still stuck
 
 Useful things to capture before reporting an issue:

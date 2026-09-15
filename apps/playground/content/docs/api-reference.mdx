@@ -17,31 +17,44 @@ Across the RSC boundary a Server Component receives a *client reference*, so
 `Live.Preview` would resolve to `undefined`.
 
 <CodeBlock
-  title="Three entry points"
-  code={`import { LiveProvider, LivePreview, defineLoader } from 'next-live';
+  title="Entry points"
+  code={`import { LiveProvider, LivePreview, LiveFileTabs, defineLoader } from 'next-live';
 import { LiveEditor } from 'next-live/editor';          // optional peer: prism-react-renderer
+import { LiveConsole } from 'next-live/console';        // console panel
+import { LiveSandboxRoot } from 'next-live/sandbox';    // only on the sandbox page
 import { precompile, validateSnippets } from 'next-live/server'; // server only`}
 />
 
 | Entry | Contains | Why it is separate |
 |---|---|---|
-| `next-live` | Provider, preview, error, hooks, registry, engine | - |
+| `next-live` | Provider, preview, error, file tabs, hooks, registry, engine | This is the main entry. |
 | `next-live/editor` | `<LiveEditor>` | The only thing needing `prism-react-renderer`, an **optional peer** you must install yourself. A preview-only page pays 16.1 KB instead of 97.2 KB. |
-| `next-live/server` | `precompile`, `validateSnippet(s)` | Imports Sucrase statically, must never reach the client bundle. |
+| `next-live/console` | `<LiveConsole>`, `useLiveConsole`, value formatting helpers | Only pages that show console output need the panel and its value inspector. |
+| `next-live/sandbox` | `mountSandbox`, `<LiveSandboxRoot>` | Used only on the sandbox page. It carries its own copy of the compiler. |
+| `next-live/server` | `precompile`, `precompileFiles`, `validateSnippet(s)`, `validateFiles` | Imports Sucrase statically, must never reach the client bundle. |
 
 ## Components
 
 <ApiEntry name="LiveProvider" kind="component" from="next-live" signature="function LiveProvider(props: LiveProviderProps): ReactNode">
 
-Compiles `code` and provides the result to its children. Everything else must be
-inside it. Safe to render from a Server Component; nothing compiles during the
-server pass.
+Compiles `code` (or `files`) and provides the result to its children. Everything
+else must be inside it. Safe to render from a Server Component; nothing compiles
+during the server pass.
 
 </ApiEntry>
 
 <PropTable
   rows={[
-    { name: 'code', type: 'string', required: true, notes: 'The snippet. Controlled: change it and the preview follows.' },
+    { name: 'code', type: 'string', notes: 'The snippet. Controlled: change it and the preview follows. Pass either code or files.' },
+    { name: 'files', type: 'Record<string, string>', notes: 'A snippet made of several files, keyed by path. Takes precedence over code. See Multi-file snippets.' },
+    { name: 'entry', type: 'string', default: 'first key of files', notes: 'The file whose exports are rendered.' },
+    { name: 'activeFile', type: 'string', default: 'managed internally', notes: 'The file the editor shows. Pass it to control it yourself.' },
+    { name: 'onActiveFileChange', type: '(file: string) => void', notes: 'Called when the active file changes from inside.' },
+    { name: 'onFilesChange', type: '(files, changedFile) => void', notes: 'Called when a file is edited from inside. The multi-file counterpart of onCodeChange.' },
+    { name: 'sandbox', type: 'LiveSandboxConfig', notes: 'Run snippets in an isolated iframe instead of the page. modules, scope and transform are then ignored, and props must be plain data. See Sandbox mode.' },
+    { name: 'onConsole', type: '(entry: ConsoleEntry) => void', notes: 'Captures console.* calls made by the snippet. Capture stays off unless this is set or a <LiveConsole> is mounted.' },
+    { name: 'forwardConsole', type: 'boolean', default: 'true', notes: 'While capturing, still pass each call on to the browser console.' },
+    { name: 'formatError', type: '(error, position?) => string', notes: 'Customises <LiveError> text. When set, <LiveError> does not add a "Line X:Y" prefix.' },
     { name: 'modules', type: 'ModuleRegistry', default: '{}', notes: 'Specifier → value or loader. Merges over the built-ins.' },
     { name: 'scope', type: 'LiveScope', default: '{}', notes: 'Free variables injected as bare identifiers without import.' },
     { name: 'props', type: 'Record<string, unknown>', default: '{}', notes: 'Passed to the rendered component by reference.' },
@@ -85,6 +98,10 @@ Renders the compiled component inside an error boundary.
     { name: 'fallback', type: 'ReactNode', default: "provider's", notes: 'Shown until the first compile finishes.' },
     { name: 'as', type: 'ElementType', default: "'div'", notes: 'Wrapper element.' },
     { name: 'className / style', type: '-', notes: 'Applied to the wrapper.' },
+    { name: 'height', type: "number | 'auto'", default: "'auto'", notes: 'Sandbox mode only. The iframe height, or follow the content.' },
+    { name: 'title', type: 'string', default: "'Live preview'", notes: "Sandbox mode only. The iframe's accessible title." },
+    { name: 'loading', type: "'eager' | 'lazy'", default: "'eager'", notes: 'Sandbox mode only.' },
+    { name: 'frameClassName / frameStyle', type: '-', notes: 'Sandbox mode only. Applied to the iframe element.' },
   ]}
 />
 
@@ -112,6 +129,15 @@ thing that pulls in `prism-react-renderer`.
     { name: 'onChange', type: '(code: string) => void', default: 'from context', notes: 'Standalone mode, see below.' },
     { name: 'language', type: 'string', default: "from context, then 'tsx'" },
     { name: 'error', type: 'Error | null', default: 'from context', notes: 'Error to underline.' },
+    { name: 'file', type: 'string', default: 'the active file', notes: 'Multi-file snippets: pin this editor to one file.' },
+    { name: 'lineNumbers', type: 'boolean', default: 'false', notes: 'Line-number gutter. Does not combine cleanly with wrap.' },
+    { name: 'wrap', type: 'boolean', default: 'false', notes: 'Soft-wrap long lines.' },
+    { name: 'highlightLines', type: 'string | number | number[]', notes: '1-based lines to highlight.' },
+    { name: 'autoIndent', type: 'boolean', default: 'true', notes: 'Enter keeps the leading whitespace of the current line.' },
+    { name: 'diagnostics', type: 'EditorDiagnostic[]', notes: 'Inline markers and a status list below the editor.' },
+    { name: 'format / formatOnBlur', type: 'FormatFn / boolean', notes: 'Async formatter, e.g. from next-live/prettier. Shift+Alt+F runs it; formatOnBlur also runs it on blur.' },
+    { name: 'announceErrors', type: 'boolean', default: 'false', notes: 'Screen-reader live region for provider errors.' },
+    { name: 'onSelectionChange', type: '(selection) => void', notes: 'Called when the selection changes.' },
   ]}
 />
 
@@ -186,6 +212,48 @@ compiled component themselves.
   ]}
 />
 
+<ApiEntry name="LiveFileTabs" kind="component" from="next-live" signature="function LiveFileTabs(props: LiveFileTabsProps): ReactNode">
+
+One tab per file of a multi-file snippet. Selecting a tab switches what
+`<LiveEditor>` shows. Renders nothing for a single `code` snippet. Tabs carry
+`aria-selected`, `data-entry` and `data-error`, and support the arrow, Home and
+End keys. Try it in the [Multi-file snippets](/docs/multi-file) demo.
+
+</ApiEntry>
+
+<PropTable
+  rows={[
+    { name: 'order', type: 'string[]', default: 'order of files', notes: 'Tab order. Files left out follow in their original order.' },
+    { name: 'renderTab', type: '(file, { selected, hasError, isEntry }) => ReactNode', default: 'the key', notes: "Replaces a tab's label." },
+    { name: 'panelId', type: 'string', notes: 'Sets aria-controls on every tab.' },
+    { name: 'aria-label', type: 'string', default: "'Files'" },
+    { name: 'className / style', type: '-', notes: 'Applied to the tab list.' },
+  ]}
+/>
+
+<ApiEntry name="LiveConsole" kind="component" from="next-live/console" signature="function LiveConsole(props: LiveConsoleProps): ReactNode">
+
+Shows `console.*` output from the snippet. Mounting it switches capture on.
+Ships without styles; rows carry `data-level`, `data-method` and `data-stale`.
+Try it in the [Console output](/docs/console) demo.
+
+</ApiEntry>
+
+<PropTable
+  rows={[
+    { name: 'levels', type: 'ConsoleLevel[]', default: 'every level', notes: 'Only show these levels.' },
+    { name: 'maxEntries', type: 'number', default: '500', notes: 'Oldest rows are dropped past this.' },
+    { name: 'clearOnCompile', type: 'boolean', default: 'true', notes: 'Drop output from earlier compiles when a new one lands.' },
+    { name: 'clearButton', type: 'boolean', default: 'true', notes: 'Show the "Clear console" button.' },
+    { name: 'announce', type: 'boolean', default: 'false', notes: 'Announce new output to screen readers.' },
+    { name: 'emptyState', type: 'ReactNode', notes: 'Shown while there is no output.' },
+    { name: 'renderEntry', type: '(entry, { preview, serialized, stale }) => ReactNode', default: 'text preview', notes: "Replaces a row's content." },
+    { name: 'children', type: '(state: LiveConsoleState) => ReactNode', notes: 'Replaces the whole panel.' },
+    { name: 'aria-label', type: 'string', default: "'Console output'" },
+    { name: 'className / style', type: '-', notes: 'Applied to the wrapper.' },
+  ]}
+/>
+
 ## Hooks
 
 Snippets share your application's single React instance, so hooks, effects, and
@@ -220,10 +288,14 @@ and `fallback`.
   ]}
 />
 
+For a multi-file snippet, `code` and `setCode` refer to the active file, and the
+result also has `files`, `entry`, `activeFile`, `setActiveFile`, `setFile` and
+`setFiles`. A single `code` snippet has none of these fields.
+
 <ApiEntry name="useLiveModule" kind="hook" from="next-live" signature="function useLiveModule<T>(options: UseLiveModuleOptions): LiveModuleState<T>">
 
-Runs a snippet and returns its exports, for stored code that is not a component
-- a validator, a transformer, a calculated field. Accepts every `useLiveRunner`
+Runs a snippet and returns its exports, for stored code that is not a component:
+a validator, a transformer, a calculated field. Accepts every `useLiveRunner`
 option except `maxRendersPerSecond` (nothing renders, so there is no render loop
 to break).
 
@@ -255,6 +327,11 @@ indicators. **Throws if called outside a provider.** Returns every
 `useLiveRunner` field plus `props`, `language`, `fallback`, and
 `reportRuntimeError`.
 
+Under `<LiveProvider sandbox>` it also returns `sandbox`, with the connection
+`status` (`connecting`, `ready`, `unresponsive` or `failed`) and a `reload()`
+function. `Component` and `element` stay `null` there, because the snippet runs
+in the iframe.
+
 </ApiEntry>
 
 <CodeBlock
@@ -267,6 +344,35 @@ export function CompileStatus() {
   if (isCompiling) return <span>Compiling…</span>;
   if (error) return <span className="text-destructive">Failed</span>;
   return <span>Compiled #{compileId}</span>;
+}`}
+/>
+
+<ApiEntry name="useLiveConsole" kind="hook" from="next-live/console" signature="function useLiveConsole(options?: UseLiveConsoleOptions): LiveConsoleState">
+
+The state behind `<LiveConsole>`, for a custom panel. Mounting it switches
+capture on, just like the component. Accepts `maxEntries`, `clearOnCompile` and
+`levels`. `isStale(entry)` is true for output from code that has since been
+replaced.
+
+</ApiEntry>
+
+<CodeBlock
+  title="A warnings-only panel"
+  code={`'use client';
+import { useLiveConsole, formatConsoleArgs, serializeValues } from 'next-live/console';
+
+export function Warnings() {
+  const { entries, clear, isStale } = useLiveConsole({ levels: ['warn', 'error'] });
+  return (
+    <div>
+      <button onClick={clear}>Clear</button>
+      {entries.map((entry, i) => (
+        <p key={i} style={{ opacity: isStale(entry) ? 0.5 : 1 }}>
+          {formatConsoleArgs(entry.serialized ?? serializeValues(entry.args))}
+        </p>
+      ))}
+    </div>
+  );
 }`}
 />
 
@@ -388,6 +494,21 @@ directly; a `null` error is handled.
 
 </ApiEntry>
 
+<ApiEntry name="serializeError" kind="function" from="next-live" signature="function serializeError(error: unknown): SerializedError">
+
+Turns any error into plain data. `rehydrateError(data)` turns it back into a real
+next-live error class, so `instanceof` checks keep working. Used for errors that
+cross into or out of the sandbox iframe.
+
+</ApiEntry>
+
+<ApiEntry name="preloadSandboxHost" kind="function" from="next-live" signature="function preloadSandboxHost(): void">
+
+Starts downloading the sandbox host code before a `<LiveProvider sandbox>` needs
+it, for example when the visitor hovers a "Run" button.
+
+</ApiEntry>
+
 <ApiEntry name="createRenderBudget" kind="function" from="next-live" signature="function createRenderBudget(options?: RenderBudgetOptions): () => void">
 
 The render-loop breaker. A fresh budget is created per compile, so fixing a
@@ -476,6 +597,53 @@ assert on an empty array. Each snippet is `{ id, source }`.
 
 </ApiEntry>
 
+<ApiEntry name="precompileFiles" kind="function" from="next-live/server" signature="function precompileFiles(files: Record<string, string>, options?: PrecompileFilesOptions): PrecompileFilesResult">
+
+Precompiles every file of a multi-file snippet. Accepts `entry` plus the usual
+transpile options, and returns `{ files, entry, hash }`: one `PrecompileResult`
+per file under its original key, the entry's key, and a hash of the whole
+project. Pass `result.files` to `precompiledTransform` on the client.
+
+</ApiEntry>
+
+<ApiEntry name="validateFiles" kind="function" from="next-live/server" signature="function validateFiles(files: Record<string, string>, options?: ValidateFilesOptions): FilesValidationResult">
+
+Validates a multi-file snippet without running it. Every file must compile, and
+every import must resolve to another file or to the registry. Accepts the
+`validateSnippet` options plus `entry`, and returns `{ ok, issues, imports, files }`,
+where each issue carries the `file` it was found in. Throws a `LiveCompileError`
+if the `files` record itself is invalid. See
+[Validating in CI](/docs/validating-ci#multi-file-snippets).
+
+</ApiEntry>
+
+## Sandbox entry
+
+For the page inside the sandbox iframe. See [Sandbox mode](/docs/sandbox).
+
+<ApiEntry name="LiveSandboxRoot" kind="component" from="next-live/sandbox" signature="function LiveSandboxRoot(props: LiveSandboxRootProps): ReactNode">
+
+Turns the page it renders on into a sandbox: it waits for an allowed page to
+connect, then compiles and renders the snippets it sends. Accepts
+`allowedOrigins` (required), `modules`, `scope`, `transform`, `maxCodeChars`,
+`maxFiles`, `onConnect` and `dangerouslyAllowSameOriginHost`.
+
+</ApiEntry>
+
+<ApiEntry name="mountSandbox" kind="function" from="next-live/sandbox" signature="function mountSandbox(options: MountSandboxOptions): { dispose(): void }">
+
+The same, without React on the page, for Vite or plain HTML. Throws straight away
+if `allowedOrigins` is missing or malformed.
+
+</ApiEntry>
+
+<CodeBlock
+  code={`mountSandbox({
+  modules: { '@acme/ui': ui },
+  allowedOrigins: ['https://app.example.com'],
+});`}
+/>
+
 ## Errors
 
 All extend `LiveError`, exported as `LiveErrorBase` so it does not collide with
@@ -483,12 +651,13 @@ the `<LiveError>` component.
 
 | Class | Raised when |
 |---|---|
-| `LiveCompileError` | Parse/transpile failure, or a CSP blocking `eval`. Carries `line` and `column`. |
-| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped. |
-| `RenderLoopError` | The render-rate breaker tripped. |
-| `ModuleNotFoundError` | An import specifier is not registered. Carries `specifier` and `available`. |
+| `LiveCompileError` | Parse/transpile failure, or a CSP blocking `eval`. Carries `line` and `column`, plus `file` for a multi-file snippet. |
+| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped, plus `file` for a multi-file snippet. |
+| `RenderLoopError` | The render-rate breaker tripped. `instanceof LiveRuntimeError` is true. |
+| `ModuleNotFoundError` | An import specifier is not registered. Carries `specifier` and `available`, plus `importer` for a multi-file snippet. |
 | `NoComponentError` | The snippet produced nothing renderable. |
 | `TranspilerLoadError` | Sucrase failed to load, usually a chunk-load failure. |
+| `LiveSandboxError` | Sandbox mode only: the iframe could not be reached, refused the page, froze too often, or received props it cannot copy. Carries `reason`. |
 
 A snippet that throws while rendering is caught by the boundary inside
 `<LivePreview>` and surfaced through `<LiveError>`; the page itself never goes
@@ -508,4 +677,14 @@ down:
 `unresolved-import`, `source-too-large`, `forbidden-import`), `ValidateOptions`,
 plus a props type for every component, `LiveProviderProps`, `LivePreviewProps`,
 `LiveEditorProps`, `LiveEditorRenderProps`, `LiveErrorProps`,
-`LiveErrorBoundaryProps`.
+`LiveErrorBoundaryProps`, `LiveFileTabsProps`.
+
+Added in 1.1: `CompileFilesInput`, `LiveProjectState`, `ConsoleEntry`,
+`ConsoleLevel`, `ConsoleMethod`, `LiveConsoleContextValue`, `LiveSandboxConfig`,
+`SandboxPermission`, `SandboxStatus`, `SandboxHandle`, `SandboxFrameProps`,
+`SerializedError`, `LiveSandboxErrorReason`, `PrecompileFilesOptions`,
+`PrecompileFilesResult`, `ValidateFilesOptions`, `FilesValidationResult`,
+`FileValidationIssue`; from `next-live/console`: `LiveConsoleProps`,
+`LiveConsoleState`, `UseLiveConsoleOptions`, `ConsoleStore`, `SerializedValue`;
+from `next-live/sandbox`: `MountSandboxOptions`, `SandboxRuntimeOptions`,
+`LiveSandboxRootProps`.

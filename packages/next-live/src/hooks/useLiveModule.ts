@@ -2,14 +2,15 @@
 
 import { useCallback } from 'react';
 import { compileModule } from '../core/compile';
-import type { CompileInput, CompileModuleResult } from '../core/compile';
+import type { CompileFilesInput, CompileInput, CompileModuleResult } from '../core/compile';
 import { useCompileTask } from './useCompileTask';
-import type { UseLiveRunnerOptions } from '../core/types';
+import type { LiveProjectState, UseLiveRunnerOptions } from '../core/types';
 
 export interface UseLiveModuleOptions
   extends Omit<UseLiveRunnerOptions, 'maxRendersPerSecond'> {}
 
-export interface LiveModuleState<T extends Record<string, unknown> = Record<string, unknown>> {
+export interface LiveModuleState<T extends Record<string, unknown> = Record<string, unknown>>
+  extends LiveProjectState {
   code: string;
   setCode: (code: string) => void;
   /** Everything the snippet exported. Null until the first successful run. */
@@ -44,7 +45,7 @@ export function useLiveModule<T extends Record<string, unknown> = Record<string,
   options: UseLiveModuleOptions,
 ): LiveModuleState<T> {
   const run = useCallback(
-    (input: CompileInput): Promise<CompileModuleResult> => compileModule(input),
+    (input: CompileInput | CompileFilesInput): Promise<CompileModuleResult> => compileModule(input),
     [],
   );
 
@@ -59,5 +60,6 @@ export function useLiveModule<T extends Record<string, unknown> = Record<string,
     error: task.error,
     isCompiling: task.isCompiling,
     compileId: task.compileId,
+    ...(task.project ?? {}),
   };
 }

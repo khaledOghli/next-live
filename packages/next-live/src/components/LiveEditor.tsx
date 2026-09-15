@@ -87,6 +87,11 @@ export interface LiveEditorProps {
   /** Error to underline. Defaults to the provider's. */
   error?: Error | null;
   /**
+   * For a multi-file snippet: pin the editor to this file. Default: the
+   * provider's active file, which `<LiveFileTabs>` switches.
+   */
+  file?: string;
+  /**
    * A Prism instance with extra languages registered, for highlighting
    * anything outside `prism-react-renderer`'s built-in set.
    *
@@ -256,6 +261,7 @@ export function LiveEditor(props: LiveEditorProps): ReactNode {
     onChange: onChangeProp,
     language: languageProp,
     error: errorProp,
+    file: fileProp,
     prism,
     focusRingStyle = DEFAULT_FOCUS_RING_STYLE,
     'aria-label': ariaLabel = 'Live code editor',
@@ -299,7 +305,18 @@ export function LiveEditor(props: LiveEditorProps): ReactNode {
   const [focusRing, setFocusRing] = useState(false);
   const [announcedError, setAnnouncedError] = useState('');
 
-  const code = codeProp ?? live?.code ?? '';
+  // A pinned `file` reads and writes that one file. Without it the provider's
+  // `code` and `setCode` already follow the active file.
+  const pinnedFile = fileProp !== undefined && live?.files ? fileProp : undefined;
+  const setFileInContext = live?.setFile;
+  const setPinnedFile = useCallback(
+    (next: string) => {
+      if (pinnedFile !== undefined) setFileInContext?.(pinnedFile, next);
+    },
+    [pinnedFile, setFileInContext],
+  );
+
+  const code = codeProp ?? (pinnedFile !== undefined ? live?.files?.[pinnedFile] : live?.code) ?? '';
   const language = languageProp ?? live?.language ?? 'tsx';
   const error = errorProp !== undefined ? errorProp : (live?.error ?? null);
   const formatErrorMessage = live?.formatError;
@@ -307,10 +324,18 @@ export function LiveEditor(props: LiveEditorProps): ReactNode {
   // An editor with nowhere to send an edit is read-only whether it says so or
   // not; making that explicit keeps the textarea's behaviour honest and stops
   // keystrokes being silently swallowed.
-  const setCode = onChangeProp ?? (codeProp === undefined ? live?.setCode : undefined);
+  const setCode =
+    onChangeProp ?? (codeProp === undefined ? (pinnedFile !== undefined ? setPinnedFile : live?.setCode) : undefined);
   const readOnly = readOnlyProp ?? setCode === undefined;
 
-  const position = error ? errorPosition(error) : null;
+  // In a project, only underline an error that belongs to the file on screen:
+  // line 3 of Button.tsx means nothing painted over App.tsx.
+  const rawPosition = error ? errorPosition(error) : null;
+  const shownFile = pinnedFile ?? live?.activeFile;
+  const position =
+    rawPosition && (rawPosition.file === undefined || shownFile === undefined || rawPosition.file === shownFile)
+      ? rawPosition
+      : null;
   const errorLine = position?.line;
   const errorColumn = position?.column;
 

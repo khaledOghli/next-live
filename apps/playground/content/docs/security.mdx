@@ -40,7 +40,7 @@ If an attacker controls what reaches `code`, no CSP setting prevents execution. 
 `new Function` requires `'unsafe-eval'` in `script-src`. It does not have to apply to your whole app:
 
 <CodeBlock title="lib/runner-routes.ts + proxy.ts" code={`// Shared list: proxy.ts and RunnerLink must agree.
-export const RUNNER_ROUTES = ['/playground', '/apps', '/docs'] as const;
+export const RUNNER_ROUTES = ['/', '/playground', '/apps', '/docs'] as const;
 
 export function isRunnerRoute(pathname: string): boolean {
   return RUNNER_ROUTES.some(
@@ -51,7 +51,7 @@ export function isRunnerRoute(pathname: string): boolean {
 // proxy.ts: grant 'unsafe-eval' only when isRunnerRoute(pathname)
 // RunnerLink: use <a> (real navigation) for runner destinations`} />
 
-Per-route CSP and client-side routing do not compose. Soft-navigating from `/` into `/docs` keeps the landing policy without \`'unsafe-eval'\`. Use \`RunnerLink\` for cross-boundary links. Working copy: [`apps/playground/proxy.ts`](https://github.com/khaledoghli/next-live/blob/main/apps/playground/proxy.ts). Visit `/rsc-check` to see CSP blocking eval.
+Per-route CSP and client-side routing do not compose. Soft-navigating from `/` into `/docs` keeps the landing policy without `'unsafe-eval'`. Use `RunnerLink` for cross-boundary links. Working copy: [`apps/playground/proxy.ts`](https://github.com/khaledoghli/next-live/blob/main/apps/playground/proxy.ts). Visit `/rsc-check` to see CSP blocking eval.
 
 <Callout variant="info" title="unsafe-eval is narrower than it sounds">
   It gates string-to-code APIs only (`eval`, `Function`). It does **not** allow loading external scripts, so `script-src 'self' 'unsafe-eval'` still blocks attacker-hosted code.
@@ -72,7 +72,11 @@ rendering, which is a genuine cost to weigh.
 
 ## If authors stop being trusted
 
-Same-realm evaluation is for cooperative authors, not a security boundary. Public marketplaces or cross-tenant code need an iframe on a **separate origin**, a different product with different trade-offs (no live props by reference).
+Running code in the page is for cooperative authors, not a security boundary. For snippets from a public playground, an AI model, or users sharing code with each other, use [sandbox mode](/docs/sandbox):
+
+<CodeBlock code={`<LiveProvider code={source} sandbox={{ src: '/sandbox' }}>`} />
+
+Snippets then run in an iframe with an opaque origin, so they cannot read your cookies, storage or DOM, and your page never evaluates them. The trade: props are copied instead of shared, and modules are registered on the sandbox page.
 
 ## Checklist before production
 
@@ -84,3 +88,4 @@ Same-realm evaluation is for cooperative authors, not a security boundary. Publi
 - [ ] `upgrade-insecure-requests` on in production (gated on `NODE_ENV` so localhost still works)
 - [ ] `RunnerLink` used for every link that crosses into a runner route
 - [ ] `validateSnippets` in CI ([Validating in CI](/docs/validating-ci))
+- [ ] Snippets from authors you do not trust run in [sandbox mode](/docs/sandbox)

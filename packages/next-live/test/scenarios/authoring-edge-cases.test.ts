@@ -139,7 +139,7 @@ describe('scenario: syntax errors point at the right place', () => {
   });
 });
 
-describe('scenario: react-live #413 bad React.useEffect snippet', () => {
+describe('scenario: bad React.useEffect snippet', () => {
   const BAD = `() => {
   React.useEffect(()=>[])
 }`;

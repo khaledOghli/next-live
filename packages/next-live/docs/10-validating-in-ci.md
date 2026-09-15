@@ -187,6 +187,50 @@ if (!result.ok) {
 CI then catches the other direction - apps that were fine when saved and broke
 when the SDK changed underneath them.
 
+## Multi-file snippets
+
+A snippet stored as several files is checked with `validateFiles`. It validates
+every file, including files nothing imports yet, and counts an import between two
+files of the same project as resolved:
+
+```ts
+import { validateFiles } from 'next-live/server';
+
+const projects = await getAllProjects(); // [{ id, files, entry }, ...]
+let broken = 0;
+
+for (const project of projects) {
+  const result = validateFiles(project.files, {
+    entry: project.entry,
+    modules: [...LIVE_MODULE_KEYS],
+  });
+
+  if (result.ok) continue;
+  broken++;
+  for (const issue of result.issues) {
+    const where = issue.line ? `:${issue.line}` : '';
+    console.error(`  ${project.id} ${issue.file}${where}: ${issue.message}`);
+  }
+}
+
+process.exit(broken === 0 ? 0 : 1);
+```
+
+A typo in a relative import looks like this:
+
+```
+  checkout App.tsx: Module './components/Buton' is not registered. Did you mean './components/Button'?
+```
+
+Every issue carries the `file` it was found in. `result.files` holds the full
+result for each file, and `result.imports` lists only what the registry has to
+supply across the whole project. The options are the same as for
+`validateSnippet`, including the policy flags, plus `entry`.
+
+`validateFiles` throws, instead of returning issues, when the `files` record itself
+is broken: two keys for the same path, a path above the project root, or an `entry`
+that is not one of the files. Those are bugs in the calling code, not in a snippet.
+
 ## Manual browser checks before release
 
 Automated browser tests cover undo, indent, and format in Chromium, Firefox, and

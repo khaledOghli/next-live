@@ -15,10 +15,26 @@ export interface LivePreviewProps {
    * Props handed to the compiled component, merged over the provider's.
    * Passed by reference, so live objects - a map view, a store, the active
    * user, arrive intact rather than serialized.
+   *
+   * Under `<LiveProvider sandbox>` they are copied into the iframe instead,
+   * so they must be plain, cloneable data.
    */
   props?: Record<string, unknown>;
   /** Shown until the first compile finishes. Overrides the provider's. */
   fallback?: ReactNode;
+  /** Sandbox mode only: the iframe's accessible title. Default "Live preview". */
+  title?: string;
+  /**
+   * Sandbox mode only: the iframe height in pixels, or `'auto'` to follow the
+   * snippet's content (up to the sandbox's `maxHeight`). Default `'auto'`.
+   */
+  height?: number | 'auto';
+  /** Sandbox mode only: the iframe's `loading` attribute. Default `'eager'`. */
+  loading?: 'eager' | 'lazy';
+  /** Sandbox mode only: class name for the iframe element itself. */
+  frameClassName?: string;
+  /** Sandbox mode only: inline style for the iframe element itself. */
+  frameStyle?: React.CSSProperties;
 }
 
 /**
@@ -29,11 +45,40 @@ export interface LivePreviewProps {
  * mismatch. Give it a skeleton of roughly the right size to avoid layout shift.
  */
 export function LivePreview(props: LivePreviewProps): ReactNode {
-  const { as: Wrapper = 'div', className, style, props: extraProps, fallback } = props;
+  const {
+    as: Wrapper = 'div',
+    className,
+    style,
+    props: extraProps,
+    fallback,
+    title,
+    height,
+    loading,
+    frameClassName,
+    frameStyle,
+  } = props;
   const live = useLiveContext();
 
   const merged = extraProps ? { ...live.props, ...extraProps } : live.props;
   const placeholder = fallback !== undefined ? fallback : live.fallback;
+
+  if (live.sandbox) {
+    const Frame = live.sandbox.Frame;
+    return (
+      <Frame
+        as={Wrapper}
+        className={className}
+        style={style}
+        props={merged}
+        fallback={placeholder}
+        title={title}
+        height={height}
+        loading={loading}
+        frameClassName={frameClassName}
+        frameStyle={frameStyle}
+      />
+    );
+  }
 
   let content: ReactNode;
   if (live.Component && isRenderableComponent(live.Component)) {

@@ -74,7 +74,9 @@ To let snippets reach your own code, hand it over explicitly:
 
 Sandpack solves a different problem: it boots a virtual filesystem and an iframe
 per instance. `next-live` is for embedded live tools and control panels, where a
-snippet should share your page's React instance and your live objects.
+snippet should share your page's React instance and your live objects. When
+snippets come from people you do not trust, `next-live` can also run them in an
+isolated iframe: see [Sandbox mode](./docs/15-sandbox.md).
 
 ## What you get
 
@@ -88,12 +90,18 @@ snippet should share your page's React instance and your live objects.
   snippet from taking down the page.
 - **Not just components.** `useLiveModule` runs snippets that export
   validators, transformers, or config rather than UI.
+- **Console output.** `<LiveConsole>` shows what a snippet logs, right next to
+  the preview.
+- **More than one file.** Pass `files`, and the files import each other with
+  relative paths. `<LiveFileTabs>` adds tabs.
+- **Sandbox mode** for code you do not trust. The snippet runs in an isolated
+  iframe, and your page never evaluates it.
 - **CI validation.** `validateSnippets` checks every stored snippet still
   compiles against your registry, so an SDK rename fails the build instead of
   breaking apps silently.
-- **Small, and lazy.** A page that only runs snippets pays **16.1 KB**; the
-  editor and its highlighter are a separate entry, and the transpiler is a
-  chunk fetched on first compile.
+- **Small, and lazy.** The main entry is about **13 KB** minified and gzipped.
+  The editor and its highlighter, the console panel and the sandbox code are
+  separate entries, and the transpiler is a chunk fetched on first compile.
 - **Headless if you want it.** `useLiveRunner` for a completely custom UI.
 - **Server precompilation** via `next-live/server`, so the browser can skip the
   transpiler entirely.
@@ -114,6 +122,9 @@ snippet should share your page's React instance and your live objects.
 | [Integration guide](./docs/08-integration-guide.md) | End-to-end walkthrough |
 | [Snippets that are not components](./docs/09-non-ui-snippets.md) | Validators, transformers, config |
 | [Validating stored snippets in CI](./docs/10-validating-in-ci.md) | Catch SDK renames before users do |
+| [Showing console output](./docs/13-console.md) | Show what snippets log next to the preview |
+| [Snippets with more than one file](./docs/14-multi-file.md) | Files that import each other, with tabs |
+| [Sandbox mode](./docs/15-sandbox.md) | Run code you do not trust in an isolated iframe |
 
 ## Two things to know up front
 
@@ -121,9 +132,10 @@ snippet should share your page's React instance and your live objects.
 That is inherent to compiling at runtime. [Security](./docs/05-security.md)
 explains why it is narrower than it sounds and how to contain it.
 
-**It is not a sandbox.** Snippets run with your page's authority. That is what
-makes shared stores and live props work, and it means snippet authors must be
-people you trust.
+**By default it is not a sandbox.** Snippets run with your page's authority. That
+is what makes shared stores and live props work, and it means snippet authors must
+be people you trust. For anyone else, use [sandbox mode](./docs/15-sandbox.md),
+which runs snippets in an isolated iframe.
 
 ## Requirements
 

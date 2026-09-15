@@ -67,7 +67,7 @@ export function LiveDemo({
   const { rootRef, ready } = useDeferredVisible(deferUntilVisible);
 
   return (
-    <div ref={rootRef} className={cn('live-demo-breakout', className)}>
+    <div ref={rootRef} className={cn('live-demo-breakout min-w-0 max-w-full', className)}>
       {ready ? (
         <LiveProvider
           key={`${pathname}:${filePath}`}
@@ -78,19 +78,19 @@ export function LiveDemo({
           onCodeChange={editable ? setCode : undefined}
           fallback={demoFallback}
         >
-          <div className="grid gap-3 rounded-xl border border-border bg-card xl:grid-cols-2">
-            <section className="grid gap-2 p-4">
+          <div className="grid min-w-0 gap-3 rounded-xl border border-border bg-card xl:grid-cols-2">
+            <section className="grid min-w-0 gap-2 p-4">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Preview</p>
               <LivePreview className="min-h-32 rounded-lg border border-border bg-background p-4" />
               <LiveError className="text-xs" />
             </section>
-            <section className="grid gap-2 border-t border-border p-4 xl:border-t-0 xl:border-l">
+            <section className="grid min-w-0 gap-2 border-t border-border p-4 xl:border-t-0 xl:border-l">
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                 {editable ? 'Source (editable)' : 'Source sent to LiveProvider'}
               </p>
               <LiveEditor
                 readOnly={!editable}
-                className="min-h-32 overflow-hidden rounded-lg border border-border"
+                className="min-h-32 overflow-x-auto rounded-lg border border-border"
               />
             </section>
           </div>

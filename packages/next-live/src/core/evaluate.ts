@@ -57,6 +57,24 @@ export interface EvaluateOptions {
   scope: LiveScope;
   /** Injected as `__liveTick` when the source was instrumented for render budgeting. */
   liveTick?: () => void;
+  /**
+   * Injected as `console` while capture is on. Omitted otherwise, so the
+   * snippet sees the real console and the generated wrapper is unchanged.
+   */
+  console?: object;
+  /**
+   * The module record to evaluate into. A multi-file project passes the one it
+   * has already put in its require cache, so a circular import sees it.
+   */
+  module?: { exports: Record<string, unknown> };
+  /**
+   * Recover an unexported component as the default export. Only a project's
+   * entry file does; for any other file an unexported declaration is private.
+   * Default true.
+   */
+  recoverDefault?: boolean;
+  /** Replaces the injected `render()` helper. */
+  render?: (node: unknown) => void;
 }
 
 export interface EvaluateResult {
@@ -102,26 +120,35 @@ export interface ModuleResult {
  * to export a component would be nonsense.
  */
 export function runModule(options: EvaluateOptions): ModuleResult {
-  const { code, filePath, require: requireFn, scope, liveTick } = options;
+  const { code, filePath, require: requireFn, liveTick, console: consoleProxy } = options;
   const tick =
     liveTick ?? (code.includes('__liveTick') ? () => {} : undefined);
 
+  // Snippet code is strict mode, where a duplicate parameter name is a
+  // SyntaxError. While capturing, the proxy owns `console`, and a
+  // `scope.console` has already been made its forward target.
+  const scope =
+    consoleProxy !== undefined && Object.prototype.hasOwnProperty.call(options.scope, 'console')
+      ? Object.fromEntries(Object.entries(options.scope).filter(([key]) => key !== 'console'))
+      : options.scope;
+
   const scopeKeys = usableScopeKeys(scope);
-  const epilogue = buildEpilogue(code);
+  const epilogue = options.recoverDefault === false ? '' : buildEpilogue(code);
   // `sourceURL` makes every frame from this snippet identifiable, so stacks can
   // be filtered down to user code and DevTools shows a stable file name.
   const body = `${code}\n${epilogue}\n//# sourceURL=next-live:///${filePath}`;
 
-  const moduleObject: { exports: Record<string, unknown>; __nextLiveRecovered?: boolean } = {
-    exports: Object.create(null) as Record<string, unknown>,
-  };
+  const moduleObject: { exports: Record<string, unknown>; __nextLiveRecovered?: boolean } =
+    options.module ?? { exports: Object.create(null) as Record<string, unknown> };
 
   let rendered: unknown;
   let didRender = false;
-  const render = (node: unknown): void => {
-    rendered = node;
-    didRender = true;
-  };
+  const render =
+    options.render ??
+    ((node: unknown): void => {
+      rendered = node;
+      didRender = true;
+    });
 
   const paramNames = ['module', 'exports', 'require', 'React', 'render'];
   const paramValues: unknown[] = [
@@ -135,6 +162,11 @@ export function runModule(options: EvaluateOptions): ModuleResult {
   if (tick) {
     paramNames.push('__liveTick');
     paramValues.push(tick);
+  }
+
+  if (consoleProxy !== undefined) {
+    paramNames.push('console');
+    paramValues.push(consoleProxy);
   }
 
   paramNames.push(...scopeKeys);
@@ -162,7 +194,7 @@ export function runModule(options: EvaluateOptions): ModuleResult {
 
 /**
  * Recovers `export default` for snippets that declare a component without
- * exporting it - the `react-live` inline style.
+ * exporting it (legacy inline authoring style).
  *
  * Emitted only when the code exports nothing, and every name is `typeof`
  * guarded so a false positive from the declaration scan cannot throw.

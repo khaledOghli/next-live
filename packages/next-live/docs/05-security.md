@@ -187,17 +187,38 @@ what snippets can *conveniently* reach, not what they *can* reach, `window`,
 
 ## If your authors stop being trusted
 
-Same-realm evaluation is a stability aid for cooperative authors, not a security
-boundary. If snippets ever come from a public marketplace, user-to-user sharing,
-or tenants writing code that runs for other tenants' users, none of the above is
-sufficient.
+Everything above assumes the people writing snippets are on your side. Running
+code in the page is a stability aid for cooperative authors, not a security
+boundary. If snippets can come from a public playground, from an AI model, from
+users sharing code with each other, or from tenants whose code runs for other
+tenants' users, none of the above is enough, however strict the rest of the
+policy is.
 
-What you would need is the preview running in an iframe on a **separate origin**,
-which cannot read your cookies or DOM. Know the cost before choosing it: props
-would have to cross by structured clone, so you could no longer pass a store, a
-library, a function, or any live object by reference - see
-[Sharing libraries](./03-sharing-your-app-libraries.md). That is a different
-product, and this library does not pretend to be it.
+For those snippets, use [sandbox mode](./15-sandbox.md):
+
+```tsx
+<LiveProvider code={source} sandbox={{ src: '/sandbox' }}>
+```
+
+It runs each snippet in an iframe that the browser gives an opaque origin, so the
+snippet cannot read your cookies, storage or DOM, and cannot call your APIs as the
+signed-in user. Your page never compiles or runs the snippet itself.
+
+Know the trade before choosing it:
+
+| | In the page (default) | Sandbox mode |
+|---|---|---|
+| Who can write snippets | People you trust | Anyone |
+| `props` | Passed by reference: stores, functions, live objects | Copied: plain data only |
+| Modules | Registered on your page | Registered on the sandbox page |
+| `'unsafe-eval'` on your page | Required on runner routes | Not required. Only the sandbox page needs it. |
+| A snippet stuck in `while (true)` | Freezes the tab | Freezes the frame, which is replaced. Your page stays responsive when the sandbox is on a separate site. |
+
+Passing a store, a library or a function by reference is what makes in-page
+evaluation useful (see [Sharing libraries](./03-sharing-your-app-libraries.md)),
+and it is exactly what the sandbox gives up. The [sandbox guide](./15-sandbox.md)
+covers the page you host, the headers it needs, and what the isolation does and
+does not stop.
 
 ---
 

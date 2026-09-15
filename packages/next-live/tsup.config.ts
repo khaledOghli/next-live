@@ -17,6 +17,10 @@ export default defineConfig([
   {
     ...shared,
     entry: { index: 'src/index.ts', editor: 'src/editor.ts', prettier: 'src/prettier.ts' },
+    // `<LiveProvider sandbox>` imports its host code by the package's own
+    // internal export. Left external, the app's bundler code-splits it, and it
+    // never becomes a second chunk here that would need the `shared` name.
+    external: [...shared.external, 'next-live/internal/sandbox-host'],
     // Pin the shared chunk's filename instead of content-hashing it.
     //
     // The two client entries share `LiveContext`, so tsup splits it into a
@@ -42,5 +46,31 @@ export default defineConfig([
     ...shared,
     // The server entry must NOT carry the 'use client' banner.
     entry: { server: 'src/server.ts' },
+  },
+  {
+    ...shared,
+    // Built on its own rather than beside `index` and `editor`. Every split
+    // chunk in the first config is pinned to the name `shared`, and a module
+    // this entry shared with `index` alone would need a second chunk - with
+    // that same name. The console context it inlines is keyed on a global
+    // symbol, so this copy still meets the one `<LiveProvider>` supplies.
+    entry: { console: 'src/console.ts' },
+  },
+  {
+    ...shared,
+    // The runtime for the page inside the sandbox iframe, never the host page.
+    // Built on its own for the same chunk-name reason as the console entry. It
+    // carries its own copy of the compiler on purpose: a host page in sandbox
+    // mode needs none, so nothing here is shared with `index`.
+    entry: { sandbox: 'src/sandbox.ts' },
+    external: [...shared.external, 'react-dom/client'],
+  },
+  {
+    ...shared,
+    // The host side of `<LiveProvider sandbox>`: bridge, iframe and provider.
+    // Loaded on demand from the root entry through `next-live/internal/sandbox-host`.
+    // Everything that must be the same instance as the root entry is passed
+    // in at runtime, so the copies of shared modules this build inlines are safe.
+    entry: { 'sandbox-host': 'src/sandbox/host/index.tsx' },
   },
 ]);

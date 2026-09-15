@@ -95,7 +95,45 @@ describe.skipIf(!built)('build output', () => {
     expect(read('index.js')).toMatch(/from ["']react["']/);
   });
 
-  it.each(['index', 'editor', 'server', 'prettier'])('ships type declarations for %s', (entry) => {
+  /**
+   * The console panel and its value inspector ship separately, and must never
+   * drag the compiler along: a page showing console output already has one
+   * from the root entry.
+   */
+  it('keeps the transpiler and evaluator out of the console entry', () => {
+    const source = read('console.js');
+    expect(source).toMatch(/LiveConsole/);
+    expect(source).not.toMatch(/sucrase/);
+    expect(source).not.toMatch(/new Function/);
+  });
+
+  /**
+   * The sandbox runtime mounts its own React root and brings its own compiler.
+   * Neither belongs on a host page, and react-dom in particular must stay out
+   * of the root entry, which never needed it.
+   */
+  /**
+   * Pages that never pass `sandbox` must not pay for it: the root entry only
+   * holds a dynamic import of the host code, which the app's bundler splits
+   * off, and that host code never carries the compiler.
+   */
+  it('loads the sandbox host on demand, and keeps the compiler out of it', () => {
+    const index = read('index.js');
+    expect(index).toMatch(/import\(["']next-live\/internal\/sandbox-host["']\)/);
+    expect(index).not.toMatch(/MessageChannel/);
+
+    const host = read('sandbox-host.js');
+    expect(host).toMatch(/createSandboxProvider/);
+    expect(host).not.toMatch(/sucrase/);
+    expect(host).not.toMatch(/new Function/);
+  });
+
+  it('keeps react-dom out of the root entry; only the sandbox runtime mounts a root', () => {
+    expect(read('index.js')).not.toMatch(/react-dom/);
+    expect(read('sandbox.js')).toMatch(/from ["']react-dom\/client["']/);
+  });
+
+  it.each(['index', 'editor', 'server', 'prettier', 'console', 'sandbox'])('ships type declarations for %s', (entry) => {
     expect(existsSync(join(dist, `${entry}.d.ts`))).toBe(true);
     expect(existsSync(join(dist, `${entry}.d.cts`))).toBe(true);
   });
@@ -111,11 +149,24 @@ describe.skipIf(!built)('build output', () => {
    */
   describe('size budget', () => {
     const BUDGET_KB: Record<string, number> = {
-      'index.js': 45,
-      // Measured ~21.2 KB after announceErrors + wrapper layout; 22 KB leaves headroom.
-      'editor.js': 22,
-      'server.js': 10,
+      // 38.5 KB at 1.0.0. 1.1 adds console capture (~3.9 KB), multi-file
+      // projects (~12 KB across the compiler, path resolver and source state)
+      // and the sandbox switch. Measured ~63 KB raw, ~12 KB minified + gzip.
+      'index.js': 72,
+      // Measured ~21.7 KB at 1.0.0. 1.1 adds the `file` prop for multi-file
+      // snippets, which does not fit in the 300 bytes that were left.
+      'editor.js': 24,
+      // 8.8 KB at 1.0.0; 1.1 adds precompileFiles, validateFiles and the
+      // project path resolver they share with the client. Measured ~14.2 KB.
+      'server.js': 16,
       'prettier.js': 3,
+      // Measured ~17.7 KB; the clone-safe value inspector is half of it.
+      'console.js': 20,
+      // Loaded only by the sandbox page: the whole engine plus the runtime and
+      // protocol. Measured ~70.6 KB.
+      'sandbox.js': 82,
+      // Loaded on demand by `<LiveProvider sandbox>` only.
+      'sandbox-host.js': 45,
     };
 
     it.each(Object.entries(BUDGET_KB))('%s stays under %i KB', (file, limitKb) => {
@@ -136,7 +187,7 @@ describe.skipIf(!built)('build output', () => {
 describe('source directives', () => {
   const src = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 
-  it.each(['index.ts', 'editor.ts'])('%s declares "use client"', (entry) => {
+  it.each(['index.ts', 'editor.ts', 'console.ts', 'sandbox.ts'])('%s declares "use client"', (entry) => {
     const first = readFileSync(join(src, entry), 'utf8').split('\n')[0] ?? '';
     expect(first).toMatch(/^["']use client["'];?$/);
   });

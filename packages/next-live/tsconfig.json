@@ -16,7 +16,13 @@
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
-    "verbatimModuleSyntax": true
+    "verbatimModuleSyntax": true,
+    // `<LiveProvider sandbox>` loads its host code through the package's own
+    // internal export so apps can code-split it. Inside this repo that name
+    // must point at source, not at whatever `dist` happens to hold.
+    "paths": {
+      "next-live/internal/sandbox-host": ["./src/sandbox/host/index.tsx"]
+    }
   },
   "include": ["src"],
   "exclude": ["dist", "node_modules"]

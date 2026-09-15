@@ -305,7 +305,7 @@ describe('scenario: provider-level compile options reach the engine', () => {
   });
 });
 
-describe('scenario: react-live #413 bad useEffect cleanup', () => {
+describe('scenario: bad useEffect cleanup does not break the preview', () => {
   const BAD = `export default function App() {
   React.useEffect(() => []);
   return <i data-testid="ok" />;

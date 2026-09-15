@@ -40,6 +40,37 @@ Example output when someone renames a module:
 
 This repo runs `validate:apps` against the shell catalogue and playground apps.
 
+## Multi-file snippets
+
+A snippet stored as several files is checked with `validateFiles`. It validates every file, including files nothing imports yet, and counts an import between two files of the same project as resolved:
+
+<CodeBlock title="scripts/validate-projects.ts" code={`import { validateFiles } from 'next-live/server';
+
+const projects = await getAllProjects(); // [{ id, files, entry }, ...]
+let broken = 0;
+
+for (const project of projects) {
+  const result = validateFiles(project.files, {
+    entry: project.entry,
+    modules: [...LIVE_MODULE_KEYS],
+  });
+
+  if (result.ok) continue;
+  broken++;
+  for (const issue of result.issues) {
+    const where = issue.line ? \`:\${issue.line}\` : '';
+    console.error(\`  \${project.id} \${issue.file}\${where}: \${issue.message}\`);
+  }
+}
+
+process.exit(broken === 0 ? 0 : 1);`} />
+
+A typo in a relative import looks like this:
+
+<CodeBlock language="text" code={`  checkout App.tsx: Module './components/Buton' is not registered. Did you mean './components/Button'?`} />
+
+Every issue carries the `file` it was found in. The options are the same as for `validateSnippet`, including the policy flags, plus `entry`. `validateFiles` throws instead of returning issues when the `files` record itself is broken (two keys for the same path, a path above the project root, or an `entry` that is not one of the files), because that is a bug in the calling code, not in a snippet.
+
 <Callout variant="info" title="What CI catches vs misses">
   Catches: syntax errors, unresolved imports, forbidden specifiers, source too large. Does not catch: runtime throws, logic bugs, type errors.
 </Callout>

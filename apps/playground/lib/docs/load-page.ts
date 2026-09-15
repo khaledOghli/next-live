@@ -12,7 +12,9 @@ const pages: Record<string, () => Promise<{ default: ComponentType }>> = {
   'non-ui-snippets': () => import('@/content/docs/non-ui-snippets.mdx'),
   'validating-ci': () => import('@/content/docs/validating-ci.mdx'),
   docusaurus: () => import('@/content/docs/docusaurus.mdx'),
-  'migrating-from-react-live': () => import('@/content/docs/migrating-from-react-live.mdx'),
+  console: () => import('@/content/docs/console.mdx'),
+  'multi-file': () => import('@/content/docs/multi-file.mdx'),
+  sandbox: () => import('@/content/docs/sandbox.mdx'),
 };
 
 export async function loadDocPage(slug: string): Promise<ComponentType | null> {

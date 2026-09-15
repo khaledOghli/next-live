@@ -10,9 +10,11 @@ export default defineConfig({
       instances: [
         {
           browser: 'chromium',
-          context: {
-            permissions: ['clipboard-read', 'clipboard-write'],
-          },
+          provider: playwright({
+            contextOptions: {
+              permissions: ['clipboard-read', 'clipboard-write'],
+            },
+          }),
         },
         { browser: 'firefox' },
         { browser: 'webkit' },

@@ -53,12 +53,7 @@ Render it from a Server Component page:
 
 <CodeBlock title="app/apps/page.tsx" code={`import { Runner } from './Runner';
 
-const EXAMPLE = \`import { useState } from 'react';
-
-export default function App() {
-  const [n, setN] = useState(0);
-  return <button onClick={() => setN(n + 1)}>clicked {n} times</button>;
-}\`;
+const EXAMPLE = \`${counterDemo.trim()}\`;
 
 export default function AppsPage() {
   return <Runner source={EXAMPLE} />;
@@ -146,7 +141,7 @@ Nothing is compiled during the server pass. `<LivePreview>` renders its
 identical and hydration cannot mismatch. Compilation starts afterwards, in an
 effect.
 
-That is why you do not need `next/dynamic(..., { ssr: false })`. The reflex
+That is why you do not need `next/dynamic(..., { ssr: false })`, the reflex
 most people reach for first.
 
 Give the fallback roughly the size of your content to avoid layout shift:
@@ -192,7 +187,10 @@ Read [Security](/docs/security). It covers the CSP and the one rule that actuall
 
 ## Next steps
 
-- [Module registry](/docs/module-registry)
-- [Sharing libraries](/docs/sharing-libraries)
-- [Integration guide](/docs/integration)
+- [Module registry](/docs/module-registry): what snippets can import
+- [Sharing libraries](/docs/sharing-libraries): one React instance, one store
+- [Console output](/docs/console): show what snippets log, next to the preview
+- [Multi-file snippets](/docs/multi-file): files that import each other, with tabs
+- [Sandbox mode](/docs/sandbox): run code from people you do not trust
+- [Integration guide](/docs/integration): from database to live runner
 - [Apps shell demo](/apps)

@@ -1,17 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { LiveConsoleContext } from '../context/LiveConsoleContext';
 import { LiveContext } from '../context/LiveContext';
+import { rehydrateError } from '../core/serialize-error';
+import { useCompileTask } from '../hooks/useCompileTask';
 import { useLiveRunner } from '../hooks/useLiveRunner';
-import type { FormatErrorFn, UseLiveRunnerOptions } from '../core/types';
+import type { ConsoleEntry, FormatErrorFn, LiveSandboxConfig, UseLiveRunnerOptions } from '../core/types';
 
 export interface LiveProviderProps extends Omit<UseLiveRunnerOptions, 'code'> {
   /**
    * The snippet to run. Treated as controlled: when it changes - because a new
    * app was fetched from an API, say, the preview follows.
+   *
+   * Pass `files` instead for a snippet made of several files.
    */
-  code: string;
+  code?: string;
   /** Props forwarded into the rendered component. Passed by reference. */
   props?: Record<string, unknown>;
   /** Language hint for `<LiveEditor>` highlighting. Default 'tsx'. */
@@ -22,11 +27,46 @@ export interface LiveProviderProps extends Omit<UseLiveRunnerOptions, 'code'> {
   formatError?: FormatErrorFn;
   /** Rendered by `<LivePreview>` until the first compile finishes. */
   fallback?: ReactNode;
+  /**
+   * Run snippets in a sandboxed iframe instead of this page, for code you do
+   * not trust. `src` is a page you host that calls `mountSandbox` from
+   * `next-live/sandbox`. See the sandbox guide before using it.
+   *
+   * In this mode `modules`, `scope` and `transform` are ignored (they belong
+   * on the sandbox page), and `props` must be plain, cloneable data.
+   */
+  sandbox?: LiveSandboxConfig;
   children?: ReactNode;
 }
 
 /** Stable identity so an omitted `props` never invalidates the context. */
 const EMPTY_PROPS: Record<string, unknown> = {};
+
+/**
+ * The sandbox host, loaded only by providers that use it.
+ *
+ * The specifier is the package's own internal export, kept external when this
+ * entry is built, so the app's bundler splits it into a separate chunk. Pages
+ * that never pass `sandbox` never download it.
+ */
+const loadSandboxHost = () => import('next-live/internal/sandbox-host');
+
+const LazySandboxProvider = lazy(async () => {
+  const host = await loadSandboxHost();
+  return {
+    default: host.createSandboxProvider({ LiveContext, LiveConsoleContext, useCompileTask, rehydrateError }),
+  };
+});
+
+/**
+ * Starts downloading the sandbox host ahead of time, for example when the user
+ * hovers a link to a page that uses `<LiveProvider sandbox>`.
+ */
+export function preloadSandboxHost(): void {
+  void loadSandboxHost().catch(() => {
+    // Best effort; the provider reports a real load failure.
+  });
+}
 
 /**
  * Provides a compiled snippet to `<LiveEditor>`, `<LivePreview>`, and
@@ -36,6 +76,35 @@ const EMPTY_PROPS: Record<string, unknown> = {};
  * server pass, and the first client render matches the server output exactly.
  */
 export function LiveProvider(props: LiveProviderProps): ReactNode {
+  const sandboxed = props.sandbox !== undefined;
+
+  // Switching modes swaps the component type below, so React remounts the
+  // provider instead of mixing two sets of hooks. That is safe, but it throws
+  // away unsaved edits, which deserves a word in development.
+  const initialMode = useRef(sandboxed);
+  useEffect(() => {
+    if (initialMode.current === sandboxed) return;
+    initialMode.current = sandboxed;
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(
+        '[next-live] <LiveProvider> switched between sandbox and in-page mode. It remounted and unsaved edits ' +
+          'were lost. Give it a `key` that changes with the mode to make this explicit.',
+      );
+    }
+  }, [sandboxed]);
+
+  if (sandboxed) {
+    return (
+      <Suspense fallback={null}>
+        <LazySandboxProvider {...props} />
+      </Suspense>
+    );
+  }
+  return <InPageLiveProvider {...props} />;
+}
+
+/** Runs the snippet in this page, sharing its React and its live objects. The 1.0 behaviour. */
+function InPageLiveProvider(props: LiveProviderProps): ReactNode {
   const {
     code,
     props: componentProps,
@@ -43,11 +112,69 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
     onError,
     formatError,
     fallback = null,
+    onConsole,
     children,
     ...runnerOptions
   } = props;
 
-  const runner = useLiveRunner({ code, ...runnerOptions });
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  const hasCode = code !== undefined;
+  const hasFiles = runnerOptions.files !== undefined;
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return;
+    if (!hasCode && !hasFiles) {
+      console.warn('[next-live] <LiveProvider> needs a `code` or a `files` prop; there is nothing to run.');
+    } else if (hasCode && hasFiles) {
+      console.warn('[next-live] <LiveProvider> received both `code` and `files`; `files` is used and `code` is ignored.');
+    }
+  }, [hasCode, hasFiles]);
+
+  // Console capture is switched on by whoever wants the output: an `onConsole`
+  // prop, or a `<LiveConsole>` attaching through context. Attachment is sticky
+  // for the provider's lifetime - switching capture back off would recompile,
+  // and remount the preview, just because a console panel was closed.
+  const onConsoleRef = useRef(onConsole);
+  onConsoleRef.current = onConsole;
+  const consoleListeners = useRef(new Set<(entry: ConsoleEntry) => void>());
+  const [consoleAttached, setConsoleAttached] = useState(false);
+
+  const dispatchConsole = useCallback((entry: ConsoleEntry) => {
+    if (!mountedRef.current) return;
+    try {
+      onConsoleRef.current?.(entry);
+    } catch {
+      // A throwing host callback must not starve the console panels.
+    }
+    for (const listener of consoleListeners.current) {
+      try {
+        listener(entry);
+      } catch {
+        // One broken panel must not starve the rest.
+      }
+    }
+  }, []);
+
+  const attachConsole = useCallback((listener: (entry: ConsoleEntry) => void) => {
+    consoleListeners.current.add(listener);
+    setConsoleAttached(true);
+    return () => {
+      consoleListeners.current.delete(listener);
+    };
+  }, []);
+
+  const runner = useLiveRunner({
+    code,
+    ...runnerOptions,
+    ...(onConsole !== undefined || consoleAttached ? { onConsole: dispatchConsole } : {}),
+  });
 
   // Errors thrown while *rendering* the snippet arrive from the error boundary
   // rather than the compiler, so they are tracked here and merged below. That
@@ -65,16 +192,8 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
 
   const compileIdRef = useRef(runner.compileId);
   compileIdRef.current = runner.compileId;
-  const mountedRef = useRef(true);
   const formatErrorRef = useRef(formatError);
   formatErrorRef.current = formatError;
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   const lastRuntimeReport = useRef<{ compileId: number; message: string } | null>(null);
 
@@ -141,5 +260,14 @@ export function LiveProvider(props: LiveProviderProps): ReactNode {
     ],
   );
 
-  return <LiveContext.Provider value={value}>{children}</LiveContext.Provider>;
+  const consoleValue = useMemo(
+    () => ({ attach: attachConsole, compileId: runner.compileId }),
+    [attachConsole, runner.compileId],
+  );
+
+  return (
+    <LiveContext.Provider value={value}>
+      <LiveConsoleContext.Provider value={consoleValue}>{children}</LiveConsoleContext.Provider>
+    </LiveContext.Provider>
+  );
 }

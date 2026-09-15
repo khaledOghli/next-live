@@ -22,10 +22,10 @@ export default function App() {
 
 describe('server rendering', () => {
   /**
-   * The regression this guards: `react-live` compiles during the server pass,
-   * so the server and client produce different trees and React reports
-   * hydration errors #418/#425. Rendering the fallback on both passes is what
-   * makes a mismatch impossible.
+   * The regression this guards: compiling during the server pass makes the
+   * server and client produce different trees and React reports hydration
+   * errors #418/#425. Rendering the fallback on both passes is what makes a
+   * mismatch impossible.
    */
   it('renders only the fallback on the server, never the compiled output', () => {
     const html = renderToStaticMarkup(

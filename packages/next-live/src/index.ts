@@ -8,7 +8,7 @@
 // Components. Exported as named bindings, never as static properties on a
 // parent (`Live.Preview`): across the RSC boundary a Server Component receives
 // a client *reference*, so any attached property resolves to undefined.
-export { LiveProvider } from './components/LiveProvider';
+export { LiveProvider, preloadSandboxHost } from './components/LiveProvider';
 export type { LiveProviderProps } from './components/LiveProvider';
 // <LiveEditor> lives in `next-live/editor` - it is the only thing that pulls
 // in a syntax highlighter, and preview-only pages should not pay for it.
@@ -18,6 +18,8 @@ export { LiveError } from './components/LiveError';
 export type { LiveErrorProps } from './components/LiveError';
 export { LiveErrorBoundary } from './components/LiveErrorBoundary';
 export type { LiveErrorBoundaryProps } from './components/LiveErrorBoundary';
+export { LiveFileTabs } from './components/LiveFileTabs';
+export type { LiveFileTabsProps } from './components/LiveFileTabs';
 
 // Hooks and context, for hosts building their own UI.
 export { useLiveRunner } from './hooks/useLiveRunner';
@@ -25,10 +27,14 @@ export { useLiveModule } from './hooks/useLiveModule';
 export type { LiveModuleState, UseLiveModuleOptions } from './hooks/useLiveModule';
 export { useLiveContext } from './hooks/useLiveContext';
 export { LiveContext } from './context/LiveContext';
+// The console panel itself lives in `next-live/console`; the context it reads
+// is exported here for hosts wiring their own.
+export { LiveConsoleContext } from './context/LiveConsoleContext';
+export type { LiveConsoleContextValue } from './context/LiveConsoleContext';
 
 // Engine, for advanced use - a custom scheduler, or compiling outside React.
 export { compile, compileModule } from './core/compile';
-export type { CompileInput, CompileModuleResult } from './core/compile';
+export type { CompileFilesInput, CompileInput, CompileModuleResult } from './core/compile';
 export {
   transpile,
   preloadTranspiler,
@@ -57,8 +63,12 @@ export {
   ModuleNotFoundError,
   NoComponentError,
   TranspilerLoadError,
+  LiveSandboxError,
 } from './core/errors';
-export type { LiveErrorCode } from './core/errors';
+export type { LiveErrorCode, LiveSandboxErrorReason } from './core/errors';
+// Errors that crossed a realm boundary (the sandbox iframe) travel as data.
+export { rehydrateError, serializeError } from './core/serialize-error';
+export type { SerializedError } from './core/serialize-error';
 
 export { errorPosition } from './core/positions';
 export type { PositionedError } from './core/positions';
@@ -67,13 +77,22 @@ export type {
   CompileOptions,
   CompileResult,
   CompileSuccessInfo,
+  ConsoleEntry,
+  ConsoleLevel,
+  ConsoleMethod,
   ExtractionSource,
   FormatErrorFn,
   FormatErrorPosition,
   LiveContextValue,
+  LiveProjectState,
   LiveRenderable,
   LiveRunnerState,
+  LiveSandboxConfig,
   LiveScope,
+  SandboxFrameProps,
+  SandboxHandle,
+  SandboxPermission,
+  SandboxStatus,
   ModuleLoader,
   ModuleRegistry,
   ModuleValue,

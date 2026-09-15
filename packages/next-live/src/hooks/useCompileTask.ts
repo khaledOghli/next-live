@@ -1,11 +1,50 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { CompileInput, CompileModuleResult } from '../core/compile';
-import type { CompileResult, CompileSuccessInfo, UseLiveRunnerOptions } from '../core/types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { CompileFilesInput, CompileInput, CompileModuleResult } from '../core/compile';
+import type {
+  CompileResult,
+  CompileSuccessInfo,
+  ConsoleEntry,
+  UseLiveRunnerOptions,
+} from '../core/types';
+import { useSourceState } from './useSourceState';
+import type { ProjectState } from './useSourceState';
 
 /** Separator that cannot appear in an import specifier or identifier. */
 const KEY_SEP = '\0';
+
+/**
+ * Tags captured entries with a compile id and hands them on in one microtask.
+ *
+ * The deferral is not an optimisation. A snippet that logs while rendering
+ * would otherwise call the host's `onConsole` in the middle of React's render,
+ * where a `setState` triggers "Cannot update a component while rendering a
+ * different component".
+ */
+function batchConsole(
+  compileId: number,
+  getSink: () => ((entry: ConsoleEntry) => void) | undefined,
+): (entry: ConsoleEntry) => void {
+  let queue: ConsoleEntry[] = [];
+  return (entry) => {
+    queue.push({ ...entry, compileId });
+    if (queue.length > 1) return;
+    queueMicrotask(() => {
+      const batch = queue;
+      queue = [];
+      const sink = getSink();
+      if (!sink) return;
+      for (const item of batch) {
+        try {
+          sink(item);
+        } catch {
+          // A throwing host callback must not become a snippet error.
+        }
+      }
+    });
+  };
+}
 
 export interface CompileTaskState<T> {
   code: string;
@@ -14,6 +53,8 @@ export interface CompileTaskState<T> {
   error: Error | null;
   isCompiling: boolean;
   compileId: number;
+  /** Present only for multi-file snippets. */
+  project?: ProjectState;
 }
 
 interface InternalState<T> {
@@ -30,6 +71,8 @@ function compileSuccessInfo(result: unknown, compileId: number, durationMs: numb
     imports: typed.imports,
     ...('via' in typed && typed.via !== undefined ? { via: typed.via } : {}),
     durationMs,
+    ...(typed.entry !== undefined ? { entry: typed.entry } : {}),
+    ...(typed.files !== undefined ? { files: typed.files } : {}),
   };
 }
 
@@ -39,21 +82,42 @@ function compileSuccessInfo(result: unknown, compileId: number, durationMs: numb
  */
 export function useCompileTask<T>(
   options: Omit<UseLiveRunnerOptions, 'maxRendersPerSecond'>,
-  run: (input: CompileInput) => Promise<T>,
+  run: (input: CompileInput | CompileFilesInput) => Promise<T>,
 ): CompileTaskState<T> {
   const {
     code: initialCode,
+    files,
+    entry,
+    activeFile,
+    onActiveFileChange,
+    onFilesChange,
     debounce = 150,
     keepLastGood = true,
     onCodeChange,
     onCompileSuccess,
+    onConsole,
+    forwardConsole = true,
     modules,
     scope,
     transform,
     ...transpileOptions
   } = options;
 
-  const [code, setCode] = useState(initialCode);
+  // Whether capture is on is a compile input; which callback receives it is
+  // not. Keying on identity would recompile on every render with an inline
+  // `onConsole={(e) => ...}`.
+  const consoleOn = onConsole !== undefined;
+
+  const source = useSourceState({
+    code: initialCode,
+    files,
+    entry,
+    activeFile,
+    onCodeChange,
+    onFilesChange,
+    onActiveFileChange,
+  });
+
   const [state, setState] = useState<InternalState<T>>({
     result: null,
     error: null,
@@ -70,10 +134,6 @@ export function useCompileTask<T>(
     };
   }, []);
 
-  useEffect(() => {
-    setCode(initialCode);
-  }, [initialCode]);
-
   const modulesKey = useMemo(
     () => Object.keys(modules ?? {}).sort().join(KEY_SEP),
     [modules],
@@ -89,8 +149,8 @@ export function useCompileTask<T>(
     transform,
     transpileOptions,
     run,
-    onCodeChange,
     onCompileSuccess,
+    onConsole,
   });
   latest.current = {
     modules,
@@ -98,23 +158,31 @@ export function useCompileTask<T>(
     transform,
     transpileOptions,
     run,
-    onCodeChange,
     onCompileSuccess,
+    onConsole,
   };
 
   const { filePath, production, jsxRuntime, jsxImportSource } = transpileOptions;
-  const prevFilePath = useRef(filePath);
+
+  // Only what the compiler reads. Switching the active file changes what the
+  // editor shows, not what runs, so it never appears here.
+  const compileCode = source.project ? undefined : source.code;
+  const compileFiles = source.project?.files;
 
   // Tab switches often change filePath before code catches up. Dropping the
   // stale renderable immediately avoids mounting the previous snippet's
-  // component while the next one compiles.
+  // component while the next one compiles. Moving between `code` and `files`,
+  // or to another entry file, is the same kind of switch.
+  const resetKey = `${filePath ?? ''}${KEY_SEP}${source.project ? `files${KEY_SEP}${entry ?? ''}` : 'code'}`;
+  const prevResetKey = useRef(resetKey);
+
   useEffect(() => {
-    if (filePath === prevFilePath.current) return;
-    prevFilePath.current = filePath;
+    if (resetKey === prevResetKey.current) return;
+    prevResetKey.current = resetKey;
     compileIdRef.current += 1;
     if (!mountedRef.current) return;
     setState({ result: null, error: null, compileId: compileIdRef.current });
-  }, [filePath]);
+  }, [resetKey]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -128,14 +196,29 @@ export function useCompileTask<T>(
       const current = latest.current;
       const startedAt = performance.now();
 
+      // Tagged with the id this compile receives if it succeeds: module-level
+      // logs run before the id is bumped, and a panel that clears on compile
+      // must not throw away the output of the very compile that just landed.
+      const consoleSink = consoleOn
+        ? batchConsole(compileIdRef.current + 1, () =>
+            mountedRef.current ? latest.current.onConsole : undefined,
+          )
+        : undefined;
+
+      const sourceInput =
+        compileFiles !== undefined
+          ? { files: compileFiles, ...(entry !== undefined ? { entry } : {}) }
+          : { code: compileCode ?? '' };
+
       current
         .run({
-          code,
+          ...sourceInput,
           signal: controller.signal,
           ...current.transpileOptions,
           ...(current.modules ? { modules: current.modules } : {}),
           ...(current.scope ? { scope: current.scope } : {}),
           ...(current.transform ? { transform: current.transform } : {}),
+          ...(consoleSink ? { onConsole: consoleSink, forwardConsole } : {}),
         })
         .then((result) => {
           if (cancelled || !mountedRef.current) return;
@@ -181,7 +264,9 @@ export function useCompileTask<T>(
       clearTimeout(spinnerTimer);
     };
   }, [
-    code,
+    compileCode,
+    compileFiles,
+    entry,
     debounce,
     keepLastGood,
     modulesKey,
@@ -191,19 +276,17 @@ export function useCompileTask<T>(
     jsxRuntime,
     jsxImportSource,
     transform,
+    consoleOn,
+    forwardConsole,
   ]);
 
-  const setCodeStable = useCallback((next: string) => {
-    setCode(next);
-    latest.current.onCodeChange?.(next);
-  }, []);
-
   return {
-    code,
-    setCode: setCodeStable,
+    code: source.code,
+    setCode: source.setCode,
     result: state.result,
     error: state.error,
     isCompiling,
     compileId: state.compileId,
+    ...(source.project ? { project: source.project } : {}),
   };
 }

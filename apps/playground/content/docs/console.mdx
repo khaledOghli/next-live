@@ -1,0 +1,103 @@
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { ConsoleDemo } from '@/components/docs/ConsoleDemo';
+
+When a snippet calls `console.log`, the message normally goes to the browser's DevTools, where the person editing the snippet may never look. For a snippet that renders nothing, like a validator or a pricing rule, the console is often the only feedback there is.
+
+next-live can catch those calls and show them right next to the preview.
+
+## Quick start
+
+Add `<LiveConsole>` inside your provider. Mounting it is what switches capture on.
+
+<CodeBlock title="Playground.tsx" code={`'use client';
+
+import { LiveProvider, LivePreview, LiveError } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
+import { LiveConsole } from 'next-live/console';
+
+export function Playground({ source }: { source: string }) {
+  return (
+    <LiveProvider code={source}>
+      <LiveEditor />
+      <LivePreview />
+      <LiveError />
+      <LiveConsole />
+    </LiveProvider>
+  );
+}`} />
+
+Try it below. The source is editable: add a `console.warn('careful')` or a `console.error(new Error('boom'))` and watch a new row appear. Rows from the previous version of the code fade out when the new one compiles.
+
+<ConsoleDemo />
+
+The console has its own entry, `next-live/console`, so pages that never show console output never download it.
+
+## When capture is on
+
+Capture is **off** until something asks for it. Until then a snippet uses the browser's real `console`, exactly as before. It switches on when:
+
+- a `<LiveConsole>` or the `useLiveConsole` hook is rendered inside the provider, or
+- you pass `onConsole` to `<LiveProvider>`, `useLiveRunner` or `useLiveModule`.
+
+Calls still reach DevTools while capture is on. To keep the browser console quiet, pass `forwardConsole={false}`.
+
+<Callout variant="info" title="A panel mounted later works too">
+  A panel that appears later, for example behind a tab, works too. The snippet just has to run once more so the console can be swapped in, which remounts the preview one time. Closing the panel never switches capture off again.
+</Callout>
+
+## Styling the panel
+
+`<LiveConsole>` ships without styles. Rows carry `data-level`, `data-method` and `data-stale`:
+
+<CodeBlock language="css" title="console.css" code={`[data-next-live-console] [role='log'] {
+  max-height: 220px;
+  overflow: auto;
+  font: 12px/1.6 ui-monospace, monospace;
+}
+
+[data-next-live-console] [data-level='warn'] { background: #fff8e1; }
+[data-next-live-console] [data-level='error'] { background: #fdecea; color: #b3261e; }
+[data-next-live-console] [data-stale] { opacity: 0.5; }`} />
+
+Rows inside `console.group()` are indented for you.
+
+## Props
+
+| Prop | Default | What it does |
+|---|---|---|
+| `levels` | every level | Only show these levels, like `['warn', 'error']`. |
+| `maxEntries` | `500` | The oldest rows are dropped past this. |
+| `clearOnCompile` | `true` | Clear output from the previous version of the code when a new one compiles. |
+| `clearButton` | `true` | Show the built-in "Clear console" button. |
+| `announce` | `false` | Read new output aloud to screen readers. |
+| `emptyState` | nothing | Shown while there is no output. |
+| `renderEntry` | text preview | Replace the content of each row. |
+| `children` | none | A function that replaces the whole panel. |
+
+## Getting the entries yourself
+
+When you want the data rather than a panel, pass `onConsole`:
+
+<CodeBlock code={`const [entries, setEntries] = useState<ConsoleEntry[]>([]);
+
+<LiveProvider code={source} onConsole={(entry) => setEntries((all) => [...all, entry])}>
+  <LivePreview />
+</LiveProvider>`} />
+
+It is safe to set state inside `onConsole`: entries arrive in a small batch right after the snippet logs, never in the middle of a React render. Each entry has `level`, `method`, `args`, `timestamp`, `depth` and `compileId`, plus `file` and `line` when they can be worked out.
+
+To turn an entry into a line of text, use the same helpers the panel uses:
+
+<CodeBlock code={`import { formatConsoleArgs, serializeValues } from 'next-live/console';
+
+formatConsoleArgs(entry.serialized ?? serializeValues(entry.args));
+// 'Prices: [12, 30, 7]'`} />
+
+## What is not captured
+
+- **Calls through the global object**, like `window.console.log(...)`. Capture replaces the `console` the snippet sees, not the one on `window`.
+- **Logs from modules you registered.** They are your code, not the snippet's.
+- **React's own warnings.**
+
+`console.clear()` clears the panel but never the browser's DevTools. In development, StrictMode renders components twice, so a log made while rendering shows up twice, just as it does in DevTools.

@@ -4,7 +4,7 @@ import { CodeTabs } from '@/components/docs/CodeTabs';
 import { Callout } from '@/components/docs/Callout';
 import { Steps } from '@/components/docs/Steps';
 
-An end-to-end walkthrough for running snippets that live outside your build -
+An end-to-end walkthrough for running snippets that live outside your build,
 wherever they come from and whoever writes them.
 
 ## Architecture
@@ -264,6 +264,8 @@ store shared with the host page through `@app/store`.
 
 <Callout variant="info" title="Code is always a string">
   Whether it comes from a database, an API, or a template literal in your repo,
-  <code>{' code={source} '}</code> is the only input next-live accepts. There is
-  no file-path mode to look for.
+  next-live only ever receives source text: <code>{'code={source}'}</code> for
+  one file, or <code>{'files={{ path: source }}'}</code> for a
+  <Link href="/docs/multi-file">multi-file snippet</Link>. It never reads
+  paths from disk.
 </Callout>

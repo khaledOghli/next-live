@@ -8,6 +8,7 @@
     { "source": "/apps", "destination": "/docs", "permanent": false },
     { "source": "/apps/:path*", "destination": "/docs", "permanent": false },
     { "source": "/rsc-check", "destination": "/docs", "permanent": false },
+    { "source": "/sandbox-demo", "destination": "/docs", "permanent": false },
     { "source": "/api/:path*", "destination": "/docs", "permanent": false }
   ]
 }

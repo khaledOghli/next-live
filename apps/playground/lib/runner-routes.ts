@@ -27,6 +27,22 @@
  */
 export const RUNNER_ROUTES = ['/', '/playground', '/apps', '/docs'] as const;
 
+/**
+ * The page that runs snippets inside the sandbox iframe, for
+ * `<LiveProvider sandbox>`.
+ *
+ * It is not a runner route. It gets its own, much stricter policy in proxy.ts:
+ * it evaluates code sent by the page embedding it, so it may only be framed by
+ * this site, has no network access, and stays sandboxed even when opened
+ * directly. The pages that embed it need no `'unsafe-eval'` at all.
+ */
+export const SANDBOX_ROUTE = '/sandbox';
+
+/** Whether a pathname is the sandbox page. `/sandbox-demo` is not. */
+export function isSandboxRoute(pathname: string): boolean {
+  return pathname === SANDBOX_ROUTE || pathname.startsWith(`${SANDBOX_ROUTE}/`);
+}
+
 /** Whether a pathname is served with `'unsafe-eval'`. */
 export function isRunnerRoute(pathname: string): boolean {
   return RUNNER_ROUTES.some(

@@ -244,7 +244,7 @@ export function Playground({ apps, initialApp }: PlaygroundProps) {
         // The registry: composed from lib/live-sdk, every entry a lazy loader
         // so nothing is downloaded until a snippet actually imports it.
         modules={liveModules}
-        // Free variables, for react-live-style snippets that skip imports.
+        // Free variables for snippets that skip imports.
         scope={{ formatMoney: (n: number) => `$${n.toFixed(2)}` }}
         // Live objects, passed by reference rather than serialized.
         props={{ panel, user: { name: 'Khaled' } }}

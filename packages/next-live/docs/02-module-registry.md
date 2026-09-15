@@ -451,8 +451,9 @@ export default function App({ panel, user }) {
 
 Because nothing is cloned, a snippet calling `panel.setSize(17)` mutates the same
 object your app holds and your UI updates. Class instances, functions, and live
-handles all survive. This is only possible because snippets run in your page -
-an iframe sandbox could not do it.
+handles all survive. This is only possible because snippets run in your page. In
+[sandbox mode](./15-sandbox.md) props are copied into the iframe as plain data,
+so this does not work there.
 
 `props` on `<LivePreview>` merge over `props` on `<LiveProvider>`.
 

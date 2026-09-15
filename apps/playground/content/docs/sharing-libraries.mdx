@@ -32,8 +32,8 @@ The snippet receives the same object references. Mutations propagate immediately
 
 Two copies appear when you register a **different path** to what your app uses, or bundle the library twice under different specifiers. Keep one canonical import path in your SDK surface.
 
-<Callout variant="warning" title="iframe sandboxes cannot do this">
-  Running snippets on a separate origin would require structured-clone props: no live store, no functions by reference. next-live is designed for same-realm, trusted authors.
+<Callout variant="warning" title="Sandbox mode cannot do this">
+  Sharing works because snippets run in your page. In [sandbox mode](/docs/sandbox) they run in an isolated iframe instead, so props are copied as plain data: no live store, no functions by reference. Share by reference with authors you trust, and use the sandbox for everyone else.
 </Callout>
 
 ## Try it

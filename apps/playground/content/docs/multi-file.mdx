@@ -1,0 +1,179 @@
+import { CodeBlock } from '@/components/docs/CodeBlock';
+import { Callout } from '@/components/docs/Callout';
+import { MultiFileDemo } from '@/components/docs/MultiFileDemo';
+
+Real components are rarely one file. A card imports a button, and the button imports a helper that formats prices. With `files`, a snippet can be split the same way, and the files import each other with ordinary relative imports.
+
+## Quick start
+
+Pass `files` instead of `code`. Each key is a path, and each value is that file's source.
+
+<CodeBlock title="Playground.tsx" code={`'use client';
+
+import { LiveProvider, LivePreview, LiveError, LiveFileTabs } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
+
+const files = {
+  'App.tsx': \`import { PriceTag } from './components/PriceTag';
+
+export default function App() {
+  return <PriceTag amount={19.5} />;
+}\`,
+
+  'components/PriceTag.tsx': \`import { Badge } from './Badge';
+import { formatPrice } from '../lib/format';
+import { theme } from '/theme';
+
+export function PriceTag({ amount }: { amount: number }) {
+  return (
+    <span style={{ color: theme.accent }}>
+      <Badge>Price</Badge> {formatPrice(amount)}
+    </span>
+  );
+}\`,
+
+  'components/Badge.tsx': \`import { CheckIcon } from '../icons';
+
+export function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span>
+      <CheckIcon /> {children}
+    </span>
+  );
+}\`,
+
+  'icons/index.tsx': \`export function CheckIcon() {
+  return <span aria-hidden>✓</span>;
+}\`,
+
+  'lib/format.ts': \`export function formatPrice(amount: number) {
+  return '$' + amount.toFixed(2);
+}\`,
+
+  'theme.ts': \`export const theme = { accent: '#2563eb' };\`,
+};
+
+export function Playground() {
+  return (
+    <LiveProvider files={files}>
+      <LiveFileTabs />
+      <LiveEditor />
+      <LivePreview />
+      <LiveError />
+    </LiveProvider>
+  );
+}`} />
+
+<MultiFileDemo />
+
+- **`App.tsx` is the entry**, because it is the first key. Its default export is what the preview renders. Pick another file with `entry="components/PriceTag.tsx"`.
+- **`<LiveFileTabs>`** shows one tab per file.
+- **`<LiveEditor>`** edits whichever tab is selected, with nothing else to wire up.
+
+## How imports are resolved
+
+| From file | This import | Finds |
+|---|---|---|
+| `components/PriceTag.tsx` | `import { Badge } from './Badge'` | `components/Badge.tsx` |
+| `components/PriceTag.tsx` | `import { formatPrice } from '../lib/format'` | `lib/format.ts` |
+| `components/PriceTag.tsx` | `import { theme } from '/theme'` | `theme.ts`, from the project root |
+| `components/Badge.tsx` | `import { CheckIcon } from '../icons'` | `icons/index.tsx` |
+| any file | `import { useState } from 'react'` | the module registry, never a file |
+
+The quick start above uses every file import in this table. `react` is the only row that comes from the registry instead of a project file.
+
+- The extension is optional: the exact path is tried, then `.tsx`, `.ts`, `.jsx` and `.js`, then an `index` file.
+- Bare names like `react` or `@acme/ui` always go to the registry, so a file called `react.tsx` can never take React's place.
+- A relative import that matches no file falls back to the registry, so a registry key like `'./theme'` keeps working. A real file with that path wins.
+- `'App.tsx'`, `'./App.tsx'` and `'/App.tsx'` are the same file. Errors and callbacks always use your key as you wrote it.
+
+## Editing and saving
+
+`<LiveEditor file="lib/format.ts" />` pins an editor to one file. From code, `useLiveContext()` gives you `files`, `activeFile`, `setActiveFile`, `setFile` and `setFiles`. Use it inside the same `<LiveProvider>`:
+
+<CodeBlock title="Playground.tsx" code={`'use client';
+
+import { LiveProvider, LivePreview, LiveFileTabs, useLiveContext } from 'next-live';
+import { LiveEditor } from 'next-live/editor';
+
+function FileToolbar() {
+  const { activeFile, setActiveFile, setFile } = useLiveContext();
+
+  return (
+    <div className="flex flex-wrap gap-2 text-sm">
+      <span>Editing {activeFile}</span>
+      <button type="button" onClick={() => setActiveFile('lib/format.ts')}>
+        Open format.ts
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          setFile?.('lib/format.ts', \`export function formatPrice(amount: number) {
+  return '$' + amount.toFixed(2);
+}\`)
+        }
+      >
+        Reset format.ts
+      </button>
+    </div>
+  );
+}
+
+function Editor() {
+  const { activeFile } = useLiveContext();
+  return <LiveEditor key={activeFile} />;
+}
+
+export function Playground({ files }: { files: Record<string, string> }) {
+  return (
+    <LiveProvider files={files}>
+      <FileToolbar />
+      <LiveFileTabs />
+      <Editor />
+      <LivePreview />
+    </LiveProvider>
+  );
+}`} />
+
+- `setActiveFile` switches tabs without recompiling.
+- `setFile` updates one file and recompiles.
+- `key={activeFile}` gives each file its own undo history.
+
+To save edits, use `onFilesChange`. It receives every file's current source and the key of the one that changed:
+
+<CodeBlock code={`const [files, setFiles] = useState(initialFiles);
+
+<LiveProvider files={files} onFilesChange={(next, changedFile) => setFiles(next)}>
+  <LiveFileTabs />
+  <LiveEditor />
+  <LivePreview />
+</LiveProvider>`} />
+
+Passing the same content back, or a new object with the same content, never triggers an extra compile.
+
+## Errors name their file
+
+Every error from a project carries `file` and `line`. `<LiveFileTabs>` marks the failing tab with `data-error`, and `<LiveEditor>` only underlines the error while it shows that file. A typo in an import tells you both sides:
+
+<CodeBlock language="text" title="Error" code={`Module './components/PriceTg' is not registered in the next-live scope (imported from 'App.tsx').
+
+Did you mean './components/PriceTag'?`} />
+
+## Rules worth knowing
+
+- **Only the entry can be a bare expression** or call `render()`. Other files are normal modules.
+- **Only imported files are compiled**, so a half-written file does not break the preview until something imports it.
+- **Each file runs once**, however many files import it.
+- **Circular imports work the CommonJS way.** Functions called later are fine; a value read at the very top of a file may still be `undefined`.
+
+## On the server
+
+`precompileFiles` compiles a whole project once, and `validateFiles` checks one in CI without running it:
+
+<CodeBlock code={`import { precompileFiles, validateFiles } from 'next-live/server';
+
+const compiled = precompileFiles(project.files, { entry: project.entry });
+// client: <LiveProvider files={files} transform={precompiledTransform(compiled.files)} />
+
+const result = validateFiles(project.files, { modules: Object.keys(liveModules) });
+for (const issue of result.issues) console.error(issue.file, issue.message);`} />

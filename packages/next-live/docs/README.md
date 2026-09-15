@@ -17,7 +17,9 @@ Live TSX/JSX evaluation for React, SSR-safe and tuned for the Next.js App Router
 | **[9. Snippets that are not components](./09-non-ui-snippets.md)** | Validators, transformers, config, code with no UI. |
 | **[10. Validating stored snippets in CI](./10-validating-in-ci.md)** | Catch an SDK rename breaking stored apps before your users do. |
 | **[11. Docusaurus integration](./11-docusaurus.md)** | Live fences in MDX via `next-live-docusaurus`. |
-| **[12. Migrating from react-live](./12-migrating-from-react-live.md)** | Issue-by-issue parity and prop mapping. |
+| **[13. Showing console output](./13-console.md)** | Show what snippets log with `console.log`, right next to the preview. |
+| **[14. Snippets with more than one file](./14-multi-file.md)** | Split a snippet into files that import each other, with file tabs. |
+| **[15. Sandbox mode](./15-sandbox.md)** | Run snippets written by people you do not trust, in an isolated iframe. |
 
 ## Where to start
 
@@ -29,6 +31,7 @@ Live TSX/JSX evaluation for React, SSR-safe and tuned for the Next.js App Router
 - **Something is broken?** [Troubleshooting](./07-troubleshooting.md).
 - **About to deploy?** [Security](./05-security.md), it takes ten minutes and
   covers the one rule that actually protects you.
+- **Letting anyone write snippets?** Read [sandbox mode](./15-sandbox.md) first.
 
 ## Frequently asked
 
@@ -42,12 +45,13 @@ No, one instance, which is why a shared store really is shared.
 
 **Do I need `'unsafe-eval'` in production?**
 Yes, but scoped to the routes that run snippets, not your whole app.
-[Security](./05-security.md).
+[Security](./05-security.md). In sandbox mode, only the sandbox page needs it.
 
 **Will this bloat my bundle?**
-No. A page that only runs snippets pays **16.1 KB** - the editor and its syntax
-highlighter live on a separate entry (`next-live/editor`), and the transpiler is
-a lazily-fetched chunk. Registering modules as loaders keeps your own
+No. The main entry is about **13 KB** minified and gzipped. The editor and its
+syntax highlighter (`next-live/editor`), the console panel (`next-live/console`)
+and the sandbox code live on separate entries, and the transpiler is a
+lazily-fetched chunk. Registering modules as loaders keeps your own
 dependencies out of the page too: measured 827 KB → 666 KB.
 [Scaling](./04-scaling.md).
 
@@ -76,3 +80,15 @@ Hooks yes, snippets share your React instance.
 [Troubleshooting: hooks](./07-troubleshooting.md#do-react-hooks-work-in-snippets).
 Tailwind only through registered UI components or an explicit safelist -
 [Module registry: styling](./02-module-registry.md#styling-and-tailwind).
+
+**Can I see what a snippet logs?**
+Yes. Put `<LiveConsole>` from `next-live/console` inside the provider.
+[Showing console output](./13-console.md).
+
+**Can a snippet have more than one file?**
+Yes. Pass `files` instead of `code`, and the files import each other with relative
+paths. [Multi-file snippets](./14-multi-file.md).
+
+**Can I run snippets from people I do not trust?**
+Not in the page. Use sandbox mode, which runs them in an isolated iframe.
+[Sandbox mode](./15-sandbox.md).

@@ -109,6 +109,8 @@ useEffect(() => { preloadTranspiler(); }, []);`} />
       This **cannot** be interrupted. JavaScript offers no way to stop synchronous code running in its own realm, so no timer, `AbortController`, or `Promise.race` will ever fire. The tab has to be closed.
 
       The render-loop breaker catches the *asynchronous* variety (`setState` loops), which is the common one in practice.
+
+      If snippets can come from people you do not trust, run them in [sandbox mode](/docs/sandbox). With the sandbox on a separate site, a frozen snippet only freezes its own frame, and next-live replaces it.
     </AccordionContent>
   </AccordionItem>
 </Accordion>
@@ -203,6 +205,62 @@ export default () => <Card><Button>Save</Button></Card>;`} />
   transform={usingPrecompile ? precompiledTransform(compiled) : undefined}
 />`}
       />
+    </AccordionContent>
+  </AccordionItem>
+</Accordion>
+
+## Console, multi-file, and sandbox
+
+<Accordion type="single" collapsible className="w-full">
+  <AccordionItem value="console-empty">
+    <AccordionTrigger>console.log output does not show up in LiveConsole</AccordionTrigger>
+    <AccordionContent>
+      Check these, in order:
+
+      - **The panel is inside the provider.** `<LiveConsole>` reads the nearest `<LiveProvider>`. Outside one it stays empty and warns in development.
+      - **The snippet calls `console` directly.** `window.console.log(...)` and `globalThis.console.log(...)` go around capture on purpose. Write `console.log(...)`.
+      - **The call is made by the snippet.** Logs from modules you registered are your code's output, not the snippet's, and are not captured.
+      - **The level is not filtered out.** `<LiveConsole levels={['error']}>` hides everything else.
+
+      See [Console output](/docs/console#what-is-not-captured).
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="console-remount">
+    <AccordionTrigger>The preview remounted once when the console panel appeared</AccordionTrigger>
+    <AccordionContent>
+      Expected. The snippet has to run again so its `console` can be swapped for the capturing one. To avoid it, mount `<LiveConsole>` together with the provider and hide it with CSS until it is needed. Closing the panel never causes another remount.
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="multi-file-not-registered">
+    <AccordionTrigger>Module './Button' is not registered ... (imported from 'App.tsx')</AccordionTrigger>
+    <AccordionContent>
+      <CodeBlock language="text" code={`Module './components/Buton' is not registered in the next-live scope (imported from 'App.tsx').
+
+Did you mean './components/Button'?`} />
+      A multi-file snippet imported a file that is not in `files`. The message names the file that made the import and suggests the closest path. Check the spelling, the folder (`./` is the importing file's folder, `../` its parent), and that the file really is a key in `files`.
+
+      Bare names like `Button` go to the module registry. A file always needs `./`, `../` or `/`. See [Multi-file snippets](/docs/multi-file#how-imports-are-resolved).
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="undo-jumps">
+    <AccordionTrigger>Undo jumps into another file</AccordionTrigger>
+    <AccordionContent>
+      A single `<LiveEditor>` that switches between files shares one browser undo history. Give it a `key`, so each file gets its own editor:
+      <CodeBlock code={`const { activeFile } = useLiveContext();
+
+<LiveEditor key={activeFile} />`} />
+    </AccordionContent>
+  </AccordionItem>
+
+  <AccordionItem value="sandbox-empty">
+    <AccordionTrigger>Sandbox mode: the preview stays empty</AccordionTrigger>
+    <AccordionContent>
+      Look at `<LiveError>` first. Sandbox problems are reported there, with a checklist. The usual causes are a wrong `src`, your page's origin missing from the sandbox page's `allowedOrigins`, or a `frame-ancestors` header that does not list your page.
+
+      Open the sandbox URL in its own tab: you should see a short note saying it is a sandbox. See [Sandbox mode: troubleshooting](/docs/sandbox#troubleshooting).
     </AccordionContent>
   </AccordionItem>
 </Accordion>

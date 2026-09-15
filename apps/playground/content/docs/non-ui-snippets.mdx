@@ -1,6 +1,7 @@
 import { CodeBlock } from '@/components/docs/CodeBlock';
 import { NonUiDemo } from '@/components/docs/NonUiDemo';
 import { Callout } from '@/components/docs/Callout';
+import { nonUiDemo } from '@/lib/docs/demos';
 
 Not everything worth storing as editable code renders UI. Control panels accumulate validators, pricing rules, config builders: plain modules with no JSX.
 
@@ -11,16 +12,13 @@ compileModule(...)  // returns whatever the snippet exported`} />
 
 ## useLiveModule
 
+A snippet with no default export, just a function the host can call:
+
+<CodeBlock title="snippet.ts" code={nonUiDemo} />
+
+Run it for real. Each click calls the exported `run()`, which removes an item from the shared cart store and returns the new count:
+
 <NonUiDemo />
-
-Example snippet (no default export required):
-
-<CodeBlock code={`import { getCartCount, removeLastItem } from '@app/store';
-
-export function run() {
-  removeLastItem();
-  return getCartCount();
-}`} />
 
 Client usage:
 

@@ -138,3 +138,70 @@ export const runtimeErrorDemo = `export default function Broken() {
   return <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>;
 }
 `;
+
+/** Console capture demo from /docs/console. */
+export const consoleDemo = `const prices = [12, 30, 7];
+console.log('Prices:', prices);
+console.table(prices.map((price) => ({ price, withTax: price * 1.2 })));
+
+export default function App() {
+  console.info('Rendering App');
+  return <p>Look at the console panel below the preview.</p>;
+}
+`;
+
+/** Multi-file project from /docs/multi-file. */
+export const multiFileDemo: Record<string, string> = {
+  'App.tsx': `import { PriceTag } from './components/PriceTag';
+
+export default function App() {
+  return <PriceTag amount={19.5} />;
+}`,
+  'components/PriceTag.tsx': `import { Badge } from './Badge';
+import { formatPrice } from '../lib/format';
+import { theme } from '/theme';
+
+export function PriceTag({ amount }: { amount: number }) {
+  return (
+    <span style={{ color: theme.accent }}>
+      <Badge>Price</Badge> {formatPrice(amount)}
+    </span>
+  );
+}`,
+  'components/Badge.tsx': `import { CheckIcon } from '../icons';
+
+export function Badge({ children }: { children: React.ReactNode }) {
+  return (
+    <span>
+      <CheckIcon /> {children}
+    </span>
+  );
+}`,
+  'icons/index.tsx': `export function CheckIcon() {
+  return <span aria-hidden>✓</span>;
+}`,
+  'lib/format.ts': `export function formatPrice(amount: number) {
+  return '$' + amount.toFixed(2);
+}`,
+  'theme.ts': `export const theme = { accent: '#2563eb' };
+`,
+};
+
+/** Simple sandbox-mode demo from /docs/sandbox. */
+export const sandboxDemo = `import { useState } from 'react';
+
+export default function App() {
+  const [n, setN] = useState(0);
+  console.log('Sandbox render', n);
+
+  return (
+    <button
+      type="button"
+      onClick={() => setN((value) => value + 1)}
+      className="rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-muted"
+    >
+      clicked {n} times (inside the sandbox)
+    </button>
+  );
+}
+`;

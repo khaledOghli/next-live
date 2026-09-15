@@ -71,6 +71,44 @@ export function mapPosition(
 /** Identifies stack frames that came from evaluated snippet code. */
 export const SOURCE_URL_PREFIX = 'next-live:///';
 
+export interface UserFramePosition {
+  /** The `filePath` baked into the frame's `sourceURL`. */
+  file?: string;
+  line: number;
+  column?: number;
+}
+
+/** V8 `at x (next-live:///F:L:C)` and SpiderMonkey/JSC `x@next-live:///F:L:C`. */
+const USER_FRAME_RE = /next-live:\/\/\/([^\s()]+?):(\d+):(\d+)\)?\s*$/;
+const TRAILING_POSITION_RE = /:(\d+):(\d+)\)?\s*$/;
+
+/**
+ * The position of the innermost frame that came from evaluated snippet code.
+ *
+ * The file is read from the `sourceURL`, so a project with several files can
+ * map the position against the right one. A frame that mentions the prefix but
+ * not in the expected shape - an `eval at` chain, say - still yields a line,
+ * just without a file, which is what 1.0 reported for it.
+ */
+export function firstUserFrame(stack: string | undefined): UserFramePosition | null {
+  if (!stack) return null;
+  for (const raw of stack.split('\n')) {
+    if (!raw.includes(SOURCE_URL_PREFIX)) continue;
+    const line = raw.trim();
+
+    const match = USER_FRAME_RE.exec(line);
+    if (match?.[1] && match[2]) {
+      return { file: match[1], line: Number(match[2]), column: Number(match[3]) };
+    }
+
+    const loose = TRAILING_POSITION_RE.exec(line);
+    if (loose?.[1]) {
+      return { line: Number(loose[1]), column: loose[2] ? Number(loose[2]) : undefined };
+    }
+  }
+  return null;
+}
+
 /**
  * Drops host and React frames from a stack, leaving only the snippet's own.
  * Returns undefined when nothing in the stack came from user code.

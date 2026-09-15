@@ -17,5 +17,8 @@
   },
   "devDependencies": {
     "playwright": "^1.55.0"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5"
   }
 }

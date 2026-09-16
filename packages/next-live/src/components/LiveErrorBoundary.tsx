@@ -1,7 +1,7 @@
 'use client';
 
 import { Component } from 'react';
-import type { ErrorInfo, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export interface LiveErrorBoundaryProps {
   children: ReactNode;
@@ -53,12 +53,14 @@ export class LiveErrorBoundary extends Component<LiveErrorBoundaryProps, State> 
     return null;
   }
 
-  override componentDidCatch(error: Error, info: ErrorInfo): void {
+  // No logging here. React 19 already reports every error a boundary catches
+  // (through `onCaughtError`, `console.error` by default), and a second log of
+  // the same error would show up twice, as two issues in the Next.js dev overlay.
+  // The error reaches the host through `onError`, which is how `<LiveError>`
+  // shows it.
+  override componentDidCatch(error: Error): void {
     if (!this.mounted) return;
     this.props.onError(error);
-    if (process.env.NODE_ENV !== 'production') {
-      console.error('next-live: error in evaluated code\n', error, info.componentStack);
-    }
   }
 
   override componentDidUpdate(_prevProps: LiveErrorBoundaryProps, prevState: State): void {
@@ -66,6 +68,13 @@ export class LiveErrorBoundary extends Component<LiveErrorBoundaryProps, State> 
       // Recovery render succeeded. Drop the stale error from the previous compile.
       this.setState({ error: null, recovering: false });
     }
+  }
+
+  // Set here as well as on construction: in development, Strict Mode unmounts
+  // and remounts every component, and a flag cleared by that simulated unmount
+  // must come back, or every later error would be ignored.
+  override componentDidMount(): void {
+    this.mounted = true;
   }
 
   override componentWillUnmount(): void {

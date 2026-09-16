@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { LiveSandboxError } from '../../src/core/errors';
 import { createHostBridge } from '../../src/sandbox/host/bridge';
 import type { BridgeStatus, HostBridgeOptions } from '../../src/sandbox/host/bridge';
-import { PROTOCOL_NS } from '../../src/sandbox/protocol/messages';
+import { PROTOCOL_NS, RUNTIME_VERSION } from '../../src/sandbox/protocol/messages';
 
 type Wire = { type: string; [key: string]: unknown };
 
@@ -94,7 +94,7 @@ describe('host bridge: handshake', () => {
     t.dispatchReady();
 
     expect(t.posted).toHaveLength(1);
-    expect(t.posted[0]).toMatchObject({ origin: '*', data: { type: 'init', host: '1.1.0' } });
+    expect(t.posted[0]).toMatchObject({ origin: '*', data: { type: 'init', host: RUNTIME_VERSION } });
     expect(t.posted[0]?.ports).toHaveLength(1);
 
     t.acceptInit();

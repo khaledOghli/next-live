@@ -1,5 +1,6 @@
-import { compile } from '../../core/compile';
+import { compileWithPosition } from '../../core/compile';
 import { createRenderBudget } from '../../core/guards';
+import { enrichCaughtError, type PositionContext } from '../../core/runtime-error-map';
 import { serializeError } from '../../core/serialize-error';
 import { serializeValues } from '../../core/serialize-value';
 import type { ConsoleEntry, LiveRenderable, LiveScope, ModuleRegistry, TransformFn } from '../../core/types';
@@ -100,6 +101,7 @@ export function createSandboxRuntime(options: SandboxRuntimeOptions): SandboxRun
   let resizeObserver: ResizeObserver | undefined;
   let measurePending = false;
   let lastHeight = -1;
+  let positionContext: PositionContext | null = null;
 
   const send = (message: SandboxPortMessage) => {
     if (!port) return;
@@ -191,11 +193,13 @@ export function createSandboxRuntime(options: SandboxRuntimeOptions): SandboxRun
   };
 
   const reportRuntime = (error: unknown) => {
+    const raw = error instanceof Error ? error : new Error(String(error));
+    const enriched = enrichCaughtError(raw, positionContext);
     send({
       ...envelope('error'),
       revision: Math.max(0, renderedRevision),
       phase: 'runtime',
-      error: serializeError(error),
+      error: serializeError(enriched),
     });
   };
 
@@ -231,10 +235,11 @@ export function createSandboxRuntime(options: SandboxRuntimeOptions): SandboxRun
         ? { ...common, code: source.code }
         : { ...common, files: source.files, ...(source.entry !== undefined ? { entry: source.entry } : {}) };
 
-    compile(input).then(
-      (result) => {
+    compileWithPosition(input).then(
+      ({ result, positionContext: nextContext }) => {
         if (current.signal.aborted || revision !== latestRevision || disposed) return;
         renderedRevision = revision;
+        positionContext = nextContext;
         setSnapshot({ renderable: result.renderable, props: currentProps, mountKey: snapshot.mountKey + 1 });
         send({
           ...envelope('compiled'),

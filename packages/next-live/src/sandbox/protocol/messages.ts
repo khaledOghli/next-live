@@ -20,8 +20,11 @@ export const PROTOCOL_NS = 'next-live';
 /** Bumped only for incompatible changes. Host and sandbox must agree exactly. */
 export const PROTOCOL_VERSION = 1;
 
-/** The package version, sent in the handshake so mismatches can be explained. */
-export const RUNTIME_VERSION = '1.1.0';
+/**
+ * The package version, sent in the handshake so mismatches can be explained.
+ * Kept equal to `package.json` by `test/release-consistency.test.ts`.
+ */
+export const RUNTIME_VERSION = '1.2.0';
 
 export const LIMITS = {
   maxMessageChars: 8_192,

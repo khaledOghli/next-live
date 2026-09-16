@@ -6,6 +6,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-16
+
+A correctness release. The types now describe what the code does, the API
+reference matches both, and a test keeps all three in step from here on.
+Render-time errors gain line numbers. Code that follows the docs keeps working;
+the behaviour changes are listed under Changed and Fixed.
+
+### Added
+
+- **Missing public types.** `ResolvedModules` and `ResolveOptions` from `next-live`, the parameter and return types of `createRequire` and `resolveModules`. `FormatFn`, `FormatContext` and `FormatResult` from `next-live/editor` and `next-live/prettier`, the contract of `<LiveEditor format>` and `createPrettierFormatter`. All were already part of public signatures, but could not be imported.
+- **Line numbers for errors thrown while rendering.** Errors thrown while a snippet *evaluates* always had `line` and `column`, but errors thrown later, while React renders the component, did not. They now get the same mapping, from the compile on screen: `<LiveError>` shows `Line 3:14 - ...`, and a multi-file snippet names the `file`. This works in the page and in sandbox mode.
+- **API reference for everything exported.** `next-live/prettier` and `createPrettierFormatter`, the console helpers (`createConsoleStore`, `serializeValue`, `serializeValues`, `formatConsoleValue`, `formatConsoleArgs`), `LiveContext` and `LiveConsoleContext`, the `<LiveEditor>` imperative handle (`ref`, `LiveEditorHandle`), every `mountSandbox` option, the transpile options, each error's `code`, every `LiveSandboxErrorReason`, and `PROTOCOL_VERSION`.
+
+### Fixed
+
+- **`LiveRuntimeError` declares `line`, `column` and `file`.** They were always set at runtime and documented, but missing from the type, so `error.line` did not compile. They are optional and readonly. The fields are type-only declarations, so errors without a position still have exactly the keys they had.
+- **`signal` on `<LiveProvider>`, `useLiveRunner` and `useLiveModule` no longer disables cancellation.** A host signal replaced the one the scheduler cancels stale work with, so changing the code or unmounting stopped cancelling in-flight compiles. Both now apply. Aborting the host signal abandons the current compile, keeps the last result mounted, reports no error, and starts no new compile.
+- **Changing `resolveSubpaths` recompiles.** It was read by the compile but missing from what triggers one.
+- **Render errors show under React Strict Mode.** In development, Strict Mode (on by default in `next dev`) mounts, unmounts and remounts every component. `<LiveErrorBoundary>` marked itself unmounted on that simulated unmount and never marked itself mounted again, so a snippet that threw while rendering left a blank preview and no `<LiveError>` message. Production builds were not affected.
+- **A caught render error is logged once, not twice.** `<LiveErrorBoundary>` logged every error it caught in development, on top of React 19, which already logs them. In `next dev` each broken snippet showed up as two issues. The error still reaches `onError` and `<LiveError>`.
+- **API reference corrections**, in `docs/` and on the docs site:
+  - `<LiveErrorBoundary>`: `children` and `resetKey` are required, not only `onError`.
+  - `preloadTranspiler()` returns nothing, not a promise.
+  - `transpile(source, options?, transform?)`: `options` is optional.
+  - `compile` and `compileModule` accept `CompileFilesInput`.
+  - `errorPosition` also returns `file`.
+  - `normalizeModule` accepts any value.
+  - `mountSandbox` returns a `SandboxMount`.
+  - `precompiledTransform` has two overloads.
+  - `<LiveErrorBoundary>` is a class component.
+  - `denySpecifiers` denies a subtree with a key that *ends* in `/`.
+  - `useLiveRunner` does not accept `children`, `formatError` or `sandbox` either.
+  - Documented props that were missing: `signal` and `children` on `<LiveProvider>`; `highlightLineStyle`, `highlightLineClassName`, `onFormatError` and `ref` on `<LiveEditor>`. Documented fields that were missing: `code` and `setCode` from `useLiveModule`, `formatError` from `useLiveContext`, and the `useLiveConsole` result.
+
+### Changed
+
+- **Render errors reach `onError` as a `LiveRuntimeError`.** It has the same `message`, and the original error is its `cause`. This matches what errors thrown during evaluation have always been. A host that checked `error instanceof TypeError` should check `error.cause` instead.
+- **`transpile` has three parameters.** The public function exposed a fourth, `mode`, typed with `TranspileMode`, which was never exported. It was an internal switch for multi-file compiles, which still use it internally. Nothing documented it, but a call that passed it now ignores it.
+- `setTranspiler`'s parameter is written as `typeof import('sucrase') | null`. It is the same type as before, without a private alias.
+
+### Notes
+
+- The API reference is now tested against the TypeScript compiler (`test/docs`). The test fails when a prop, field, option, parameter, signature, error code or export changes without a docs update, for both `docs/06-api-reference.md` and the docs site.
+
 ## [1.1.0] - 2026-09-15
 
 Three new features, all opt-in. An app that changes nothing keeps its exact 1.0
@@ -100,7 +144,8 @@ unless it asks for it.
 - **`<LiveEditor>` is exported from `next-live/editor`, not `next-live`.** Preview-only pages that never edit snippets should import only from `next-live`, measured ~16 KB instead of ~97 KB when Prism is not needed.
 - `prism-react-renderer` is an **optional** peer dependency. Package managers do not install it automatically, so run `npm install prism-react-renderer` yourself if you import `next-live/editor`. Preview-only pages need nothing extra.
 
-[unreleased]: https://github.com/khaledOghli/next-live/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/khaledOghli/next-live/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/khaledOghli/next-live/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/khaledOghli/next-live/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/khaledOghli/next-live/releases/tag/v1.0.0
 [0.1.0]: https://github.com/khaledOghli/next-live/releases/tag/v0.1.0

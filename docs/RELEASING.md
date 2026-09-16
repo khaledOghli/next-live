@@ -29,8 +29,10 @@ Settings → Environments → `npm-publish` → Secrets → `NPM_TOKEN`.
 git switch develop && git pull
 ```
 
-1. Bump `version` in `packages/next-live/package.json`. Pre-1.0, a breaking
-   change bumps the **minor**.
+1. Bump `version` in `packages/next-live/package.json`, and set
+   `RUNTIME_VERSION` in `packages/next-live/src/sandbox/protocol/messages.ts`
+   to the same value. The sandbox handshake sends it, and
+   `test/release-consistency.test.ts` fails until the two match.
 2. In `packages/next-live/CHANGELOG.md`, rename `## [Unreleased]` to
    `## [x.y.z] - YYYY-MM-DD`, add a fresh empty `## [Unreleased]` above it, and
    update the comparison links at the bottom. The workflow **fails** if the

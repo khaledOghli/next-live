@@ -1,12 +1,7 @@
 'use client';
 
-import { useCallback } from 'react';
-import { compile } from '../core/compile';
-import type { CompileFilesInput, CompileInput } from '../core/compile';
-import type { CompileResult } from '../core/types';
-import { createRenderBudget } from '../core/guards';
-import { useCompileTask } from './useCompileTask';
 import type { LiveRunnerState, UseLiveRunnerOptions } from '../core/types';
+import { useInPageRunner } from './useInPageRunner';
 
 /**
  * The headless engine behind `<LiveProvider>` - compiles a snippet and hands
@@ -20,29 +15,6 @@ import type { LiveRunnerState, UseLiveRunnerOptions } from '../core/types';
  * For snippets that are not components, use {@link useLiveModule}.
  */
 export function useLiveRunner(options: UseLiveRunnerOptions): LiveRunnerState {
-  const { maxRendersPerSecond = 1000, ...taskOptions } = options;
-
-  const run = useCallback(
-    (input: CompileInput | CompileFilesInput): Promise<CompileResult> =>
-      // A fresh budget per compile, so fixing a snippet clears a tripped
-      // breaker without the user having to reload the page.
-      compile({ ...input, onRender: createRenderBudget({ maxRenders: maxRendersPerSecond }) }),
-    [maxRendersPerSecond],
-  );
-
-  const task = useCompileTask(taskOptions, run);
-  const renderable = task.result?.renderable ?? null;
-
-  return {
-    code: task.code,
-    setCode: task.setCode,
-    Component: renderable?.kind === 'component' ? renderable.component : null,
-    element: renderable?.kind === 'element' ? renderable.element : null,
-    error: task.error,
-    isCompiling: task.isCompiling,
-    compileId: task.compileId,
-    // Spread only for multi-file snippets, so a single snippet's state keeps
-    // exactly the keys it had in 1.0.
-    ...(task.project ?? {}),
-  };
+  // One implementation for the hook and the provider, so they cannot drift.
+  return useInPageRunner(options, null);
 }

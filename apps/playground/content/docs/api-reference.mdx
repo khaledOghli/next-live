@@ -28,10 +28,11 @@ import { precompile, validateSnippets } from 'next-live/server'; // server only`
 | Entry | Contains | Why it is separate |
 |---|---|---|
 | `next-live` | Provider, preview, error, file tabs, hooks, registry, engine | This is the main entry. |
-| `next-live/editor` | `<LiveEditor>` | The only thing needing `prism-react-renderer`, an **optional peer** you must install yourself. A preview-only page pays 16.1 KB instead of 97.2 KB. |
+| `next-live/editor` | `<LiveEditor>` and the `FormatFn` types | The only thing needing `prism-react-renderer`, an **optional peer** you must install yourself. A preview-only page pays 16.1 KB instead of 97.2 KB. |
 | `next-live/console` | `<LiveConsole>`, `useLiveConsole`, value formatting helpers | Only pages that show console output need the panel and its value inspector. |
 | `next-live/sandbox` | `mountSandbox`, `<LiveSandboxRoot>` | Used only on the sandbox page. It carries its own copy of the compiler. |
-| `next-live/server` | `precompile`, `precompileFiles`, `validateSnippet(s)`, `validateFiles` | Imports Sucrase statically, must never reach the client bundle. |
+| `next-live/server` | `precompile`, `precompileFiles`, `validateSnippet`, `validateSnippets`, `validateFiles` | Imports Sucrase statically, must never reach the client bundle. |
+| `next-live/prettier` | `createPrettierFormatter` | Loads Prettier on the first format. `prettier` is an **optional peer** you must install yourself. |
 
 ## Components
 
@@ -72,6 +73,8 @@ during the server pass.
     { name: 'production', type: 'boolean', default: 'true', notes: 'false selects react/jsx-dev-runtime for richer component stacks.' },
     { name: 'jsxRuntime', type: "'automatic' | 'classic'", default: "'automatic'" },
     { name: 'jsxImportSource', type: 'string', default: "'react'", notes: 'Register <source>/jsx-runtime if you change this.' },
+    { name: 'signal', type: 'AbortSignal', notes: 'Once aborted, the in-flight compile is abandoned and no new compile starts. The last result stays mounted, and no error is reported.' },
+    { name: 'children', type: 'ReactNode', notes: 'Everything that reads the provider: preview, editor, error, your own UI.' },
   ]}
 />
 
@@ -132,14 +135,50 @@ thing that pulls in `prism-react-renderer`.
     { name: 'file', type: 'string', default: 'the active file', notes: 'Multi-file snippets: pin this editor to one file.' },
     { name: 'lineNumbers', type: 'boolean', default: 'false', notes: 'Line-number gutter. Does not combine cleanly with wrap.' },
     { name: 'wrap', type: 'boolean', default: 'false', notes: 'Soft-wrap long lines.' },
-    { name: 'highlightLines', type: 'string | number | number[]', notes: '1-based lines to highlight.' },
+    { name: 'highlightLines', type: 'string | number | readonly number[]', notes: "1-based lines to highlight, e.g. '1,3-5' or [2, 4]." },
+    { name: 'highlightLineStyle', type: 'CSSProperties', default: 'pale blue background', notes: 'Style for highlightLines rows.' },
+    { name: 'highlightLineClassName', type: 'string', notes: 'Extra class on highlightLines rows.' },
     { name: 'autoIndent', type: 'boolean', default: 'true', notes: 'Enter keeps the leading whitespace of the current line.' },
-    { name: 'diagnostics', type: 'EditorDiagnostic[]', notes: 'Inline markers and a status list below the editor.' },
+    { name: 'diagnostics', type: 'readonly EditorDiagnostic[]', notes: "Inline markers and a status list below the editor. Each is { line, column?, message, severity? }, with severity 'error' or 'warning'." },
     { name: 'format / formatOnBlur', type: 'FormatFn / boolean', notes: 'Async formatter, e.g. from next-live/prettier. Shift+Alt+F runs it; formatOnBlur also runs it on blur.' },
+    { name: 'onFormatError', type: '(error: Error) => void', default: 'console.warn outside production', notes: 'Called when format rejects. The code is left as it was.' },
     { name: 'announceErrors', type: 'boolean', default: 'false', notes: 'Screen-reader live region for provider errors.' },
-    { name: 'onSelectionChange', type: '(selection) => void', notes: 'Called when the selection changes.' },
+    { name: 'onSelectionChange', type: '(selection: EditorSelection) => void', notes: 'Called when the caret or selection changes. EditorSelection is { start, end, direction, line, column }.' },
+    { name: 'ref', type: 'Ref<LiveEditorHandle>', notes: 'Imperative handle, see below.' },
+    { name: 'className / style', type: '-', notes: 'Applied to the wrapper.' },
   ]}
 />
+
+### Imperative handle
+
+Pass a `ref` to drive the editor from a toolbar or a keyboard shortcut. The
+handle is a `LiveEditorHandle`:
+
+<CodeBlock
+  code={`const editor = useRef<LiveEditorHandle>(null);
+
+<button onClick={() => editor.current?.insertText('console.log()')}>Insert log</button>
+<LiveEditor ref={editor} format={createPrettierFormatter()} />`}
+/>
+
+<PropTable
+  label="Method"
+  rows={[
+    { name: 'focus', type: '() => void', notes: 'Moves keyboard focus into the editor.' },
+    { name: 'getSelection', type: '() => EditorSelection | null', notes: 'The current selection, or null while the editor is not mounted.' },
+    { name: 'setSelection', type: '(start: number, end?: number) => void', notes: 'Selects a range. Leave out end to place the caret.' },
+    { name: 'insertText', type: '(text: string) => void', notes: 'Replaces the selection, keeping the edit on the native undo stack. Does nothing when read-only.' },
+    { name: 'format', type: '() => Promise<void>', notes: 'Runs the format prop. Does nothing without one, or when read-only.' },
+  ]}
+/>
+
+### Formatting
+
+`format` takes a `FormatFn`, `(code: string, ctx: FormatContext) => FormatResult`.
+`FormatContext` is `{ language, cursorOffset }`, and a `FormatResult` is the new
+code, or `{ code, cursorOffset? }` so the caret lands in the right place, either
+directly or as a promise. [`createPrettierFormatter`](#createprettierformatter)
+returns one ready to use.
 
 ### Standalone, without a provider
 
@@ -169,7 +208,9 @@ keystroke re-arms indentation, so Escape only ever releases the very next Tab.
 </Callout>
 
 `LiveEditorRenderProps` exposes `code`, `onChange`, `language`, `error`,
-`errorLine`, and `errorColumn`, everything a third-party editor needs:
+`errorLine`, and `errorColumn`, plus `diagnostics`, `selection` and
+`onSelectionChange` when the host provides them. That is everything a
+third-party editor needs:
 
 <CodeBlock
   title="Swapping in a different editor"
@@ -197,7 +238,7 @@ phases surface here, so it is a single place to look.
   ]}
 />
 
-<ApiEntry name="LiveErrorBoundary" kind="component" from="next-live" signature="function LiveErrorBoundary(props: LiveErrorBoundaryProps): ReactNode">
+<ApiEntry name="LiveErrorBoundary" kind="component" from="next-live" signature="class LiveErrorBoundary extends Component<LiveErrorBoundaryProps, State>">
 
 Used internally by `<LivePreview>`. Exported for custom UIs that render the
 compiled component themselves.
@@ -206,8 +247,9 @@ compiled component themselves.
 
 <PropTable
   rows={[
+    { name: 'children', type: 'ReactNode', required: true, notes: 'The content to guard.' },
     { name: 'onError', type: '(error: Error) => void', required: true, notes: 'Called when rendering the snippet throws.' },
-    { name: 'resetKey', type: 'unknown', notes: 'Changing it clears the error. Wire this to compileId.' },
+    { name: 'resetKey', type: 'unknown', required: true, notes: 'Changing it clears the error. Wire this to compileId.' },
     { name: 'fallback', type: 'ReactNode', notes: 'Rendered while in the error state.' },
   ]}
 />
@@ -247,7 +289,7 @@ Try it in the [Console output](/docs/console) demo.
     { name: 'clearButton', type: 'boolean', default: 'true', notes: 'Show the "Clear console" button.' },
     { name: 'announce', type: 'boolean', default: 'false', notes: 'Announce new output to screen readers.' },
     { name: 'emptyState', type: 'ReactNode', notes: 'Shown while there is no output.' },
-    { name: 'renderEntry', type: '(entry, { preview, serialized, stale }) => ReactNode', default: 'text preview', notes: "Replaces a row's content." },
+    { name: 'renderEntry', type: '(entry: ConsoleEntry, info: LiveConsoleEntryInfo) => ReactNode', default: 'text preview', notes: "Replaces a row's content. info is { preview, serialized, stale }." },
     { name: 'children', type: '(state: LiveConsoleState) => ReactNode', notes: 'Replaces the whole panel.' },
     { name: 'aria-label', type: 'string', default: "'Console output'" },
     { name: 'className / style', type: '-', notes: 'Applied to the wrapper.' },
@@ -265,8 +307,8 @@ context all work across the boundary. The timer below is running `useState` and
 <ApiEntry name="useLiveRunner" kind="hook" from="next-live" signature="function useLiveRunner(options: UseLiveRunnerOptions): LiveRunnerState">
 
 The headless engine behind `<LiveProvider>`, for building a completely custom
-UI. Accepts every `LiveProvider` option except `props`, `language`, `onError`,
-and `fallback`.
+UI. Accepts every `LiveProvider` prop except `children`, `fallback`,
+`formatError`, `language`, `onError`, `props` and `sandbox`.
 
 </ApiEntry>
 
@@ -292,7 +334,7 @@ For a multi-file snippet, `code` and `setCode` refer to the active file, and the
 result also has `files`, `entry`, `activeFile`, `setActiveFile`, `setFile` and
 `setFiles`. A single `code` snippet has none of these fields.
 
-<ApiEntry name="useLiveModule" kind="hook" from="next-live" signature="function useLiveModule<T>(options: UseLiveModuleOptions): LiveModuleState<T>">
+<ApiEntry name="useLiveModule" kind="hook" from="next-live" signature="function useLiveModule<T extends Record<string, unknown> = Record<string, unknown>>(options: UseLiveModuleOptions): LiveModuleState<T>">
 
 Runs a snippet and returns its exports, for stored code that is not a component:
 a validator, a transformer, a calculated field. Accepts every `useLiveRunner`
@@ -306,11 +348,16 @@ to break).
   rows={[
     { name: 'exports', type: 'T | null', notes: 'Everything the snippet exported. null until the first successful run.' },
     { name: 'value', type: 'unknown', notes: 'Shorthand for exports?.default.' },
+    { name: 'code', type: 'string', notes: 'Current source.' },
+    { name: 'setCode', type: '(code: string) => void', notes: 'Stable identity.' },
     { name: 'error', type: 'Error | null' },
     { name: 'isCompiling', type: 'boolean' },
     { name: 'compileId', type: 'number' },
   ]}
 />
+
+For a multi-file snippet it also returns `files`, `entry`, `activeFile`,
+`setActiveFile`, `setFile` and `setFiles`, exactly as `useLiveRunner` does.
 
 <Callout variant="warning" title="The type parameter is a claim, not a check">
   Writing `useLiveModule<PricingRule>()` does not verify that the snippet
@@ -324,8 +371,8 @@ to break).
 
 Reads the surrounding `<LiveProvider>`, for custom editors, toolbars, or status
 indicators. **Throws if called outside a provider.** Returns every
-`useLiveRunner` field plus `props`, `language`, `fallback`, and
-`reportRuntimeError`.
+`useLiveRunner` field plus `props`, `language`, `fallback`,
+`reportRuntimeError`, and `formatError` when the provider has one.
 
 Under `<LiveProvider sandbox>` it also returns `sandbox`, with the connection
 `status` (`connecting`, `ready`, `unresponsive` or `failed`) and a `reload()`
@@ -351,10 +398,19 @@ export function CompileStatus() {
 
 The state behind `<LiveConsole>`, for a custom panel. Mounting it switches
 capture on, just like the component. Accepts `maxEntries`, `clearOnCompile` and
-`levels`. `isStale(entry)` is true for output from code that has since been
-replaced.
+`levels`, with the same defaults as `<LiveConsole>`.
 
 </ApiEntry>
+
+<PropTable
+  label="Field"
+  rows={[
+    { name: 'entries', type: 'readonly ConsoleEntry[]', notes: 'Captured calls, oldest first, filtered by levels.' },
+    { name: 'clear', type: '() => void', notes: 'Empties the list.' },
+    { name: 'compileId', type: 'number', notes: "The provider's current compile." },
+    { name: 'isStale', type: '(entry: ConsoleEntry) => boolean', notes: 'True for output from code that has since been replaced.' },
+  ]}
+/>
 
 <CodeBlock
   title="A warnings-only panel"
@@ -375,6 +431,81 @@ export function Warnings() {
   );
 }`}
 />
+
+<ApiEntry name="createConsoleStore" kind="function" from="next-live/console" signature="function createConsoleStore(options?: ConsoleStoreOptions): ConsoleStore">
+
+An external store of console entries, shaped for `useSyncExternalStore`, for a
+panel that does not use `<LiveProvider>` at all. It has `push`, `clear`,
+`compiled`, `subscribe` and `getSnapshot`. `ConsoleStoreOptions` takes
+`maxEntries` and `clearOnCompile`, with the same defaults as `<LiveConsole>`.
+
+</ApiEntry>
+
+<ApiEntry name="serializeValue" kind="function" from="next-live/console" signature="function serializeValue(value: unknown, options?: SerializeOptions): SerializedValue">
+
+Turns any value into a clone-safe `SerializedValue`. Cycles, functions, DOM nodes
+and React elements become short descriptions. `serializeValues` does the same for
+a whole argument list, sharing one size budget.
+
+</ApiEntry>
+
+<ApiEntry name="serializeValues" kind="function" from="next-live/console" signature="function serializeValues(values: readonly unknown[], options?: SerializeOptions): SerializedValue[]">
+
+`SerializeOptions` bounds the work: `maxDepth` (4), `maxKeys` (100), `maxItems`
+(100), `maxString` (10 000) and `maxNodes` (2 000).
+
+</ApiEntry>
+
+<ApiEntry name="formatConsoleValue" kind="function" from="next-live/console" signature="function formatConsoleValue(value: SerializedValue, nested?: boolean): string">
+
+One `SerializedValue` as display text. `nested` quotes strings, the way they read
+inside an object or array.
+
+</ApiEntry>
+
+<ApiEntry name="formatConsoleArgs" kind="function" from="next-live/console" signature="function formatConsoleArgs(values: readonly SerializedValue[]): string">
+
+A whole call as one line, applying `%s`, `%d`, `%i`, `%f`, `%o` and `%O` the way
+browsers do, and dropping `%c`.
+
+</ApiEntry>
+
+<ApiEntry name="createPrettierFormatter" kind="function" from="next-live/prettier" signature="function createPrettierFormatter(options?: PrettierFormatterOptions): FormatFn">
+
+A `FormatFn` for `<LiveEditor format>`. Prettier and its plugins load on the first
+format, not before. Formats `tsx`, `ts`, `jsx` and `js`, and rejects any other
+language, which `onFormatError` receives. `PrettierFormatterOptions` takes
+`printWidth` (80), `tabWidth` (2), `useTabs` (false), `semi` (true) and
+`singleQuote` (false). The `FormatFn`, `FormatContext` and `FormatResult` types
+are exported here too.
+
+</ApiEntry>
+
+<CodeBlock
+  code={`import { LiveEditor } from 'next-live/editor';
+import { createPrettierFormatter } from 'next-live/prettier';
+
+const format = createPrettierFormatter({ singleQuote: true });
+
+<LiveEditor format={format} formatOnBlur />`}
+/>
+
+## Contexts
+
+<ApiEntry name="LiveContext" kind="constant" from="next-live" signature="const LiveContext: Context<LiveContextValue | null>">
+
+The context `<LiveProvider>` fills, `null` outside a provider. `useLiveContext` is
+the way to read it; the object itself is exported for class components and for
+React's `use()`.
+
+</ApiEntry>
+
+<ApiEntry name="LiveConsoleContext" kind="constant" from="next-live" signature="const LiveConsoleContext: Context<LiveConsoleContextValue | null>">
+
+What `<LiveConsole>` reads to switch capture on and receive entries, for hosts
+wiring their own panel.
+
+</ApiEntry>
 
 ## Registry helpers
 
@@ -444,50 +575,56 @@ production integrations.
 
 Lower-level exports, for a custom scheduler or for compiling outside React.
 
-<ApiEntry name="compile" kind="function" from="next-live" signature="function compile(input: CompileInput): Promise<CompileResult>">
+<ApiEntry name="compile" kind="function" from="next-live" signature="function compile(input: CompileInput | CompileFilesInput): Promise<CompileResult>">
 
-Transpile, resolve every import, then evaluate. Returns `{ renderable, via, code,
-imports }`. Throws if the snippet produced nothing renderable.
+Transpile, resolve every import, then evaluate. Takes a `CompileInput`, or a
+`CompileFilesInput` with `files` and `entry` instead of `code`. Returns
+`{ renderable, via, code, imports }`, plus `entry` and `files` for a multi-file
+snippet. Throws if the snippet produced nothing renderable.
 
 </ApiEntry>
 
-<ApiEntry name="compileModule" kind="function" from="next-live" signature="function compileModule(input: CompileInput): Promise<CompileModuleResult>">
+<ApiEntry name="compileModule" kind="function" from="next-live" signature="function compileModule(input: CompileInput | CompileFilesInput): Promise<CompileModuleResult>">
 
 The same pipeline, returning `{ exports, code, imports }` with no component
 required.
 
 </ApiEntry>
 
-<ApiEntry name="transpile" kind="function" from="next-live" signature="function transpile(source: string, options: TranspileOptions, transform?: TransformFn): Promise<TransformResult>">
+<ApiEntry name="transpile" kind="function" from="next-live" signature="function transpile(source: string, options?: TranspileOptions, transform?: TransformFn): Promise<TransformResult>">
 
 Source → CommonJS. No evaluation, no module resolution.
 
 </ApiEntry>
 
-<ApiEntry name="preloadTranspiler" kind="function" from="next-live" signature="function preloadTranspiler(): Promise<void>">
+<ApiEntry name="preloadTranspiler" kind="function" from="next-live" signature="function preloadTranspiler(): void">
 
-Warms the lazily-fetched Sucrase chunk during idle time, so the first compile
-does not pay for the download. Call it when you know an editor is about to open.
+Starts fetching the lazily-loaded Sucrase chunk, so the first compile does not
+pay for the download. It returns straight away and never throws; a failed
+download is reported by the compile that needs it. Call it when you know an editor is about to open.
 
 </ApiEntry>
 
-<ApiEntry name="precompiledTransform" kind="function" from="next-live" signature="function precompiledTransform(result: TransformResult): TransformFn">
+<ApiEntry name="precompiledTransform" kind="function" from="next-live" signature="function precompiledTransform(result: TransformResult): () => TransformResult
+function precompiledTransform(results: Readonly<Record<string, TransformResult>>): TransformFn">
 
 Wraps a server-precompiled result as a `transform`, so the client never loads
-Sucrase at all. Exported from the **client** entry, importing it from
+Sucrase at all. The second form takes the `files` record from `precompileFiles`
+and finds each file's output by its path. Exported from the **client** entry, importing it from
 `next-live/server` would pull the transpiler into your page.
 
 </ApiEntry>
 
-<ApiEntry name="setTranspiler" kind="function" from="next-live" signature="function setTranspiler(module: unknown): void">
+<ApiEntry name="setTranspiler" kind="function" from="next-live" signature="function setTranspiler(module: typeof import('sucrase') | null): void">
 
-Swaps the transpiler outright. For tests and custom backends.
+Swaps the transpiler outright, or restores lazy loading with `null`. For tests and
+custom backends. Experimental.
 
 </ApiEntry>
 
-<ApiEntry name="errorPosition" kind="function" from="next-live" signature="function errorPosition(error: Error | null | undefined): { line: number; column?: number } | null">
+<ApiEntry name="errorPosition" kind="function" from="next-live" signature="function errorPosition(error: Error | null | undefined): { line: number; column?: number; file?: string } | null">
 
-Reads `{ line, column? }` off a compile or runtime error, and returns `null`
+Reads `{ line, column?, file? }` off a compile or runtime error, and returns `null`
 when there is no position. This is what a custom editor uses to paint the
 failing line. Pass it the `error` from `useLiveRunner` or `useLiveContext`
 directly; a `null` error is handled.
@@ -516,7 +653,7 @@ runaway snippet clears a tripped breaker without a page reload.
 
 </ApiEntry>
 
-<ApiEntry name="normalizeModule" kind="function" from="next-live" signature="function normalizeModule(value: ModuleValue): NormalizedModule">
+<ApiEntry name="normalizeModule" kind="function" from="next-live" signature="function normalizeModule(value: unknown): NormalizedModule">
 
 The interop normalisation applied to every registry value: maps an arbitrary
 object, function, or namespace onto `default` plus named exports.
@@ -525,7 +662,8 @@ object, function, or namespace onto `default` plus named exports.
 
 <ApiEntry name="createRequire" kind="function" from="next-live" signature="function createRequire(resolved: ResolvedModules): (specifier: string) => NormalizedModule">
 
-The synchronous `require` shim handed to compiled snippets. It must stay
+The synchronous `require` shim handed to compiled snippets, over the
+`ResolvedModules` that `resolveModules` produces. It must stay
 synchronous: Sucrase emits `require()` at module top level, which cannot await.
 
 </ApiEntry>
@@ -533,7 +671,8 @@ synchronous: Sucrase emits `require()` at module top level, which cannot await.
 <ApiEntry name="resolveModules" kind="function" from="next-live" signature="function resolveModules(options: ResolveOptions): Promise<ResolvedModules>">
 
 Resolves every specifier a snippet needs *before* evaluation, which is why
-async loaders work at all despite `require()` being synchronous.
+async loaders work at all despite `require()` being synchronous. `ResolveOptions`
+takes `registry`, `specifiers`, `resolveSubpaths` and `signal`.
 
 </ApiEntry>
 
@@ -566,11 +705,25 @@ cache by hash, and the client never downloads the transpiler.
 `PrecompileResult extends TransformResult`, so a result hands straight to
 [`precompiledTransform`](#precompiledtransform).
 
+Every function in this entry also accepts the transpile options. Use the same
+values the client uses, or the precompiled output will not match:
+
+<PropTable
+  label="Option"
+  rows={[
+    { name: 'filePath', type: 'string', default: "'LiveCode.tsx'", notes: 'Name shown in stack traces.' },
+    { name: 'production', type: 'boolean', default: 'true', notes: 'false selects react/jsx-dev-runtime.' },
+    { name: 'jsxRuntime', type: "'automatic' | 'classic'", default: "'automatic'" },
+    { name: 'jsxImportSource', type: 'string', default: "'react'" },
+  ]}
+/>
+
 <ApiEntry name="validateSnippet" kind="function" from="next-live/server" signature="function validateSnippet(source: string, options?: ValidateOptions): ValidationResult">
 
 Statically checks that a snippet compiles and that every import resolves.
-**Never evaluates**, so it is safe to run over untrusted content in CI.
-`modules` accepts a registry object or just its keys.
+**Never evaluates**, so it is safe to run over untrusted content in CI. Returns
+`ok`, the `issues` found, and the `imports` the snippet uses. `modules` accepts a
+registry object or just its keys.
 
 </ApiEntry>
 
@@ -590,14 +743,14 @@ Statically checks that a snippet compiles and that every import resolves.
   caption="All policy flags are opt-in; defaults are unchanged."
 />
 
-<ApiEntry name="validateSnippets" kind="function" from="next-live/server" signature="function validateSnippets(snippets, options?): { id: string; result: ValidationResult }[]">
+<ApiEntry name="validateSnippets" kind="function" from="next-live/server" signature="function validateSnippets<T extends { id: string; source: string }>(snippets: readonly T[], options?: ValidateOptions): { id: string; result: ValidationResult }[]">
 
 Validates many at once and returns **only the failures**, so a CI step can
 assert on an empty array. Each snippet is `{ id, source }`.
 
 </ApiEntry>
 
-<ApiEntry name="precompileFiles" kind="function" from="next-live/server" signature="function precompileFiles(files: Record<string, string>, options?: PrecompileFilesOptions): PrecompileFilesResult">
+<ApiEntry name="precompileFiles" kind="function" from="next-live/server" signature="function precompileFiles(files: Readonly<Record<string, string>>, options?: PrecompileFilesOptions): PrecompileFilesResult">
 
 Precompiles every file of a multi-file snippet. Accepts `entry` plus the usual
 transpile options, and returns `{ files, entry, hash }`: one `PrecompileResult`
@@ -606,7 +759,7 @@ project. Pass `result.files` to `precompiledTransform` on the client.
 
 </ApiEntry>
 
-<ApiEntry name="validateFiles" kind="function" from="next-live/server" signature="function validateFiles(files: Record<string, string>, options?: ValidateFilesOptions): FilesValidationResult">
+<ApiEntry name="validateFiles" kind="function" from="next-live/server" signature="function validateFiles(files: Readonly<Record<string, string>>, options?: ValidateFilesOptions): FilesValidationResult">
 
 Validates a multi-file snippet without running it. Every file must compile, and
 every import must resolve to another file or to the registry. Accepts the
@@ -624,16 +777,20 @@ For the page inside the sandbox iframe. See [Sandbox mode](/docs/sandbox).
 <ApiEntry name="LiveSandboxRoot" kind="component" from="next-live/sandbox" signature="function LiveSandboxRoot(props: LiveSandboxRootProps): ReactNode">
 
 Turns the page it renders on into a sandbox: it waits for an allowed page to
-connect, then compiles and renders the snippets it sends. Accepts
+connect, then compiles and renders the snippets it sends. Accepts the same options
+as [`mountSandbox`](#mountsandbox) except `container` and `window`:
 `allowedOrigins` (required), `modules`, `scope`, `transform`, `maxCodeChars`,
 `maxFiles`, `onConnect` and `dangerouslyAllowSameOriginHost`.
 
 </ApiEntry>
 
-<ApiEntry name="mountSandbox" kind="function" from="next-live/sandbox" signature="function mountSandbox(options: MountSandboxOptions): { dispose(): void }">
+<ApiEntry name="mountSandbox" kind="function" from="next-live/sandbox" signature="function mountSandbox(options: MountSandboxOptions): SandboxMount">
 
-The same, without React on the page, for Vite or plain HTML. Throws straight away
-if `allowedOrigins` is missing or malformed.
+The same, without React on the page, for Vite or plain HTML. Returns a
+`SandboxMount`, whose `dispose()` disconnects from the host page and unmounts
+everything. Throws straight away if `allowedOrigins` is missing or malformed.
+`PROTOCOL_VERSION` is the version of the messages the host page and the sandbox
+exchange; deploy the same next-live version to both pages so they agree.
 
 </ApiEntry>
 
@@ -644,20 +801,62 @@ if `allowedOrigins` is missing or malformed.
 });`}
 />
 
+<PropTable
+  label="Option"
+  rows={[
+    { name: 'allowedOrigins', type: "readonly string[] | '*'", required: true, notes: "The host pages allowed to embed the sandbox and send it code. '*' accepts every origin and logs a warning each time." },
+    { name: 'modules', type: 'ModuleRegistry', default: '{}', notes: 'What snippets can import, as on <LiveProvider>.' },
+    { name: 'scope', type: 'LiveScope', default: '{}', notes: 'Free variables, as on <LiveProvider>.' },
+    { name: 'transform', type: 'TransformFn', notes: 'A custom transpile step, as on <LiveProvider>.' },
+    { name: 'maxCodeChars', type: 'number', default: '1000000', notes: 'Largest snippet accepted, in characters, summed across files.' },
+    { name: 'maxFiles', type: 'number', default: '200', notes: 'Most files accepted in one multi-file snippet.' },
+    { name: 'onConnect', type: '(info: { origin, hostVersion }) => void', notes: 'Called each time a host page connects.' },
+    { name: 'dangerouslyAllowSameOriginHost', type: 'boolean', default: 'false', notes: "Run even when the host page shares the sandbox's origin and did not sandbox the frame, so snippets could reach the host. For local debugging only." },
+    { name: 'container', type: 'HTMLElement', default: 'a new <div> in <body>', notes: 'Where snippets render.' },
+    { name: 'window', type: 'Window', default: 'the global window', notes: 'The window the sandbox runs in. For tests.' },
+  ]}
+/>
+
 ## Errors
 
 All extend `LiveError`, exported as `LiveErrorBase` so it does not collide with
-the `<LiveError>` component.
+the `<LiveError>` component. Every error has a readonly `code`, a `LiveErrorCode`,
+which is the stable thing to branch on.
 
-| Class | Raised when |
+| Class | `code` | Raised when |
+|---|---|---|
+| `LiveCompileError` | `'COMPILE'` | Parse/transpile failure, or a CSP blocking `eval`. Carries `line` and `column`, plus `file` for a multi-file snippet. |
+| `LiveRuntimeError` | `'RUNTIME'` | The snippet threw. Carries `line` and `column` where the stack can be mapped, plus `file` for a multi-file snippet. |
+| `RenderLoopError` | `'RENDER_LOOP'` | The render-rate breaker tripped. `instanceof LiveRuntimeError` is true. |
+| `ModuleNotFoundError` | `'MODULE_NOT_FOUND'` | An import specifier is not registered. Carries `specifier` and `available`, plus `importer` for a multi-file snippet. |
+| `NoComponentError` | `'NO_COMPONENT'` | The snippet produced nothing renderable. |
+| `TranspilerLoadError` | `'TRANSPILER_LOAD'` | Sucrase failed to load, usually a chunk-load failure. |
+| `LiveSandboxError` | `'SANDBOX'` | Sandbox mode only, for the `reason` below. |
+
+`line`, `column`, `file`, `importer` and `reason` are only present when they
+apply, so a single in-page snippet's errors have exactly the properties they had
+in 1.0.
+
+<CodeBlock
+  title="Painting the failing line"
+  code={`if (error instanceof LiveRuntimeError && error.line !== undefined) {
+  highlight(error.line, error.column);
+}`}
+/>
+
+`LiveSandboxError` carries a `reason`, a `LiveSandboxErrorReason`:
+
+| `reason` | Meaning |
 |---|---|
-| `LiveCompileError` | Parse/transpile failure, or a CSP blocking `eval`. Carries `line` and `column`, plus `file` for a multi-file snippet. |
-| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped, plus `file` for a multi-file snippet. |
-| `RenderLoopError` | The render-rate breaker tripped. `instanceof LiveRuntimeError` is true. |
-| `ModuleNotFoundError` | An import specifier is not registered. Carries `specifier` and `available`, plus `importer` for a multi-file snippet. |
-| `NoComponentError` | The snippet produced nothing renderable. |
-| `TranspilerLoadError` | Sucrase failed to load, usually a chunk-load failure. |
-| `LiveSandboxError` | Sandbox mode only: the iframe could not be reached, refused the page, froze too often, or received props it cannot copy. Carries `reason`. |
+| `'invalid-config'` | `sandbox.src` or `allowedOrigins` is not valid. |
+| `'same-origin-refused'` | `allowSameOrigin` was set for a sandbox on the page's own origin. |
+| `'load-failed'` | The frame could not be reached. |
+| `'handshake-timeout'` | The sandbox page did not answer in time. |
+| `'origin-rejected'` | The sandbox refused this page's origin. |
+| `'protocol-mismatch'` | The host page and the sandbox run incompatible next-live versions. |
+| `'unresponsive'` | The sandbox stopped answering, usually a snippet stuck in a loop. |
+| `'restart-limit'` | It froze too often and was not restarted again. |
+| `'props-not-cloneable'` | `props` held something that cannot be copied into the iframe. |
 
 A snippet that throws while rendering is caught by the boundary inside
 `<LivePreview>` and surfaced through `<LiveError>`; the page itself never goes
@@ -675,9 +874,12 @@ down:
 `RenderBudgetOptions`, `GlobResult`, `PositionedError`, `PrecompileResult`,
 `ValidationResult`, `ValidationIssue`, `ValidationIssueKind` (`syntax`,
 `unresolved-import`, `source-too-large`, `forbidden-import`), `ValidateOptions`,
-plus a props type for every component, `LiveProviderProps`, `LivePreviewProps`,
+`LiveErrorCode`, `FormatErrorFn`, `FormatErrorPosition`, `TransformResult`, plus
+a props type for every component, `LiveProviderProps`, `LivePreviewProps`,
 `LiveEditorProps`, `LiveEditorRenderProps`, `LiveErrorProps`,
-`LiveErrorBoundaryProps`, `LiveFileTabsProps`.
+`LiveErrorBoundaryProps`, `LiveFileTabsProps`, and from `next-live/editor`
+`LiveEditorHandle`, `EditorSelection` and `EditorDiagnostic`; from
+`next-live/prettier`: `PrettierFormatterOptions`.
 
 Added in 1.1: `CompileFilesInput`, `LiveProjectState`, `ConsoleEntry`,
 `ConsoleLevel`, `ConsoleMethod`, `LiveConsoleContextValue`, `LiveSandboxConfig`,
@@ -687,4 +889,9 @@ Added in 1.1: `CompileFilesInput`, `LiveProjectState`, `ConsoleEntry`,
 `FileValidationIssue`; from `next-live/console`: `LiveConsoleProps`,
 `LiveConsoleState`, `UseLiveConsoleOptions`, `ConsoleStore`, `SerializedValue`;
 from `next-live/sandbox`: `MountSandboxOptions`, `SandboxRuntimeOptions`,
-`LiveSandboxRootProps`.
+`LiveSandboxRootProps`, `SandboxMount`; from `next-live/console`:
+`LiveConsoleEntryInfo`, `ConsoleStoreOptions`, `SerializeOptions`.
+
+Added in 1.2: `ResolvedModules` and `ResolveOptions`, the types of `createRequire`
+and `resolveModules`; `FormatFn`, `FormatContext` and `FormatResult`, from both
+`next-live/editor` and `next-live/prettier`.

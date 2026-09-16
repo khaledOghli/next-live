@@ -15,3 +15,5 @@ export type {
   EditorSelection,
   EditorDiagnostic,
 } from './components/LiveEditor';
+// The `format` prop's contract, so a host can type its own formatter.
+export type { FormatContext, FormatFn, FormatResult } from './editor/format';

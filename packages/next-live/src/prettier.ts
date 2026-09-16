@@ -2,6 +2,8 @@
 
 import type { FormatFn } from './editor/format';
 
+export type { FormatContext, FormatFn, FormatResult } from './editor/format';
+
 export interface PrettierFormatterOptions {
   printWidth?: number;
   tabWidth?: number;

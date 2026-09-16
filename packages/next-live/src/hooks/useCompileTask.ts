@@ -100,6 +100,8 @@ export function useCompileTask<T>(
     modules,
     scope,
     transform,
+    resolveSubpaths,
+    signal,
     ...transpileOptions
   } = options;
 
@@ -185,7 +187,16 @@ export function useCompileTask<T>(
   }, [resetKey]);
 
   useEffect(() => {
+    // The host's signal says every result from here on is unwanted, so an
+    // already-aborted one means there is nothing to start.
+    if (signal?.aborted) return;
+
+    // One controller per compile, aborted by either side: this effect's cleanup
+    // (the inputs changed or the host unmounted) or the host's own signal.
+    // Handing the compile only one of the two would let the other go unheard.
     const controller = new AbortController();
+    const abortFromHost = () => controller.abort(signal?.reason);
+    signal?.addEventListener('abort', abortFromHost, { once: true });
     let cancelled = false;
 
     const spinnerTimer = setTimeout(() => {
@@ -193,6 +204,11 @@ export function useCompileTask<T>(
     }, 200);
 
     const timer = setTimeout(() => {
+      // Aborted while debouncing: starting the compile would only reject.
+      if (controller.signal.aborted) {
+        clearTimeout(spinnerTimer);
+        return;
+      }
       const current = latest.current;
       const startedAt = performance.now();
 
@@ -213,8 +229,9 @@ export function useCompileTask<T>(
       current
         .run({
           ...sourceInput,
-          signal: controller.signal,
           ...current.transpileOptions,
+          signal: controller.signal,
+          ...(resolveSubpaths !== undefined ? { resolveSubpaths } : {}),
           ...(current.modules ? { modules: current.modules } : {}),
           ...(current.scope ? { scope: current.scope } : {}),
           ...(current.transform ? { transform: current.transform } : {}),
@@ -240,7 +257,9 @@ export function useCompileTask<T>(
           }
         })
         .catch((error: unknown) => {
-          if (cancelled || !mountedRef.current) return;
+          // An aborted compile was abandoned on purpose, not broken: showing
+          // its AbortError would replace a working preview with a non-error.
+          if (cancelled || !mountedRef.current || controller.signal.aborted) return;
           const asError = error instanceof Error ? error : new Error(String(error));
           if (keepLastGood) {
             setState((previous) => ({ ...previous, error: asError }));
@@ -259,6 +278,7 @@ export function useCompileTask<T>(
 
     return () => {
       cancelled = true;
+      signal?.removeEventListener('abort', abortFromHost);
       controller.abort();
       clearTimeout(timer);
       clearTimeout(spinnerTimer);
@@ -278,6 +298,8 @@ export function useCompileTask<T>(
     transform,
     consoleOn,
     forwardConsole,
+    resolveSubpaths,
+    signal,
   ]);
 
   return {

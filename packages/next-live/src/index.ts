@@ -49,6 +49,7 @@ export {
   createRequire,
   resolveModules,
 } from './core/resolver';
+export type { ResolvedModules, ResolveOptions } from './core/resolver';
 export { createRegistry, registryFromGlob } from './core/registry';
 export type { GlobResult } from './core/registry';
 export { createRenderBudget } from './core/guards';

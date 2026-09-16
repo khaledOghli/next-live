@@ -17,8 +17,9 @@ Several entry points, so you only ship what you use:
 | Entry | Contains | Why separate |
 |---|---|---|
 | `next-live` | Provider, preview, error, file tabs, hooks, registry, engine | - |
-| `next-live/editor` | `<LiveEditor>` | It is the only thing needing `prism-react-renderer`. Measured: a preview-only page pays 16.1 KB instead of 97.2 KB. `prism-react-renderer` is an **optional peer dependency**: npm never installs it automatically, so run `npm install prism-react-renderer` yourself if you use this entry. |
-| `next-live/server` | `precompile`, `precompileFiles`, `validateSnippet(s)`, `validateFiles` | Imports Sucrase statically; must never reach the client bundle. |
+| `next-live/editor` | `<LiveEditor>` and the `FormatFn` types | It is the only thing needing `prism-react-renderer`. Measured: a preview-only page pays 16.1 KB instead of 97.2 KB. `prism-react-renderer` is an **optional peer dependency**: npm never installs it automatically, so run `npm install prism-react-renderer` yourself if you use this entry. |
+| `next-live/server` | `precompile`, `precompileFiles`, `validateSnippet`, `validateSnippets`, `validateFiles` | Imports Sucrase statically; must never reach the client bundle. |
+| `next-live/prettier` | `createPrettierFormatter` | Loads Prettier on the first format, so it costs nothing until then. `prettier` is an **optional peer dependency**. |
 | `next-live/console` | `<LiveConsole>`, `useLiveConsole`, value formatting helpers | Only pages that show console output need the panel and its value inspector. |
 | `next-live/sandbox` | `mountSandbox`, `<LiveSandboxRoot>` | Used only on the sandbox page. It carries its own copy of the compiler. |
 
@@ -58,6 +59,8 @@ else must be inside it.
 | `jsxRuntime` | `'automatic' \| 'classic'` | `'automatic'` | |
 | `jsxImportSource` | `string` | `'react'` | Register `<source>/jsx-runtime` if you change this. |
 | `sandbox` | `LiveSandboxConfig` | - | Run snippets in a sandboxed iframe instead of the page. `modules`, `scope` and `transform` are then ignored, and `props` must be plain data. See [Sandbox mode](./15-sandbox.md). |
+| `signal` | `AbortSignal` | - | Once aborted, the in-flight compile is abandoned and no new compile starts. The last result stays mounted, and no error is reported. |
+| `children` | `ReactNode` | - | Everything that reads the provider: preview, editor, error, your own UI. |
 
 ### `<LivePreview>`
 
@@ -97,17 +100,53 @@ stays small and has no SSR quirks.
 | `error` | `Error \| null` | from context | Error to underline. |
 | `file` | `string` | the active file | Multi-file snippets: pin this editor to one file. |
 | `autoIndent` | `boolean` | `true` | Enter preserves leading whitespace. Only when no modifier keys are held. |
-| `highlightLines` | `string \| number \| number[]` | - | 1-based lines to highlight. |
+| `highlightLines` | `string \| number \| readonly number[]` | - | 1-based lines to highlight, e.g. `'1,3-5'` or `[2, 4]`. |
+| `highlightLineStyle` | `CSSProperties` | pale blue background | Style for `highlightLines` rows. |
+| `highlightLineClassName` | `string` | - | Extra class on `highlightLines` rows. |
 | `lineNumbers` | `boolean` | `false` | Line-number gutter. Does not combine cleanly with `wrap`. |
 | `wrap` | `boolean` | `false` | Soft-wrap long lines. |
-| `diagnostics` | `EditorDiagnostic[]` | - | Inline markers and a status list below the editor. |
+| `diagnostics` | `readonly EditorDiagnostic[]` | - | Inline markers and a status list below the editor. Each is `{ line, column?, message, severity? }`, with `severity` `'error'` or `'warning'`. |
 | `format` | `FormatFn` | - | Async formatter (`next-live/prettier`). Shift+Alt+F when set. |
 | `formatOnBlur` | `boolean` | `false` | Run `format` when the editor blurs. |
+| `onFormatError` | `(error: Error) => void` | `console.warn` outside production | Called when `format` rejects. The code is left as it was. |
 | `announceErrors` | `boolean` | `false` | Screen-reader live region for provider errors. Off by default for 0.1.0 parity. |
-| `onSelectionChange` | `(sel) => void` | - | Selection change callback. |
+| `onSelectionChange` | `(selection: EditorSelection) => void` | - | Called when the caret or selection changes. `EditorSelection` is `{ start, end, direction, line, column }`. |
+| `ref` | `Ref<LiveEditorHandle>` | - | Imperative handle, see below. |
 | `className` / `style` | | | |
 
-`LiveEditorRenderProps` also exposes `error`, `errorLine`, and `errorColumn` for custom editors.
+#### Imperative handle
+
+Pass a `ref` to drive the editor from a toolbar or a keyboard shortcut. The
+handle is a `LiveEditorHandle`:
+
+```tsx
+const editor = useRef<LiveEditorHandle>(null);
+
+<button onClick={() => editor.current?.insertText('console.log()')}>Insert log</button>
+<LiveEditor ref={editor} format={createPrettierFormatter()} />
+```
+
+| Method | Type | Notes |
+|---|---|---|
+| `focus` | `() => void` | Moves keyboard focus into the editor. |
+| `getSelection` | `() => EditorSelection \| null` | The current selection, or `null` while the editor is not mounted. |
+| `setSelection` | `(start: number, end?: number) => void` | Selects a range. Leave out `end` to place the caret. |
+| `insertText` | `(text: string) => void` | Replaces the selection, keeping the edit on the native undo stack. Does nothing when read-only. |
+| `format` | `() => Promise<void>` | Runs the `format` prop. Does nothing without one, or when read-only. |
+
+#### Custom editors
+
+`renderEditor` receives a `LiveEditorRenderProps`: `code`, `onChange`,
+`language`, `error`, `errorLine`, `errorColumn`, and, when the host provides
+them, `diagnostics`, `selection` and `onSelectionChange`.
+
+#### Formatting
+
+`format` takes a `FormatFn`, `(code: string, ctx: FormatContext) => FormatResult`.
+`FormatContext` is `{ language, cursorOffset }`, and a `FormatResult` is the new
+code, or `{ code, cursorOffset? }` so the caret lands in the right place, either
+directly or as a promise. `createPrettierFormatter` from `next-live/prettier`
+returns one ready to use.
 
 #### Standalone, without a provider
 
@@ -180,8 +219,9 @@ Used internally by `<LivePreview>`. Exported for custom UIs.
 
 | Prop | Type | Notes |
 |---|---|---|
-| `onError` | `(error: Error) => void` | Required. |
-| `resetKey` | `unknown` | Changing it clears the error. Wire to `compileId`. |
+| `children` | `ReactNode` | Required. The content to guard. |
+| `onError` | `(error: Error) => void` | Required. Called when rendering `children` throws. |
+| `resetKey` | `unknown` | Required. Changing it clears the error. Wire to `compileId`. |
 | `fallback` | `ReactNode` | Rendered while in the error state. |
 
 ### `<LiveFileTabs>`
@@ -212,7 +252,7 @@ Shows `console.*` output from the snippet. Mounting it switches capture on.
 | `clearButton` | `boolean` | `true` | Show the "Clear console" button. |
 | `announce` | `boolean` | `false` | Announce new output to screen readers. |
 | `emptyState` | `ReactNode` | - | Shown while there is no output. |
-| `renderEntry` | `(entry, { preview, serialized, stale }) => ReactNode` | text preview | Replaces a row's content. |
+| `renderEntry` | `(entry: ConsoleEntry, info: LiveConsoleEntryInfo) => ReactNode` | text preview | Replaces a row's content. `info` is `{ preview, serialized, stale }`. |
 | `children` | `(state: LiveConsoleState) => ReactNode` | - | Replaces the whole panel. |
 | `aria-label` | `string` | `'Console output'` | |
 | `className` / `style` | | | Applied to the wrapper. |
@@ -230,8 +270,8 @@ const { code, setCode, Component, element, error, isCompiling, compileId } =
   useLiveRunner({ code: source, modules, scope });
 ```
 
-Accepts every `LiveProvider` option except `props`, `language`, `onError`, and
-`fallback` - including `onCompileSuccess`. Returns:
+Accepts every `LiveProvider` prop except `children`, `fallback`, `formatError`,
+`language`, `onError`, `props` and `sandbox`. Returns:
 
 | Field | Type | Notes |
 |---|---|---|
@@ -259,7 +299,9 @@ const { exports, value, error, isCompiling, compileId } =
 Accepts every `useLiveRunner` option except `maxRendersPerSecond` (nothing is
 rendered, so there is no render loop to break). Returns `exports` (null until
 the first successful run), `value` as shorthand for `exports?.default`, and the
-same `error` / `isCompiling` / `compileId` fields.
+same `code`, `setCode`, `error`, `isCompiling` and `compileId` fields as
+`useLiveRunner`. For a multi-file snippet it also returns `files`, `entry`,
+`activeFile`, `setActiveFile`, `setFile` and `setFiles`.
 
 The type parameter is a claim, not a check, validate the shape at runtime. See
 [Non-UI snippets](./09-non-ui-snippets.md).
@@ -268,7 +310,8 @@ The type parameter is a claim, not a check, validate the shape at runtime. See
 
 Reads the surrounding `<LiveProvider>`, for custom editors, toolbars, or status
 indicators. Throws if called outside a provider. Returns the `useLiveRunner`
-fields plus `props`, `language`, `fallback`, and `reportRuntimeError`.
+fields plus `props`, `language`, `fallback`, `reportRuntimeError`, and
+`formatError` when the provider has one.
 
 Under `<LiveProvider sandbox>` it also returns `sandbox`, with the connection
 `status` (`connecting`, `ready`, `unresponsive` or `failed`) and a `reload()`
@@ -284,8 +327,37 @@ on, just like the component.
 const { entries, clear, compileId, isStale } = useLiveConsole({ levels: ['warn', 'error'] });
 ```
 
-Accepts `maxEntries`, `clearOnCompile` and `levels`. `isStale(entry)` is true for
-output from code that has since been replaced.
+Accepts `maxEntries`, `clearOnCompile` and `levels`, with the same defaults as
+`<LiveConsole>`. Returns:
+
+| Field | Type | Notes |
+|---|---|---|
+| `entries` | `readonly ConsoleEntry[]` | Captured calls, oldest first, filtered by `levels`. |
+| `clear` | `() => void` | Empties the list. |
+| `compileId` | `number` | The provider's current compile. |
+| `isStale` | `(entry: ConsoleEntry) => boolean` | True for output from code that has since been replaced. |
+
+### Console helpers (from `next-live/console`)
+
+For a panel that does not use `<LiveProvider>` at all, or an inspector of your own.
+
+| Export | Purpose |
+|---|---|
+| `createConsoleStore(options?)` | An external store of entries for `useSyncExternalStore`, with `push`, `clear`, `compiled`, `subscribe` and `getSnapshot`. `ConsoleStoreOptions` takes `maxEntries` and `clearOnCompile`. |
+| `serializeValue(value, options?)` | Turns any value into a clone-safe `SerializedValue`. Cycles, functions, DOM nodes and React elements become short descriptions. |
+| `serializeValues(values, options?)` | The same for a whole argument list, sharing one size budget. `SerializeOptions` takes `maxDepth` (4), `maxKeys` (100), `maxItems` (100), `maxString` (10 000) and `maxNodes` (2 000). |
+| `formatConsoleValue(value, nested?)` | One `SerializedValue` as display text. `nested` quotes strings, the way they read inside an object or array. |
+| `formatConsoleArgs(values)` | A whole call as one line, applying `%s`, `%d`, `%i`, `%f`, `%o` and `%O` the way browsers do, and dropping `%c`. |
+
+## Contexts
+
+`useLiveContext` is the way to read a provider. The context objects themselves
+are exported for class components and for React's `use()`.
+
+| Export | Value | Notes |
+|---|---|---|
+| `LiveContext` | `Context<LiveContextValue \| null>` | `null` outside a provider. |
+| `LiveConsoleContext` | `Context<LiveConsoleContextValue \| null>` | Used by `<LiveConsole>` to switch capture on. |
 
 ## Registry helpers
 
@@ -335,25 +407,25 @@ production integrations.
 | Export | Purpose |
 |---|---|
 | `setTranspiler(module)` | Swap the transpiler implementation. Intended for tests and custom backends. |
-| `createRenderBudget(options)` | Configure the render-loop breaker used during evaluation. |
+| `createRenderBudget(options?)` | Configure the render-loop breaker used during evaluation. |
 
 ## Engine
 
 | Export | Purpose |
 |---|---|
-| `compile(input)` | Transpile + resolve + evaluate. Returns `{ renderable, via, code, imports }`. Throws if the snippet produced nothing renderable. Accepts `{ files, entry }` instead of `code`, and then also returns `entry` and `files`. |
+| `compile(input)` | Transpile + resolve + evaluate. Takes a `CompileInput`, or a `CompileFilesInput` (`{ files, entry }` instead of `code`). Returns `{ renderable, via, code, imports }`, plus `entry` and `files` for a multi-file snippet. Throws if the snippet produced nothing renderable. |
 | `compileModule(input)` | The same pipeline, returning `{ exports, code, imports }` with no component required. Accepts `files` too. |
 | `errorPosition(error)` | Reads `{ line, column?, file? }` from a compile or runtime error, if present. |
 | `serializeError(error)` / `rehydrateError(data)` | Turn any error into plain data and back into a real next-live error class. Used for errors that cross into or out of the sandbox iframe. |
 | `preloadSandboxHost()` | Start downloading the sandbox host code before a `<LiveProvider sandbox>` needs it. |
-| `transpile(source, options, transform?)` | Source → CommonJS. No evaluation. |
+| `transpile(source, options?, transform?)` | Source → CommonJS. No evaluation. |
 | `preloadTranspiler()` | Warm the Sucrase chunk during idle time. |
 | `precompiledTransform(result)` | Wraps a server-precompiled result as a `transform`, so the client never loads Sucrase. Also accepts the `files` record from `precompileFiles`. Exported from the **client** entry - importing it from `next-live/server` would pull the transpiler into your page. |
-| `setTranspiler(module)` | Swap the transpiler. For tests and custom backends. |
-| `normalizeModule(value)` | The interop normalisation applied to registry values. |
-| `createRequire(resolved)` | The synchronous `require` shim. |
-| `resolveModules(options)` | Resolve specifiers against a registry. |
-| `createRenderBudget(options)` | The render-loop breaker. |
+| `normalizeModule(value)` | The interop normalisation applied to registry values. Accepts any value. |
+| `createRequire(resolved)` | The synchronous `require` shim, over a `ResolvedModules`. |
+| `resolveModules(options)` | Resolve specifiers against a registry. Takes a `ResolveOptions` (`registry`, `specifiers`, `resolveSubpaths?`, `signal?`) and returns a `ResolvedModules`. |
+| `createRenderBudget(options?)` | The render-loop breaker. Experimental, see above. |
+| `setTranspiler(module)` | Experimental, see above. |
 
 ## Server entry: `next-live/server`
 
@@ -375,6 +447,17 @@ Transpiles to the same CommonJS the browser path produces. Returns a
 `PrecompileResult extends TransformResult`, so a result can be handed straight
 to [`precompiledTransform`](#engine).
 
+Transpile options, accepted by every function in this entry:
+
+| Option | Type | Default | Notes |
+|---|---|---|---|
+| `filePath` | `string` | `'LiveCode.tsx'` | Name shown in stack traces. |
+| `production` | `boolean` | `true` | `false` selects `react/jsx-dev-runtime`. |
+| `jsxRuntime` | `'automatic' \| 'classic'` | `'automatic'` | |
+| `jsxImportSource` | `string` | `'react'` | |
+
+Use the same values the client uses, or the precompiled output will not match.
+
 ### `validateSnippet(source, options?)`
 
 Statically checks that a snippet compiles and that every import resolves.
@@ -385,7 +468,9 @@ const result = validateSnippet(source, { modules: ['@app/store', 'big-lib/'] });
 // { ok, issues: [{ kind, message, specifier?, suggestion?, line?, column? }], imports }
 ```
 
-`modules` accepts a registry object or just its keys.
+Returns a `ValidationResult`: `ok`, the `issues` found, and the `imports` the
+snippet uses. `modules` accepts a registry object or just its keys. The transpile
+options above apply too.
 
 Optional policy flags (all opt-in; defaults unchanged):
 
@@ -394,12 +479,12 @@ Optional policy flags (all opt-in; defaults unchanged):
 | `maxSourceBytes` | Reject snippets over this UTF-8 byte count before transpile. |
 | `forbidNodeBuiltins` | Treat `node:*` imports as forbidden. |
 | `forbidRemoteImports` | Treat `https://`, `http://`, and `//` imports as forbidden. |
-| `denySpecifiers` | Deny listed specifiers even when registered (prefix `/` denies a subtree). |
+| `denySpecifiers` | Deny listed specifiers even when registered. A key ending in `/` denies the whole subtree. |
 
 ### `validateSnippets(snippets, options?)`
 
-Validates many at once and returns only the failures, as
-`{ id, result }[]`. See [Validating in CI](./10-validating-in-ci.md).
+Validates many `{ id, source }` snippets at once and returns only the failures,
+as `{ id, result }[]`. See [Validating in CI](./10-validating-in-ci.md).
 
 ### `precompileFiles(files, options?)`
 
@@ -422,38 +507,77 @@ For the page inside the sandbox iframe. See [Sandbox mode](./15-sandbox.md).
 
 ### `mountSandbox(options)`
 
-Turns the current page into a sandbox and returns `{ dispose() }`. Throws straight
-away if `allowedOrigins` is missing or malformed.
+Turns the current page into a sandbox and returns a `SandboxMount`, whose
+`dispose()` disconnects from the host page and unmounts everything. Throws
+straight away if `allowedOrigins` is missing or malformed.
 
 ```ts
 mountSandbox({ modules: { '@acme/ui': ui }, allowedOrigins: ['https://app.example.com'] });
 ```
 
+| Option | Type | Default | Notes |
+|---|---|---|---|
+| `allowedOrigins` | `readonly string[] \| '*'` | - | Required. The host pages allowed to embed the sandbox and send it code, e.g. `['https://app.example.com']`. `'*'` accepts every origin and logs a warning each time. |
+| `modules` | `ModuleRegistry` | `{}` | What snippets can import, as on `<LiveProvider>`. |
+| `scope` | `LiveScope` | `{}` | Free variables, as on `<LiveProvider>`. |
+| `transform` | `TransformFn` | - | A custom transpile step, as on `<LiveProvider>`. |
+| `maxCodeChars` | `number` | `1000000` | Largest snippet accepted, in characters, summed across files. |
+| `maxFiles` | `number` | `200` | Most files accepted in one multi-file snippet. |
+| `onConnect` | `(info: { origin, hostVersion }) => void` | - | Called each time a host page connects. |
+| `dangerouslyAllowSameOriginHost` | `boolean` | `false` | Run even when the host page shares the sandbox's origin and did not sandbox the frame, so snippets could reach the host. For local debugging only. |
+| `container` | `HTMLElement` | a new `<div>` in `<body>` | Where snippets render. `mountSandbox` only. |
+| `window` | `Window` | the global `window` | The window the sandbox runs in. For tests. |
+
+`PROTOCOL_VERSION` is the version of the message protocol between the host page
+and the sandbox. Both sides must agree, so deploy the same next-live version to
+both pages.
+
 ### `<LiveSandboxRoot>`
 
 The same, as a React component, for frameworks that already render the page with
-React. Takes the same options as props.
-
-Both accept `allowedOrigins` (required), `modules`, `scope`, `transform`,
-`maxCodeChars`, `maxFiles`, `onConnect` and `dangerouslyAllowSameOriginHost`.
+React. Takes the same options as props, except `container` and `window`:
+`allowedOrigins` (required), `modules`, `scope`, `transform`, `maxCodeChars`,
+`maxFiles`, `onConnect` and `dangerouslyAllowSameOriginHost`.
 
 ## Errors
 
 All extend `LiveError` (exported as `LiveErrorBase` to avoid colliding with the
-`<LiveError>` component).
+`<LiveError>` component). Every error has a readonly `code`, a `LiveErrorCode`,
+which is the stable thing to branch on:
 
-| Class | Raised when |
+| Class | `code` | Raised when |
+|---|---|---|
+| `LiveCompileError` | `'COMPILE'` | Parse/transpile failure, or CSP blocking `eval`. Carries `line` and `column`, plus `file` for a multi-file snippet. |
+| `LiveRuntimeError` | `'RUNTIME'` | The snippet threw. Carries `line` and `column` where the stack can be mapped, plus `file` for a multi-file snippet. `RenderLoopError` extends this. |
+| `RenderLoopError` | `'RENDER_LOOP'` | The render-rate breaker tripped. `instanceof LiveRuntimeError` is true. |
+| `ModuleNotFoundError` | `'MODULE_NOT_FOUND'` | An import specifier is not registered. Carries `specifier` and `available`, plus `importer` for a multi-file snippet. |
+| `NoComponentError` | `'NO_COMPONENT'` | The snippet produced nothing renderable. |
+| `TranspilerLoadError` | `'TRANSPILER_LOAD'` | Sucrase failed to load (usually a chunk-load failure). |
+| `LiveSandboxError` | `'SANDBOX'` | Sandbox mode only: see `reason` below. |
+
+`line`, `column`, `file`, `importer` and `reason` are only present when they
+apply, so errors from a single in-page snippet have exactly the properties they
+had in 1.0.
+
+```ts
+if (error instanceof LiveRuntimeError && error.line !== undefined) {
+  highlight(error.line, error.column);
+}
+```
+
+`LiveSandboxError` carries a `reason`, a `LiveSandboxErrorReason`:
+
+| `reason` | Meaning |
 |---|---|
-| `LiveCompileError` | Parse/transpile failure, or CSP blocking `eval`. Carries `line` and `column`, plus `file` for a multi-file snippet. |
-| `LiveRuntimeError` | The snippet threw. Carries `line` where it can be mapped, plus `file` for a multi-file snippet. `RenderLoopError` extends this. |
-| `RenderLoopError` | The render-rate breaker tripped. `instanceof LiveRuntimeError` is true. |
-| `ModuleNotFoundError` | An import specifier is not registered. Carries `specifier` and `available`, plus `importer` for a multi-file snippet. |
-| `NoComponentError` | The snippet produced nothing renderable. |
-| `TranspilerLoadError` | Sucrase failed to load (usually a chunk-load failure). |
-| `LiveSandboxError` | Sandbox mode only: the iframe could not be reached, refused the page, froze too often, or received props it cannot copy. Carries `reason`. `code` is `'SANDBOX'`. |
-
-`file`, `importer` and `reason` are only present when they apply, so errors from a
-single in-page snippet have exactly the properties they had in 1.0.
+| `'invalid-config'` | `sandbox.src` or `allowedOrigins` is not valid. |
+| `'same-origin-refused'` | `allowSameOrigin` was set for a sandbox on the page's own origin. |
+| `'load-failed'` | The frame could not be reached. |
+| `'handshake-timeout'` | The sandbox page did not answer in time. |
+| `'origin-rejected'` | The sandbox refused this page's origin. |
+| `'protocol-mismatch'` | The host page and the sandbox run incompatible next-live versions. |
+| `'unresponsive'` | The sandbox stopped answering, usually a snippet stuck in a loop. |
+| `'restart-limit'` | It froze too often and was not restarted again. |
+| `'props-not-cloneable'` | `props` held something that cannot be copied into the iframe. |
 
 ## Types
 
@@ -464,7 +588,12 @@ single in-page snippet have exactly the properties they had in 1.0.
 `RenderBudgetOptions`, `GlobResult`, `CompileModuleResult`, `LiveModuleState`,
 `UseLiveModuleOptions`, `PositionedError`, `ValidationResult`, `ValidationIssue`,
 `ValidationIssueKind` (`syntax`, `unresolved-import`, `source-too-large`,
-`forbidden-import`), `ValidateOptions`, plus the props type for each component.
+`forbidden-import`), `ValidateOptions`, `LiveErrorCode`, `FormatErrorFn`,
+`FormatErrorPosition`, `PrecompileResult`, `TransformResult`, and the props type
+for each component: `LiveProviderProps`, `LivePreviewProps`, `LiveErrorProps`,
+`LiveErrorBoundaryProps`, `LiveFileTabsProps`, `LiveEditorProps`,
+`LiveEditorRenderProps`, `LiveEditorHandle`, `EditorSelection`,
+`EditorDiagnostic`; from `next-live/prettier`: `PrettierFormatterOptions`.
 
 Added in 1.1: `CompileFilesInput`, `LiveProjectState`, `ConsoleEntry`,
 `ConsoleLevel`, `ConsoleMethod`, `LiveConsoleContextValue`, `LiveSandboxConfig`,
@@ -474,7 +603,12 @@ Added in 1.1: `CompileFilesInput`, `LiveProjectState`, `ConsoleEntry`,
 `FileValidationIssue`; from `next-live/console`: `LiveConsoleState`,
 `UseLiveConsoleOptions`, `ConsoleStore`, `SerializedValue`; from
 `next-live/sandbox`: `MountSandboxOptions`, `SandboxRuntimeOptions`,
-`LiveSandboxRootProps`.
+`LiveSandboxRootProps`, `SandboxMount`; from `next-live/console`: `LiveConsoleProps`,
+`LiveConsoleEntryInfo`, `ConsoleStoreOptions`, `SerializeOptions`.
+
+Added in 1.2: `ResolvedModules` and `ResolveOptions`, the types of `createRequire`
+and `resolveModules`; `FormatFn`, `FormatContext` and `FormatResult`, from both
+`next-live/editor` and `next-live/prettier`.
 
 ---
 

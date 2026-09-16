@@ -37,7 +37,7 @@ export function preloadTranspiler(): void {
  * Replaces the loaded transpiler. Intended for tests and custom backends.
  * @experimental Not covered by semver. May change in minor releases.
  */
-export function setTranspiler(module: SucraseModule | null): void {
+export function setTranspiler(module: typeof import('sucrase') | null): void {
   transpilerPromise = module === null ? null : Promise.resolve(module);
 }
 
@@ -155,11 +155,26 @@ export function runTranspile(
  * evaluation (see `evaluate.ts`). Style 2 is not a valid module body on its
  * own, so it is wrapped in `export default (...)`.
  */
-export async function transpile(
+export function transpile(
   source: string,
   options: TranspileOptions = {},
   transform?: import('./types').TransformFn,
-  mode: TranspileMode = 'auto',
+): Promise<TransformResult> {
+  return transpileSource(source, options, transform, 'auto');
+}
+
+/**
+ * `transpile` plus the mode switch multi-file projects need: a non-entry file
+ * is always a module, never a bare expression.
+ *
+ * Kept off the public signature on purpose. `TranspileMode` is not exported,
+ * so a parameter typed with it would be one callers can see but cannot name.
+ */
+export async function transpileSource(
+  source: string,
+  options: TranspileOptions,
+  transform: import('./types').TransformFn | undefined,
+  mode: TranspileMode,
 ): Promise<TransformResult> {
   const resolved = { ...defaultTranspileOptions, ...options };
 

@@ -4,9 +4,10 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { ReactNode } from 'react';
 import { LiveConsoleContext } from '../context/LiveConsoleContext';
 import { LiveContext } from '../context/LiveContext';
+import { enrichCaughtError, type PositionContext } from '../core/runtime-error-map';
 import { rehydrateError } from '../core/serialize-error';
 import { useCompileTask } from '../hooks/useCompileTask';
-import { useLiveRunner } from '../hooks/useLiveRunner';
+import { useInPageRunner } from '../hooks/useInPageRunner';
 import type { ConsoleEntry, FormatErrorFn, LiveSandboxConfig, UseLiveRunnerOptions } from '../core/types';
 
 export interface LiveProviderProps extends Omit<UseLiveRunnerOptions, 'code'> {
@@ -170,11 +171,16 @@ function InPageLiveProvider(props: LiveProviderProps): ReactNode {
     };
   }, []);
 
-  const runner = useLiveRunner({
-    code,
-    ...runnerOptions,
-    ...(onConsole !== undefined || consoleAttached ? { onConsole: dispatchConsole } : {}),
-  });
+  const positionContextRef = useRef<PositionContext | null>(null);
+
+  const runner = useInPageRunner(
+    {
+      code,
+      ...runnerOptions,
+      ...(onConsole !== undefined || consoleAttached ? { onConsole: dispatchConsole } : {}),
+    },
+    positionContextRef,
+  );
 
   // Errors thrown while *rendering* the snippet arrive from the error boundary
   // rather than the compiler, so they are tracked here and merged below. That
@@ -201,13 +207,14 @@ function InPageLiveProvider(props: LiveProviderProps): ReactNode {
     (error: Error) => {
       if (!mountedRef.current) return;
       const compileId = compileIdRef.current;
+      const enriched = enrichCaughtError(error, positionContextRef.current);
       const last = lastRuntimeReport.current;
-      if (last !== null && last.compileId === compileId && last.message === error.message) {
+      if (last !== null && last.compileId === compileId && last.message === enriched.message) {
         return;
       }
-      lastRuntimeReport.current = { compileId, message: error.message };
-      setRuntimeError({ error, compileId });
-      onError?.(error);
+      lastRuntimeReport.current = { compileId, message: enriched.message };
+      setRuntimeError({ error: enriched, compileId });
+      onError?.(enriched);
     },
     [onError],
   );

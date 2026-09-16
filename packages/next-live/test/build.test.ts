@@ -151,8 +151,10 @@ describe.skipIf(!built)('build output', () => {
     const BUDGET_KB: Record<string, number> = {
       // 38.5 KB at 1.0.0. 1.1 adds console capture (~3.9 KB), multi-file
       // projects (~12 KB across the compiler, path resolver and source state)
-      // and the sandbox switch. Measured ~63 KB raw, ~12 KB minified + gzip.
-      'index.js': 72,
+      // and the sandbox switch: 69.4 KB raw, 13.2 KB minified + gzip. 1.2 adds
+      // line numbers for render-time errors and linked abort signals: 72.1 KB
+      // raw, 13.6 KB minified + gzip (+336 bytes).
+      'index.js': 80,
       // Measured ~21.7 KB at 1.0.0. 1.1 adds the `file` prop for multi-file
       // snippets, which does not fit in the 300 bytes that were left.
       'editor.js': 24,

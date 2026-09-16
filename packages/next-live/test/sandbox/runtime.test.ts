@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { defineLoader } from '../../src/core/resolver';
-import { PROTOCOL_NS } from '../../src/sandbox/protocol/messages';
+import { PROTOCOL_NS, RUNTIME_VERSION } from '../../src/sandbox/protocol/messages';
 import { createSandboxRuntime } from '../../src/sandbox/runtime/core';
 import type { SandboxRuntimeOptions } from '../../src/sandbox/runtime/core';
 
@@ -84,7 +84,7 @@ describe('sandbox runtime: setup', () => {
   it('announces itself to the single allowed origin', () => {
     const t = start();
     expect(t.parentPosts[0]).toEqual({
-      data: { ns: PROTOCOL_NS, v: 1, type: 'ready', runtime: '1.1.0' },
+      data: { ns: PROTOCOL_NS, v: 1, type: 'ready', runtime: RUNTIME_VERSION },
       target: 'https://app.test',
     });
   });
@@ -115,7 +115,7 @@ describe('sandbox runtime: connecting', () => {
     const t = start({ onConnect });
     const host = t.connect();
     await until(() => host.of('connected').length > 0);
-    expect(host.of('connected')[0]).toMatchObject({ session: 'session-1', runtime: '1.1.0' });
+    expect(host.of('connected')[0]).toMatchObject({ session: 'session-1', runtime: RUNTIME_VERSION });
     expect(onConnect).toHaveBeenCalledWith({ origin: 'https://app.test', hostVersion: '1.1.0' });
   });
 
@@ -258,6 +258,32 @@ describe('sandbox runtime: compiling', () => {
     t.runtime.reportRenderError(new TypeError('boom'));
     await until(() => host.of('error').length > 0);
     expect(host.of('error')[0]).toMatchObject({ revision: 4, phase: 'runtime', error: { code: 'RUNTIME', message: 'boom' } });
+  });
+
+  it('gives a render error the line it threw on, using the compile on screen', async () => {
+    const t = start();
+    const host = t.connect();
+    await until(() => host.of('connected').length > 0);
+
+    const code = ['export default function App() {', '  const items = null;', '  return items.length;', '}'].join('\n');
+    host.send('update', update(5, code));
+    await until(() => host.of('compiled').length > 0);
+
+    // A render error as the boundary would catch it: its stack names the
+    // snippet's generated line, which the compile's own mapping turns back into
+    // line 3 of what the author wrote.
+    let thrown: unknown;
+    try {
+      const App = (t.runtime.getSnapshot().renderable as { kind: 'component'; component: () => unknown }).component;
+      App();
+    } catch (error) {
+      thrown = error;
+    }
+    expect(thrown).toBeInstanceOf(TypeError);
+
+    t.runtime.reportRenderError(thrown as Error);
+    await until(() => host.of('error').length > 0);
+    expect(host.of('error')[0]).toMatchObject({ revision: 5, phase: 'runtime', error: { code: 'RUNTIME', line: 3 } });
   });
 
   it('forgets everything on reset', async () => {

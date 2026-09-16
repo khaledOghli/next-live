@@ -1,9 +1,8 @@
 import { builtinModules } from './builtins';
 import { createConsoleSession } from './console';
-import { LiveCompileError, LiveError, LiveRuntimeError, ModuleNotFoundError } from './errors';
+import { LiveCompileError, LiveRuntimeError, ModuleNotFoundError } from './errors';
 import { evaluate, pickRenderable, runModule } from './evaluate';
 import type { ModuleResult } from './evaluate';
-import type { PositionedError } from './positions';
 import {
   normalizeFiles,
   relativeSpecifier,
@@ -13,8 +12,14 @@ import {
 import type { ProjectFile } from './project';
 import { injectRenderBudgetTick } from './inject-render-budget';
 import { createRequire, resolveModules, scanRequires } from './resolver';
-import { filterUserFrames, firstUserFrame, mapPosition } from './stacks';
-import { defaultTranspileOptions, transpile } from './transpile';
+import {
+  enrichProjectError,
+  enrichRuntimeError,
+  type LineMeta,
+  type PositionContext,
+} from './runtime-error-map';
+import { firstUserFrame, mapPosition } from './stacks';
+import { defaultTranspileOptions, transpile, transpileSource } from './transpile';
 import type {
   CompileModuleResult,
   CompileOptions,
@@ -30,6 +35,11 @@ export interface CompileInput extends CompileOptions {
   onRender?: () => void;
 }
 
+export interface CompileWithPositionResult {
+  result: CompileResult;
+  positionContext: PositionContext;
+}
+
 /**
  * Compiles and evaluates a snippet, returning something renderable.
  *
@@ -38,11 +48,26 @@ export interface CompileInput extends CompileOptions {
  * loader, must be resolved *before* evaluation begins.
  */
 export async function compile(input: CompileInput | CompileFilesInput): Promise<CompileResult> {
-  if (isFilesInput(input)) return compileProject(input, 'component');
+  return (await compileWithPosition(input)).result;
+}
+
+/**
+ * Like {@link compile}, but also returns line-mapping metadata for render-time
+ * errors caught by the preview boundary.
+ *
+ * @internal Used by the React layer; not part of the public contract.
+ */
+export async function compileWithPosition(
+  input: CompileInput | CompileFilesInput,
+): Promise<CompileWithPositionResult> {
+  if (isFilesInput(input)) return compileProjectWithPosition(input);
   const prepared = await prepare(input);
   try {
     const { renderable, via } = evaluate(prepared.evaluateOptions);
-    return { renderable, via, code: prepared.code, imports: prepared.imports };
+    return {
+      result: { renderable, via, code: prepared.code, imports: prepared.imports },
+      positionContext: { kind: 'single', meta: prepared.meta },
+    };
   } catch (cause) {
     throw enrichRuntimeError(cause, prepared.meta);
   }
@@ -159,40 +184,6 @@ function countLines(text: string): number {
 }
 
 /**
- * Attaches the snippet's own line number to an error thrown during evaluation,
- * and strips host/React frames so the stack shows only user code.
- */
-function enrichRuntimeError(
-  cause: unknown,
-  meta: { linePrefixOffset: number; generatedLineCount: number; sourceLineCount: number },
-): Error {
-  if (!(cause instanceof Error)) {
-    return new LiveRuntimeError(String(cause), { cause });
-  }
-
-  // next-live's own errors already carry good messages and need no mapping.
-  if (cause instanceof LiveError) return cause;
-
-  const position = positionFromStack(cause.stack);
-  const mapped = position ? mapPosition(position, meta) : null;
-
-  const error = new LiveRuntimeError(cause.message, { cause });
-  error.stack = filterUserFrames(cause.stack) ?? cause.stack;
-  if (mapped) {
-    Object.defineProperty(error, 'line', { value: mapped.line, enumerable: true });
-    if (mapped.column !== undefined) {
-      Object.defineProperty(error, 'column', { value: mapped.column, enumerable: true });
-    }
-  }
-  return error;
-}
-
-function positionFromStack(stack: string | undefined): { line: number; column?: number } | null {
-  const frame = firstUserFrame(stack);
-  return frame ? { line: frame.line, column: frame.column } : null;
-}
-
-/**
  * A snippet made of several files that import each other by relative path.
  *
  * Kept a separate input from {@link CompileInput} rather than folding `code`
@@ -204,18 +195,12 @@ export interface CompileFilesInput extends CompileOptions {
   files: Readonly<Record<string, string>>;
   /** The file whose exports are rendered. Default: the first key. */
   entry?: string;
-  /** Reports each render of a compiled component to the loop breaker. */
+  /** Reports each render of the compiled component to the loop breaker. */
   onRender?: () => void;
 }
 
 function isFilesInput(input: CompileInput | CompileFilesInput): input is CompileFilesInput {
   return (input as Partial<CompileFilesInput>).files !== undefined;
-}
-
-interface LineMeta {
-  linePrefixOffset: number;
-  generatedLineCount: number;
-  sourceLineCount: number;
 }
 
 interface PreparedFile {
@@ -229,12 +214,34 @@ interface PreparedFile {
   links: Map<string, string>;
 }
 
+function projectPositionContext(
+  prepared: Map<string, PreparedFile>,
+): Extract<PositionContext, { kind: 'project' }> {
+  const files = new Map<string, { key: string; meta: LineMeta }>();
+  for (const [path, file] of prepared) {
+    files.set(path, { key: file.key, meta: file.meta });
+  }
+  return { kind: 'project', files };
+}
+
+async function compileProjectWithPosition(input: CompileFilesInput): Promise<CompileWithPositionResult> {
+  const { result, positionContext } = await compileProjectInternal(input, 'component');
+  return { result: result as CompileResult, positionContext };
+}
+
 async function compileProject(input: CompileFilesInput, want: 'component'): Promise<CompileResult>;
 async function compileProject(input: CompileFilesInput, want: 'module'): Promise<CompileModuleResult>;
 async function compileProject(
   input: CompileFilesInput,
   want: 'component' | 'module',
 ): Promise<CompileResult | CompileModuleResult> {
+  return (await compileProjectInternal(input, want)).result;
+}
+
+async function compileProjectInternal(
+  input: CompileFilesInput,
+  want: 'component' | 'module',
+): Promise<{ result: CompileResult | CompileModuleResult; positionContext: PositionContext }> {
   const {
     files,
     entry: entryName,
@@ -258,7 +265,7 @@ async function compileProject(
     const source = onRender ? injectRenderBudgetTick(file.source) : file.source;
     let transformed: TransformResult;
     try {
-      transformed = await transpile(
+      transformed = await transpileSource(
         source,
         // The transform sees the host's key, so a precompiled record keyed the
         // same way finds each file.
@@ -312,6 +319,8 @@ async function compileProject(
     }
     layer = next;
   }
+
+  const positionContext = projectPositionContext(prepared);
 
   const registry = { ...builtinModules, ...modules };
   const imports = [...external].sort();
@@ -393,11 +402,13 @@ async function compileProject(
   try {
     entryResult = run(prepared.get(entry) as PreparedFile);
   } catch (cause) {
-    throw enrichProjectError(cause, prepared);
+    throw enrichProjectError(cause, positionContext.files);
   }
 
   const shared = { code: (prepared.get(entry) as PreparedFile).code, imports, entry: entryKey, files: [...ran] };
-  if (want === 'module') return { exports: entryResult.exports, ...shared };
+  if (want === 'module') {
+    return { result: { exports: entryResult.exports, ...shared }, positionContext };
+  }
 
   try {
     const { renderable, via } = pickRenderable(
@@ -405,9 +416,9 @@ async function compileProject(
       entryResult.rendered,
       entryResult.recovered,
     );
-    return { renderable, via, ...shared };
+    return { result: { renderable, via, ...shared }, positionContext };
   } catch (cause) {
-    throw enrichProjectError(cause, prepared);
+    throw enrichProjectError(cause, positionContext.files);
   }
 }
 
@@ -425,44 +436,5 @@ function withFile(cause: unknown, key: string): unknown {
   );
 }
 
-/**
- * The multi-file counterpart of `enrichRuntimeError`: the innermost snippet
- * frame names the file, and that file's own line metadata maps the position.
- */
-function enrichProjectError(cause: unknown, prepared: Map<string, PreparedFile>): Error {
-  if (!(cause instanceof Error)) {
-    return new LiveRuntimeError(String(cause), { cause });
-  }
-
-  const frame = firstUserFrame(cause.stack);
-  const file = frame?.file !== undefined ? prepared.get(frame.file) : undefined;
-  const mapped = frame && file ? mapPosition(frame, file.meta) : null;
-
-  const define = (target: Error) => {
-    if (file && (target as PositionedError).file === undefined) {
-      Object.defineProperty(target, 'file', { value: file.key, enumerable: true, configurable: true });
-    }
-    if (mapped) {
-      Object.defineProperty(target, 'line', { value: mapped.line, enumerable: true, configurable: true });
-      if (mapped.column !== undefined) {
-        Object.defineProperty(target, 'column', { value: mapped.column, enumerable: true, configurable: true });
-      }
-    }
-  };
-
-  // next-live's own errors keep their message; they only gain the position of
-  // the file that raised them - a missing import names the line that asked.
-  if (cause instanceof LiveError) {
-    if ((cause as PositionedError).line === undefined) define(cause);
-    return cause;
-  }
-
-  const error = new LiveRuntimeError(cause.message, { cause });
-  error.stack = filterUserFrames(cause.stack) ?? cause.stack;
-  define(error);
-  return error;
-}
-
 export type { CompileModuleResult } from './types';
 export { LiveCompileError };
-

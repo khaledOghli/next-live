@@ -55,6 +55,16 @@ export class LiveCompileError extends LiveError {
 
 /** The snippet threw while being evaluated or rendered. */
 export class LiveRuntimeError extends LiveError {
+  // `declare`, not a field: a field would add an own `line: undefined` key to
+  // every error, and hosts compare runtime errors with `toEqual` and
+  // `Object.keys`. The engine defines these only when it can map a position.
+  /** 1-based line in the snippet. Present only when the stack could be mapped. */
+  declare readonly line?: number;
+  /** 1-based column in the snippet. Present only alongside `line`, when known. */
+  declare readonly column?: number;
+  /** The project file that threw. Present only for multi-file snippets. */
+  declare readonly file?: string;
+
   constructor(message: string, options?: { cause?: unknown; code?: 'RUNTIME' }) {
     super(message, { cause: options?.cause, code: options?.code ?? 'RUNTIME' });
   }

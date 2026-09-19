@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         with:
           # Dev-only advisories are noisy on a package whose runtime dependency
           # list is a single entry; high and above is what should stop a merge.

@@ -116,7 +116,7 @@
     "@vitest/browser-playwright": "^5.0.0",
     "jsdom": "^30.0.1",
     "playwright": "^1.51.0",
-    "prettier": "^3.5.3",
+    "prettier": "^3.9.8",
     "publint": "^0.3.12",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.3.0",
